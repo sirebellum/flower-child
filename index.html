@@ -1,0 +1,4729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sacred Geometry Studio — Flower of Life & Flower of Kryst</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-space: #07090e;
+      --bg-panel: rgba(13, 17, 26, 0.92);
+      --bg-panel-border: rgba(255, 255, 255, 0.09);
+      --bg-card: rgba(19, 26, 40, 0.72);
+      --bg-input: #0c111c;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-faint: #64748b;
+      --accent-gold: #f59e0b;
+      --accent-kryst: #06b6d4;
+      --accent-life: #ef4444;
+      --accent-blue: #3b82f6;
+      --accent-guide: #ea580c;
+      --accent-emerald: #10b981;
+      --accent-purple: #8b5cf6;
+      --glow-gold: 0 0 16px rgba(245, 158, 11, 0.45);
+      --glow-cyan: 0 0 16px rgba(6, 182, 212, 0.45);
+      --glow-life: 0 0 16px rgba(239, 68, 68, 0.45);
+      --font-display: 'Cinzel', serif;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --sidebar-width: 380px;
+      --header-height: 64px;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition-fast: 0.16s ease;
+      --transition-normal: 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Clean, accessible custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 4px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-gold);
+    }
+
+    /* Top Navigation Header */
+    header {
+      height: var(--header-height);
+      min-height: var(--header-height);
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--bg-panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+      flex-shrink: 0;
+      gap: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    header::-webkit-scrollbar {
+      display: none;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(6, 182, 212, 0.3), rgba(245, 158, 11, 0.15));
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      box-shadow: var(--glow-cyan);
+    }
+    .brand-logo svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--accent-gold);
+    }
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+    }
+    .brand-subtitle {
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-kryst);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    /* Viewport Switcher Tabs */
+    .view-switcher {
+      display: flex;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--bg-panel-border);
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    .view-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 15px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .view-tab:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .view-tab.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.13);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+    .view-tab svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    /* Header Actions */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--bg-panel-border);
+      background: var(--bg-card);
+      color: var(--text-main);
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(2, 132, 199, 0.4);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #0284c7);
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Main Workspace Layout */
+    .workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - var(--header-height));
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Sidebar Controls with Full Vertical Scrollability */
+    .sidebar {
+      width: var(--sidebar-width);
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      background: var(--bg-panel);
+      backdrop-filter: blur(24px);
+      border-right: 1px solid var(--bg-panel-border);
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+      transition: transform var(--transition-normal);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .sidebar.collapsed {
+      transform: translateX(-100%);
+      margin-right: calc(-1 * var(--sidebar-width));
+    }
+
+    /* Sidebar Top Action Bar */
+    .sidebar-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.28);
+      border-bottom: 1px solid var(--bg-panel-border);
+      flex-shrink: 0;
+    }
+    .sidebar-header-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sidebar-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-sidebar-tool {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--bg-panel-border);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all var(--transition-fast);
+    }
+    .btn-sidebar-tool:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .btn-sidebar-tool svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .sidebar-toggle-btn {
+      position: absolute;
+      left: calc(var(--sidebar-width) + 12px);
+      top: 14px;
+      z-index: 60;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--bg-panel-border);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: left var(--transition-normal), background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .sidebar.collapsed + .viewport-container .sidebar-toggle-btn,
+    .sidebar-toggle-btn.pinned-collapsed {
+      left: 14px;
+    }
+    .sidebar-toggle-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Sidebar Content - Smoothly Scrollable with Bottom Padding */
+    .sidebar-content {
+      flex: 1 1 0%;
+      height: 100%;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 14px 16px 120px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overscroll-behavior: contain;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.22) rgba(0, 0, 0, 0.2);
+    }
+
+    /* Accordion Section */
+    .panel-section {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color var(--transition-fast);
+      flex-shrink: 0;
+    }
+    .panel-section:hover {
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+    .section-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid transparent;
+      transition: all var(--transition-fast);
+    }
+    .section-header:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .panel-section.open .section-header {
+      border-bottom-color: var(--bg-panel-border);
+    }
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #f8fafc;
+    }
+    .section-title svg {
+      width: 17px;
+      height: 17px;
+      stroke: var(--accent-gold);
+    }
+    .section-chevron {
+      width: 16px;
+      height: 16px;
+      color: var(--text-faint);
+      transition: transform var(--transition-fast);
+    }
+    .panel-section.open .section-chevron {
+      transform: rotate(180deg);
+    }
+    .section-body {
+      display: none;
+      padding: 16px;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .panel-section.open .section-body {
+      display: flex;
+    }
+
+    /* Controls & Inputs */
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .control-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .control-val-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 2px 7px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-sm);
+      color: var(--accent-kryst);
+    }
+
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .range-slider {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 3px;
+      outline: none;
+    }
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent-kryst);
+      border: 2px solid #000;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
+      transition: transform 0.1s;
+    }
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+
+    .custom-select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 7px 10px;
+      font-size: 0.78rem;
+      outline: none;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: border-color var(--transition-fast);
+    }
+    .custom-select:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .custom-select:focus {
+      border-color: var(--accent-kryst);
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+    }
+    .custom-select option {
+      background: #0d121c;
+      color: var(--text-main);
+    }
+
+    /* Toggle switches */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-right: 8px;
+    }
+    .toggle-title {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+    .toggle-desc {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider-switch {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.14);
+      transition: .24s;
+      border-radius: 20px;
+    }
+    .slider-switch:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .24s;
+      border-radius: 50%;
+    }
+    input:checked + .slider-switch {
+      background-color: var(--accent-kryst);
+    }
+    input:checked + .slider-switch:before {
+      transform: translateX(18px);
+      background-color: #07090e;
+    }
+
+    /* Preset Toolbar */
+    .preset-toolbar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .preset-toolbar .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 6px 8px;
+      font-size: 0.72rem;
+      gap: 4px;
+    }
+
+    /* Preset Grid */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .preset-chip {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-md);
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+      position: relative;
+    }
+    .preset-chip.custom-preset {
+      border-left: 3px solid var(--accent-kryst);
+    }
+    .preset-chip:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.22);
+      transform: translateY(-1px);
+    }
+    .preset-chip.active {
+      border-color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.14);
+      box-shadow: 0 2px 14px rgba(245, 158, 11, 0.25);
+    }
+    .preset-chip-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      width: 100%;
+    }
+    .preset-chip-title {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .preset-title-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .preset-badge-custom {
+      font-size: 0.55rem;
+      padding: 1px 4px;
+      background: rgba(6, 182, 212, 0.2);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      border-radius: 4px;
+      color: var(--accent-kryst);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .preset-badge-edited {
+      font-size: 0.55rem;
+      padding: 1px 4px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 4px;
+      color: var(--accent-gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .preset-chip-actions {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      flex-shrink: 0;
+    }
+    .preset-chip:hover .preset-chip-actions {
+      opacity: 1;
+    }
+    .preset-action-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 3px;
+      color: var(--text-muted);
+      width: 19px;
+      height: 19px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      padding: 0;
+    }
+    .preset-action-btn svg {
+      width: 11px;
+      height: 11px;
+    }
+    .preset-action-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+    .preset-action-btn.delete-preset-btn:hover {
+      background: #ef4444;
+      color: #fff;
+    }
+    .preset-action-btn.revert-preset-btn:hover {
+      background: var(--accent-gold);
+      color: #000;
+    }
+    .preset-chip-subtitle {
+      font-size: 0.65rem;
+      color: var(--text-faint);
+      font-family: var(--font-mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Modal Form Controls */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      outline: none;
+      font-family: var(--font-sans);
+      transition: border-color var(--transition-fast);
+    }
+    .form-input:focus {
+      border-color: var(--accent-kryst);
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.25);
+    }
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-toggles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-sm);
+    }
+    .form-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      color: #cbd5e1;
+      cursor: pointer;
+      user-select: none;
+    }
+    .form-checkbox-label input[type="checkbox"] {
+      accent-color: var(--accent-kryst);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    /* Sub-options for Metatron's Cube Platonic Solids */
+    .platonic-solids-bar {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-sm);
+      margin-top: 6px;
+    }
+    .platonic-solids-bar.visible {
+      display: flex;
+    }
+    .platonic-btn {
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--bg-panel-border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .platonic-btn:hover, .platonic-btn.active {
+      color: #fff;
+      background: rgba(245, 158, 11, 0.25);
+      border-color: var(--accent-gold);
+    }
+
+    /* Color Pickers row */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .color-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--bg-panel-border);
+    }
+    .color-picker-item input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      background: transparent;
+    }
+    .color-picker-item input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    .color-picker-item input[type="color"]::-webkit-color-swatch {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+    }
+    .color-picker-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Viewport Area */
+    .viewport-container {
+      flex: 1;
+      height: 100%;
+      min-height: 0;
+      min-width: 0;
+      position: relative;
+      display: flex;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0e1628 0%, #070d1a 60%, #02050e 100%);
+    }
+
+    /* Single / Dual Viewport Layouts */
+    .viewport-pane {
+      flex: 1;
+      height: 100%;
+      min-height: 0;
+      min-width: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid var(--bg-panel-border);
+    }
+    .viewport-pane:last-child {
+      border-right: none;
+    }
+    .pane-header {
+      position: absolute;
+      top: 14px;
+      left: 0;
+      right: 0;
+      padding: 0 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .pane-badge {
+      pointer-events: auto;
+      background: var(--bg-panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-md);
+      padding: 8px 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      text-align: center;
+    }
+    .pane-badge-title {
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .pane-badge-count {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--accent-gold);
+    }
+    .fol-theme .pane-badge-title { color: #fca5a5; }
+    .fok-theme .pane-badge-title { color: #67e8f9; }
+
+    .pane-svg-wrapper {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    .pane-svg-wrapper:active {
+      cursor: grabbing;
+    }
+    .geometry-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating Viewport Toolbars */
+    .viewport-floating-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 45;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .floating-btn-group {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5);
+    }
+    .floating-tool-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border-bottom: 1px solid var(--bg-panel-border);
+    }
+    .floating-tool-btn:last-child {
+      border-bottom: none;
+    }
+    .floating-tool-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .floating-tool-btn.active {
+      color: var(--accent-kryst);
+      background: rgba(6, 182, 212, 0.18);
+    }
+
+    /* Quick View Toggles Overlay (Base Pattern vs Actual) */
+    .quick-mode-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      display: flex;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: 30px;
+      padding: 4px;
+      gap: 4px;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+      max-width: calc(100vw - 320px);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .quick-mode-btn {
+      padding: 6px 16px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      border-radius: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .quick-mode-btn:hover {
+      color: #fff;
+    }
+    .quick-mode-btn.active {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Inspector Floating Card with Max-Height and Minimize */
+    .inspector-card {
+      position: absolute;
+      top: 74px;
+      right: 20px;
+      width: 280px;
+      max-height: calc(100vh - 180px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--bg-panel-border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      z-index: 35;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .inspector-card.minimized .inspector-body {
+      display: none;
+    }
+    .inspector-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--bg-panel-border);
+      padding-bottom: 8px;
+    }
+    .inspector-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .inspector-body {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .inspector-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.76rem;
+    }
+    .inspector-item-label {
+      color: var(--text-muted);
+    }
+    .inspector-item-value {
+      font-family: var(--font-mono);
+      color: #fff;
+      font-weight: 500;
+    }
+    .inspector-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .btn-xs {
+      padding: 5px 9px;
+      font-size: 0.7rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Divergence Banner for Superimposed Mode */
+    .divergence-hud {
+      position: absolute;
+      top: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 19, 33, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: var(--radius-md);
+      padding: 8px 20px;
+      z-index: 35;
+      display: none;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.65);
+      max-width: 90vw;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .divergence-hud.visible {
+      display: flex;
+    }
+    .divergence-val {
+      font-family: var(--font-mono);
+      color: var(--accent-gold);
+      font-weight: 600;
+    }
+
+    /* Modal Backdrop & Content */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(12px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      overflow-y: auto;
+    }
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+    .modal-container {
+      background: #0d121d;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 860px;
+      max-height: 88vh;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--bg-panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+    }
+    .modal-close-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      line-height: 1.65;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .modal-body h3 {
+      font-family: var(--font-display);
+      color: var(--accent-gold);
+      font-size: 1.15rem;
+      margin-top: 10px;
+    }
+    .modal-body p code {
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-kryst);
+    }
+    .comparison-table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .comparison-table th, .comparison-table td {
+      border: 1px solid var(--bg-panel-border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .comparison-table th {
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+    .comparison-table td {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    /* SVG Interactive Styling */
+    .circle-node {
+      transition: stroke 0.15s, stroke-width 0.15s, opacity 0.15s;
+      cursor: pointer;
+    }
+    .circle-node:hover {
+      stroke-width: 2.8px !important;
+      opacity: 1 !important;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
+    }
+    .center-dot {
+      cursor: pointer;
+      transition: transform 0.15s, fill 0.15s;
+    }
+    .center-dot:hover {
+      transform: scale(1.6);
+      filter: drop-shadow(0 0 8px #f59e0b);
+    }
+    .highlighted-circle {
+      stroke: #ffffff !important;
+      stroke-width: 3.5px !important;
+      filter: drop-shadow(0 0 10px #f59e0b) drop-shadow(0 0 20px #f59e0b);
+    }
+    .highlighted-dot {
+      fill: #ffffff !important;
+      r: 6px !important;
+      filter: drop-shadow(0 0 8px #f59e0b) drop-shadow(0 0 14px #f59e0b);
+    }
+
+    /* Pulse animation */
+    @keyframes sacredBreath {
+      0%, 100% { transform: scale(1); opacity: 0.95; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+    .sacred-pulse {
+      transform-origin: center;
+      animation: sacredBreath 6s ease-in-out infinite;
+    }
+
+    /* Notification toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--accent-kryst);
+      border-radius: var(--radius-md);
+      padding: 10px 20px;
+      font-size: 0.82rem;
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+      z-index: 300;
+      transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      :root {
+        --sidebar-width: 340px;
+      }
+      .brand-subtitle {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        height: 100%;
+        max-height: 100%;
+      }
+      .inspector-card {
+        top: auto;
+        bottom: 70px;
+        right: 14px;
+        width: 260px;
+      }
+      .quick-mode-bar {
+        max-width: calc(100vw - 120px);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="brand" id="brandLogo">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8">
+          <circle cx="12" cy="12" r="5" />
+          <circle cx="12" cy="7" r="5" stroke-dasharray="1 1" />
+          <circle cx="12" cy="17" r="5" stroke-dasharray="1 1" />
+          <circle cx="7" cy="12" r="5" stroke-dasharray="1 1" />
+          <circle cx="17" cy="12" r="5" stroke-dasharray="1 1" />
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">Sacred Geometry Studio</div>
+        <div class="brand-subtitle">Flower of Life vs. Flower of Kryst</div>
+      </div>
+    </div>
+
+    <!-- View Mode Switcher -->
+    <div class="view-switcher" id="viewportSwitcher">
+      <button class="view-tab active" data-mode="comparison" title="Side-by-side synchronized comparison">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="8" height="18" rx="2"/>
+          <rect x="13" y="3" width="8" height="18" rx="2"/>
+        </svg>
+        <span>Dual Split</span>
+      </button>
+      <button class="view-tab" data-mode="superimposed" title="Superimposed overlay centered on (0,0)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="5"/>
+        </svg>
+        <span>Superimposed</span>
+      </button>
+      <button class="view-tab" data-mode="single-life" title="Flower of Life single focus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 21 7 21 17 12 22 3 17 3 7"/>
+        </svg>
+        <span>Flower of Life</span>
+      </button>
+      <button class="view-tab" data-mode="single-kryst" title="Flower of Kryst single focus">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9"/>
+          <polygon points="12 5 19 12 12 19 5 12"/>
+        </svg>
+        <span>Flower of Kryst</span>
+      </button>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+
+      <button class="btn" id="openTheoryBtn" title="Mathematical & Esoteric Comparison Guide">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>Theory & Proof</span>
+      </button>
+
+      <button class="btn btn-primary" id="exportBtn" title="Export High-Resolution Vectors / Canvas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Export</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div class="workspace">
+
+    <!-- Collapsible Sidebar -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- Sidebar Top Utility Bar -->
+      <div class="sidebar-header-bar">
+        <span class="sidebar-header-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Studio Controls
+        </span>
+        <div class="sidebar-header-actions">
+          <button class="btn-sidebar-tool" id="expandAllSectionsBtn" title="Expand All Sections">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 11 12 6 17 11"/><polyline points="7 18 12 13 17 18"/></svg>
+            <span>Expand</span>
+          </button>
+          <button class="btn-sidebar-tool" id="collapseAllSectionsBtn" title="Collapse All Sections">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 6 12 11 17 6"/><polyline points="7 13 12 18 17 13"/></svg>
+            <span>Collapse</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Sidebar Content -->
+      <div class="sidebar-content">
+
+        <!-- Presets Section -->
+        <div class="panel-section open">
+          <div class="section-header">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              Sacred Geometry Presets
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="section-body">
+            <!-- Preset Management Toolbar -->
+            <div class="preset-toolbar">
+              <button class="btn btn-xs btn-primary" id="btnAddNewPreset" title="Create new custom preset from current settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>+ Add Preset</span>
+              </button>
+              <button class="btn btn-xs" id="btnUpdateCurrentPreset" title="Save current studio state to active preset">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Save Active</span>
+              </button>
+              <button class="btn btn-xs" id="btnManagePresets" title="Export / Import Presets JSON or Reset Defaults">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>Backup</span>
+              </button>
+            </div>
+
+            <!-- Dynamic Preset Grid -->
+            <div class="preset-grid" id="presetGrid">
+              <!-- Rendered dynamically by PresetsManager -->
+            </div>
+
+            <!-- Platonic Solids Filter Bar for Metatron's Cube -->
+            <div class="platonic-solids-bar" id="platonicBar">
+              <span style="font-size:0.7rem; color:var(--text-faint); width:100%;">Highlight Platonic Solids:</span>
+              <button class="platonic-btn active" data-solid="all">All 78 Chords</button>
+              <button class="platonic-btn" data-solid="tetra">Merkaba (Star Tetra)</button>
+              <button class="platonic-btn" data-solid="cube">Cube (Hexahedron)</button>
+              <button class="platonic-btn" data-solid="octa">Octahedron</button>
+              <button class="platonic-btn" data-solid="dodeca">Icosa / Dodeca</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer & Dimensions Section -->
+        <div class="panel-section open">
+          <div class="section-header">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a10 10 0 0 1 10 10"/>
+              </svg>
+              Lattice & Layers (N)
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="section-body">
+            <div class="slider-container">
+              <div class="control-row">
+                <span class="control-label">Layer Depth (N)</span>
+                <span class="control-val-badge" id="layerCountBadge">N = 2</span>
+              </div>
+              <input type="range" class="range-slider" id="layerSlider" min="1" max="8" value="2" step="1">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <span class="control-label">Base Radius (r)</span>
+                <span class="control-val-badge" id="radiusBadge">r = 50px</span>
+              </div>
+              <input type="range" class="range-slider" id="radiusSlider" min="25" max="90" value="50" step="1">
+            </div>
+
+            <!-- Kryst Lattice Geometry Mode Control -->
+            <div class="slider-container" style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: var(--radius-sm); padding: 10px; gap: 8px;">
+              <div class="control-row">
+                <span class="control-label" style="color: #67e8f9; font-weight: 600;">Kryst Lattice Mode</span>
+                <span class="control-val-badge" id="krystModeBadge" style="border-color: rgba(6, 182, 212, 0.4);">Inscribed</span>
+              </div>
+              <select class="custom-select" id="selectKrystGeometry">
+                <option value="inscribed" selected>Inscribed in Outer Circle (Enveloped &amp; Non-overlapping)</option>
+                <option value="tangent">Tangent Inscription (4√3r Exact Tangency)</option>
+                <option value="linear">Linear Sequence (2kr Fixed Spacing)</option>
+              </select>
+              <div style="font-size:0.68rem; color:var(--text-faint); line-height: 1.35;" id="krystModeDesc">
+                Hexagon 2 circumradius = 8r. Touches Circle 2 at all 6 vertices; base circles 100% non-overlapping (0.93r clearance).
+              </div>
+            </div>
+
+            <!-- Total Circles Counter -->
+            <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--bg-panel-border); border-radius: var(--radius-sm); padding: 10px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display:flex; justify-content:space-between; font-size: 0.75rem;">
+                <span style="color:#fca5a5;">Flower of Life Circles:</span>
+                <strong style="font-family:var(--font-mono); color:#fff;" id="folCountStat">19 Circles</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size: 0.75rem;">
+                <span style="color:#67e8f9;">Flower of Kryst Circles:</span>
+                <strong style="font-family:var(--font-mono); color:#fff;" id="fokCountStat">18 (3N(N+1))</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Elements Toggles -->
+        <div class="panel-section open">
+          <div class="section-header">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Geometric Layers
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="section-body">
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Actual Flower Circles</span>
+                <span class="toggle-desc">Expanded overlapping circles (Radius R = 2r)</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleActualFlower" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Base Pattern Circles</span>
+                <span class="toggle-desc">Blue tangent circles of base radius r</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleBaseCircles">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Shape Guides (Hexagons / Circles)</span>
+                <span class="toggle-desc">Lattice guide lines: Hex for FoL, Hex+Circle for FoK</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleGuides" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Outer Bounding Ring</span>
+                <span class="toggle-desc">Circumscribing boundary ring at R = (2N+2)r</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleOuterRing" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Boundary Filler Petals (Clipped)</span>
+                <span class="toggle-desc">Complete outer petals clipped inside boundary</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleBoundaryPetals" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Center Coordinate Dots</span>
+                <span class="toggle-desc">Node points at every circle center (x, y)</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleCenterDots" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Intersection Nodes</span>
+                <span class="toggle-desc">Points where petals intersect in the matrix</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleIntersections">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Radial Symmetry Rays</span>
+                <span class="toggle-desc">12-fold / 6-fold dashed axes through origin</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleRadialAxes">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Metatron Vertex Chords</span>
+                <span class="toggle-desc">Geometric connections across centers</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleMetatronLines">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Styling & Colors -->
+        <div class="panel-section open">
+          <div class="section-header">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2v20"/>
+              </svg>
+              Aesthetics & Colors
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="section-body">
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Harmonic Color by Layer</span>
+                <span class="toggle-desc">Assign distinct spectrum colors to layers 0..N</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleColorByLayer">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Neon Luminescence Glow</span>
+                <span class="toggle-desc">Ethereal SVG Gaussian blur glow filter</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleGlow" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Sacred Pulse (Breathing)</span>
+                <span class="toggle-desc">Gentle sinusoidal kinetic respiration</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="togglePulse">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <div class="color-grid">
+              <div class="color-picker-item">
+                <input type="color" id="colorLife" value="#ef4444">
+                <span class="color-picker-label">Life Flower</span>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorKryst" value="#06b6d4">
+                <span class="color-picker-label">Kryst Flower</span>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorBase" value="#3b82f6">
+                <span class="color-picker-label">Base Circles</span>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorGuide" value="#ea580c">
+                <span class="color-picker-label">Shape Guides</span>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorOuter" value="#f59e0b">
+                <span class="color-picker-label">Outer Ring</span>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorAxes" value="#64748b">
+                <span class="color-picker-label">Radial Axes</span>
+              </div>
+            </div>
+
+            <!-- Stroke Width Sliders -->
+            <div class="slider-container">
+              <div class="control-row">
+                <span class="control-label">Actual Circles Stroke</span>
+                <span class="control-val-badge" id="strokeFlowerBadge">1.5px</span>
+              </div>
+              <input type="range" class="range-slider" id="strokeFlowerSlider" min="0.5" max="4.0" value="1.5" step="0.25">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <span class="control-label">Base Circles Stroke</span>
+                <span class="control-val-badge" id="strokeBaseBadge">1.0px</span>
+              </div>
+              <input type="range" class="range-slider" id="strokeBaseSlider" min="0.5" max="3.5" value="1.0" step="0.25">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <span class="control-label">Shape Guides Stroke</span>
+                <span class="control-val-badge" id="strokeGuideBadge">2.0px</span>
+              </div>
+              <input type="range" class="range-slider" id="strokeGuideSlider" min="0.5" max="5.0" value="2.0" step="0.25">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <span class="control-label">Petal Fill Opacity</span>
+                <span class="control-val-badge" id="fillOpacityBadge">4%</span>
+              </div>
+              <input type="range" class="range-slider" id="fillOpacitySlider" min="0" max="30" value="4" step="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Inline Measurements & HUD Backup -->
+        <div class="panel-section">
+          <div class="section-header">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              Measurements & Analysis
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="section-body">
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.76rem;">
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+                <span style="color:var(--text-muted);">Bounding Radius:</span>
+                <span style="font-family:var(--font-mono); color:#fff;" id="sidebarBoundRad">300px (6r)</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+                <span style="color:var(--text-muted);">FoK Layer 2 Expansion:</span>
+                <span style="font-family:var(--font-mono); color:var(--accent-gold);">+15.47% (2/√3)</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+                <span style="color:var(--text-muted);">Highlighted Nodes:</span>
+                <span style="font-family:var(--font-mono); color:#fff;" id="sidebarHighlightCount">0</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding-top:2px;">
+                <span style="color:var(--text-muted);">Symmetry Fold:</span>
+                <span style="font-family:var(--font-mono); color:#fff;">6-Fold / 12-Fold</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Toggle Sidebar [Ctrl+B]">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+      </svg>
+    </button>
+
+    <!-- Viewport Container -->
+    <main class="viewport-container" id="viewportContainer">
+
+      <!-- Divergence Banner (Superimposed View) -->
+      <div class="divergence-hud" id="divergenceHud">
+        <span>Radial Phase Divergence:</span>
+        <span class="divergence-val">r_kryst / r_life = 2/√3 ≈ 1.1547 (+15.47%)</span>
+        <span style="color:var(--text-muted); font-size:0.72rem;">(6 Vertex matches, 6 Midpoint expansions)</span>
+      </div>
+
+      <!-- Left Pane (Flower of Life) -->
+      <div class="viewport-pane fol-theme" id="paneLife">
+        <div class="pane-header">
+          <div class="pane-badge" id="badgeLifeContainer">
+            <span class="pane-badge-title" id="badgeLifeTitle">Flower of Life</span>
+            <span class="pane-badge-count" id="badgeLifeCount">19 Circles</span>
+          </div>
+        </div>
+        <div class="pane-svg-wrapper" id="svgWrapperLife">
+          <svg class="geometry-svg" id="svgLife"></svg>
+        </div>
+      </div>
+
+      <!-- Right Pane (Flower of Kryst) -->
+      <div class="viewport-pane fok-theme" id="paneKryst">
+        <div class="pane-header">
+          <div class="pane-badge">
+            <span class="pane-badge-title">Flower of Kryst</span>
+            <span class="pane-badge-count" id="badgeKrystCount">18 Circles</span>
+          </div>
+        </div>
+        <div class="pane-svg-wrapper" id="svgWrapperKryst">
+          <svg class="geometry-svg" id="svgKryst"></svg>
+        </div>
+      </div>
+
+      <!-- Floating Controls: Quick Mode Switch (Base / Actual / Combined) -->
+      <div class="quick-mode-bar">
+        <button class="quick-mode-btn active" data-viewstyle="actual">Actual Flowers</button>
+        <button class="quick-mode-btn" data-viewstyle="base">Base Pattern</button>
+        <button class="quick-mode-btn" data-viewstyle="combined">Combined</button>
+      </div>
+
+      <!-- Floating Tool Buttons (Zoom / Pan / Fit) -->
+      <div class="viewport-floating-controls">
+        <div class="floating-btn-group">
+          <button class="floating-tool-btn" id="zoomInBtn" title="Zoom In (+)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </button>
+          <button class="floating-tool-btn" id="zoomOutBtn" title="Zoom Out (-)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </button>
+          <button class="floating-tool-btn" id="resetZoomBtn" title="Reset View (1:1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+          </button>
+          <button class="floating-tool-btn" id="fitZoomBtn" title="Fit to Viewport">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;">
+              <polyline points="15 3 21 3 21 9"/>
+              <polyline points="9 21 3 21 3 15"/>
+              <polyline points="21 15 21 21 15 21"/>
+              <polyline points="3 9 3 3 9 3"/>
+            </svg>
+          </button>
+          <button class="floating-tool-btn active" id="syncPanBtn" title="Synchronize Dual Pan & Zoom">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Inspector HUD Floating Card (Minimizable & Scroll-Constrained) -->
+      <div class="inspector-card" id="inspectorCard">
+        <div class="inspector-header">
+          <span class="inspector-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;">
+              <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            Geometry Inspector
+          </span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.68rem; color:var(--text-faint);" id="inspectStatus">Active</span>
+            <button id="toggleInspectorCollapseBtn" title="Minimize / Expand Inspector" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:0 3px;">&minus;</button>
+          </div>
+        </div>
+        <div class="inspector-body">
+          <div class="inspector-item">
+            <span class="inspector-item-label">Pattern Lattice:</span>
+            <span class="inspector-item-value" id="inspectPattern">—</span>
+          </div>
+          <div class="inspector-item">
+            <span class="inspector-item-label">Layer Ring (k):</span>
+            <span class="inspector-item-value" id="inspectLayer">—</span>
+          </div>
+          <div class="inspector-item">
+            <span class="inspector-item-label">Polar Distance (d):</span>
+            <span class="inspector-item-value" id="inspectRadius">—</span>
+          </div>
+          <div class="inspector-item">
+            <span class="inspector-item-label">Azimuth Angle (θ):</span>
+            <span class="inspector-item-value" id="inspectAngle">—</span>
+          </div>
+          <div class="inspector-item">
+            <span class="inspector-item-label">Coordinates (x, y):</span>
+            <span class="inspector-item-value" id="inspectCoords">—</span>
+          </div>
+          <div class="inspector-actions">
+            <button class="btn btn-xs" id="clearHighlightBtn" style="width:100%;">Clear Highlights</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Theory & Mathematical Proof Modal -->
+  <div class="modal-overlay" id="theoryModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title">Mathematical & Sacred Geometry Specification</div>
+        <button class="modal-close-btn" id="closeTheoryBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h3>1. The Core Geometric Distinction: Hexagon vs. Circle</h3>
+        <p>
+          Both geometries share the foundational base circle radius <code>r</code> and expanded petal radius <code>R = 2r</code>, with layer vertex distance <code>d_k = 2kr</code>. The profound mathematical divergence arises in how intermediary circle centers are generated across layers:
+        </p>
+
+        <div class="comparison-table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Flower of Life (Hexagonal Matrix)</th>
+                <th>Flower of Kryst (Alternating Matrix)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Layer 0 (Origin)</strong></td>
+                <td>1 Center at (0, 0)</td>
+                <td><strong>0 Centers (Empty Zero-Point)</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Odd Layers (k = 1, 3, 5...)</strong></td>
+                <td>Hexagon perimeter, vertex radius 2kr</td>
+                <td><strong>Hexagon:</strong> Layer 1 = 2r; Layer k &ge; 3 Inscribed in Circle (k+1) at radius 2(k+1)r (Hexagon 2 = 8r)</td>
+              </tr>
+              <tr>
+                <td><strong>Even Layers (k = 2, 4, 6...)</strong></td>
+                <td>Hexagon perimeter (linear interpolation)</td>
+                <td><strong>True Circle of radius 2kr</strong> (Circle 1 = 4r, Circle 2 = 8r)</td>
+              </tr>
+              <tr>
+                <td><strong>Total Circles (N Layers)</strong></td>
+                <td><code>1 + 3N(N + 1)</code></td>
+                <td><code>3N(N + 1)</code></td>
+              </tr>
+              <tr>
+                <td><strong>Standard N=2 Count</strong></td>
+                <td><strong>19 Circles</strong> (1 + 6 + 12)</td>
+                <td><strong>18 Circles</strong> (0 + 6 + 12)</td>
+              </tr>
+              <tr>
+                <td><strong>Layer 2 Midpoint Radius</strong></td>
+                <td><code>d = 2√3 r ≈ 3.464 r</code></td>
+                <td><code>d = 4.000 r</code> (Pure Circle)</td>
+              </tr>
+              <tr>
+                <td><strong>Radial Phase Delta</strong></td>
+                <td>Contracted into flat hexagonal flats</td>
+                <td><strong>+15.47% Expansion</strong> (<code>4 / 2√3 = 2/√3</code>)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>2. Why 19 vs. 18 Circles?</h3>
+        <p>
+          In traditional sacred geometry, the <strong>Flower of Life</strong> is a closed hexagonal loop with 19 complete circles enclosed by a double outer ring. The central circle at <code>(0,0)</code> acts as the genesis seed.
+        </p>
+        <p>
+          In Krystonial / Kathara mechanics, the <strong>Flower of Kryst</strong> omits the central circle. Instead, the 6 circles of Layer 1 have radius <code>2r</code> and are centered at distance <code>2r</code> from the origin; thus, all 6 circles naturally pass directly through the origin <code>(0,0)</code>, forming the 6-petal core meeting at a pure zero-point singularity. Layer 2 then places its 12 circles evenly around a smooth 360° circle, allowing open-ended spherical expansion rather than finite hexagonal collapse.
+        </p>
+
+        <h3>3. Hexagon 2 Non-Overlapping Inscription Proof</h3>
+        <p>
+          In classical linear spacing (<code>d_k = 2kr</code>), Hexagon 2 is placed at <code>d_3 = 6r</code>. Because a regular hexagon's edge midpoints lie at distance <code>6r &times; &radic;3/2 &approx; 5.196r</code>, base circles of radius <code>r</code> reach inward to <code>4.196r</code>, which deeply overlaps Circle 1's base circles (extending out to <code>4r + r = 5.0r</code>). Furthermore, Hexagon 2 floats inside Circle 2 (radius <code>8r</code>) without touching it.
+        </p>
+        <p>
+          In the <strong>Inscribed Harmonic Matrix (Default)</strong>, Hexagon 2's circumradius is set to <code>d_3 = 8r</code>, exactly matching Circle 2:
+        </p>
+        <ul style="padding-left: 20px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin: 8px 0 14px 0;">
+          <li><strong>Fully Enveloped &amp; Touched:</strong> All 6 vertices of Hexagon 2 touch Circle 2 (radius 8r) exactly, and the entire hexagon is enclosed inside Circle 2.</li>
+          <li><strong>Zero Overlap:</strong> Hexagon 2's closest point to origin is its edge midpoint at <code>8r &times; &radic;3/2 &approx; 6.928r</code>. Base circles extend inward to <code>6.928r - r = 5.928r</code>, which sits cleanly outside Circle 1's base circles (max extent <code>5.0r</code>), leaving a clear separation gap of <code>&approx; 0.928r</code> (over 46px at base r=50).</li>
+        </ul>
+
+        <h3>4. Embedded Platonic Solids (Metatron's Cube)</h3>
+        <p>
+          By taking the 13 tangent circles of the <strong>Fruit of Life</strong> (1 center + 6 layer 1 + 6 layer 2 vertices) and connecting all 13 centers to one another via straight line segments (<code>C(13,2) = 78</code> lines), all five Platonic solids (Tetrahedron, Cube, Octahedron, Icosahedron, Dodecahedron) are geometrically inscribed in three dimensions.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Dialog Modal -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal-container" style="max-width: 520px;">
+      <div class="modal-header">
+        <div class="modal-title">Export Sacred Vectors & Images</div>
+        <button class="modal-close-btn" id="closeExportBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Select your desired export format and quality level:</p>
+
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+          <button class="btn btn-primary" id="downloadSvgBtn" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Export Standalone SVG (.svg)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Pure resolution-independent vectors for Illustrator/CAD/Inkscape</div>
+            </div>
+          </button>
+
+          <button class="btn" id="downloadPng2kBtn" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Export High-DPI PNG (2400 × 2400)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Crisp rasterized art with deep dark background and glows</div>
+            </div>
+          </button>
+
+          <button class="btn" id="downloadPng4kBtn" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Export Ultra-HD 4K PNG (3840 × 3840)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Master publication quality for high-resolution printing</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preset Configuration & Add Modal -->
+  <div class="modal-overlay" id="presetConfigModal">
+    <div class="modal-container" style="max-width: 660px;">
+      <div class="modal-header">
+        <div class="modal-title" id="presetModalTitle">Configure Sacred Preset</div>
+        <button class="modal-close-btn" id="closePresetModalBtn">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(6, 182, 212, 0.08); border:1px solid rgba(6, 182, 212, 0.25); padding:10px 14px; border-radius:var(--radius-sm); gap: 12px;">
+          <span style="font-size:0.78rem; color:#67e8f9;">Quickly copy current live studio parameters or customize manually below:</span>
+          <button class="btn btn-xs btn-primary" id="btnCaptureStudioParams" type="button" style="flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Capture Live Studio</span>
+          </button>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Preset Name *</label>
+            <input type="text" class="form-input" id="presetInputName" placeholder="e.g., Kryst Harmonic Core" maxlength="32">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subtitle / Description</label>
+            <input type="text" class="form-input" id="presetInputSubtitle" placeholder="e.g., N=3 Hexagonal Inscription" maxlength="48">
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--bg-panel-border); padding-top: 12px; display:flex; flex-direction:column; gap:12px;">
+          <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-gold); font-weight:600;">Lattice &amp; Geometry Parameters</span>
+          
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">
+                <span>Layer Depth (N)</span>
+                <span class="control-val-badge" id="presetFormNBadge">N = 2</span>
+              </label>
+              <input type="range" class="range-slider" id="presetFormN" min="1" max="8" value="2" step="1">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Base Radius (r)</span>
+                <span class="control-val-badge" id="presetFormRBadge">r = 50px</span>
+              </label>
+              <input type="range" class="range-slider" id="presetFormR" min="25" max="90" value="50" step="1">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Kryst Geometry Mode</label>
+              <select class="custom-select" id="presetFormKrystMode">
+                <option value="inscribed">Inscribed in Outer Circle (Enveloped)</option>
+                <option value="tangent">Tangent Inscription (4√3r)</option>
+                <option value="linear">Linear Sequence (2kr Step)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Default Viewport Mode</label>
+              <select class="custom-select" id="presetFormViewport">
+                <option value="comparison">Side-by-Side Comparison</option>
+                <option value="superimposed">Superimposed Matrix</option>
+                <option value="single-life">Single Focus: Flower of Life</option>
+                <option value="single-kryst">Single Focus: Flower of Kryst</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Base Style Filter</label>
+              <select class="custom-select" id="presetFormViewStyle">
+                <option value="actual">Actual Flower Petals (R = 2r)</option>
+                <option value="base">Base Circles (r) &amp; Guides</option>
+                <option value="combined">Combined Studio Matrix</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Metatron Solid Filter</label>
+              <select class="custom-select" id="presetFormPlatonic">
+                <option value="all">All 78 Chords</option>
+                <option value="tetra">Merkaba (Star Tetra)</option>
+                <option value="cube">Cube (Hexahedron)</option>
+                <option value="octa">Octahedron</option>
+                <option value="dodeca">Icosa / Dodeca</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--bg-panel-border); padding-top: 12px; display:flex; flex-direction:column; gap:8px;">
+          <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-gold); font-weight:600;">Visible Layers &amp; Overlays</span>
+          <div class="form-toggles-grid">
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowActual" checked>
+              <span>Actual Flower Circles</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowBase">
+              <span>Base Pattern Circles (r)</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowGuides" checked>
+              <span>Shape Guides (Hex/Circ)</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowOuterRing" checked>
+              <span>Outer Bounding Ring</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowBoundaryPetals" checked>
+              <span>Boundary Filler Petals</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowCenterDots" checked>
+              <span>Center Coordinate Dots</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowIntersections">
+              <span>Intersection Nodes</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowRadialAxes">
+              <span>Radial Symmetry Axes</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShowMetatron">
+              <span>Metatron Chords (78 Chords)</span>
+            </label>
+            <label class="form-checkbox-label">
+              <input type="checkbox" id="presetFormShading">
+              <span>Spherical 3D Shading</span>
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; border-top:1px solid var(--bg-panel-border); padding-top:14px;">
+          <button class="btn" id="cancelPresetModalBtn" type="button">Cancel</button>
+          <button class="btn btn-primary" id="savePresetBtn" type="button" style="padding:10px 24px; font-weight:600;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Save Preset</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preset Management & JSON Export/Import Modal -->
+  <div class="modal-overlay" id="presetManageModal">
+    <div class="modal-container" style="max-width: 540px;">
+      <div class="modal-header">
+        <div class="modal-title">Preset Data &amp; Backup</div>
+        <button class="modal-close-btn" id="closeManagePresetsBtn">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 16px;">
+        <p style="font-size:0.85rem; color:var(--text-muted);">
+          Backup, share, or import custom sacred geometry presets in standard JSON format.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button class="btn btn-primary" id="btnExportPresetsJson" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Export Presets (.json)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Download all presets and customizations as a JSON file</div>
+            </div>
+          </button>
+
+          <label class="btn" style="padding:12px; justify-content:flex-start; cursor:pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Import Presets (.json)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Load custom presets from a previously exported JSON file</div>
+            </div>
+            <input type="file" id="importPresetsFileInput" accept=".json" style="display:none;">
+          </label>
+
+          <button class="btn" id="btnResetPresetsDefaults" style="padding:12px; justify-content:flex-start; color:#f87171; border-color:rgba(239, 68, 68, 0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Reset to Factory Defaults</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Clear all custom presets and restore original default settings</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast" id="toastMessage">Action completed successfully</div>
+
+  <!-- Main JavaScript Application Engine -->
+  <script>
+    /* =========================================================================
+       1. MATHEMATICAL GEOMETRY ENGINE
+       ========================================================================= */
+    const SacredMath = {
+      DEG_TO_RAD: Math.PI / 180,
+      RAD_TO_DEG: 180 / Math.PI,
+
+      /**
+       * Generates all circle centers for Flower of Life up to layer N.
+       * Layer 0: 1 center at (0, 0).
+       * Layer k >= 1: 6k centers on perimeter of regular hexagon of vertex radius 2kr.
+       */
+      generateFlowerOfLifePoints(N, r) {
+        const points = [];
+        // Layer 0: Origin Center
+        points.push({
+          id: 'fol_0_0',
+          pattern: 'life',
+          layer: 0,
+          index: 0,
+          x: 0,
+          y: 0,
+          d: 0,
+          angleDeg: 0,
+          isVertex: true
+        });
+
+        for (let k = 1; k <= N; k++) {
+          const vertexRadius = 2 * k * r;
+          const vertices = [];
+          for (let m = 0; m < 6; m++) {
+            const angle = m * 60 * SacredMath.DEG_TO_RAD;
+            vertices.push({
+              x: vertexRadius * Math.cos(angle),
+              y: vertexRadius * Math.sin(angle)
+            });
+          }
+
+          let pointIndex = 0;
+          for (let m = 0; m < 6; m++) {
+            const vStart = vertices[m];
+            const vEnd = vertices[(m + 1) % 6];
+            for (let j = 0; j < k; j++) {
+              const t = j / k;
+              const x = (1 - t) * vStart.x + t * vEnd.x;
+              const y = (1 - t) * vStart.y + t * vEnd.y;
+              const d = Math.hypot(x, y);
+              let angleDeg = Math.atan2(y, x) * SacredMath.RAD_TO_DEG;
+              if (angleDeg < 0) angleDeg += 360;
+
+              points.push({
+                id: `fol_${k}_${pointIndex++}`,
+                pattern: 'life',
+                layer: k,
+                edge: m,
+                step: j,
+                x: Number(x.toFixed(4)),
+                y: Number(y.toFixed(4)),
+                d: Number(d.toFixed(4)),
+                angleDeg: Number(angleDeg.toFixed(2)),
+                isVertex: (j === 0)
+              });
+            }
+          }
+        }
+        return points;
+      },
+
+      /**
+       * Calculates the circumradius or ring radius for layer k of Flower of Kryst.
+       * Supports three modes:
+       * 1. 'inscribed': Hexagon layer k (odd >= 3) has radius 2(k+1)r, inscribing it inside
+       *    the enclosing circle layer k+1 with 6-vertex tangency and 0% base circle overlap.
+       * 2. 'tangent': Hexagon layer k (odd >= 3) has radius 2kr / (sqrt(3)/2), exactly tangent
+       *    to the inner circle layer's base circles.
+       * 3. 'linear': Classical 2kr radial stepping.
+       */
+      getFoKRadius(k, r, mode = (typeof State !== 'undefined' ? State.krystGeometryMode : 'inscribed')) {
+        if (k <= 0) return 0;
+        if (k === 1) return 2 * r;
+        if (mode === 'inscribed') {
+          return (k % 2 === 1) ? 2 * (k + 1) * r : 2 * k * r;
+        } else if (mode === 'tangent') {
+          if (k % 2 === 0) return 2 * k * r;
+          return (2 * k * r) / (Math.sqrt(3) / 2);
+        } else {
+          // 'linear' (2kr)
+          return 2 * k * r;
+        }
+      },
+
+      /**
+       * Computes the bounding circle radius for Flower of Kryst up to layer N.
+       */
+      getFoKBoundingRadius(N, r, mode = (typeof State !== 'undefined' ? State.krystGeometryMode : 'inscribed')) {
+        let maxRad = 0;
+        for (let k = 1; k <= N; k++) {
+          const rad = this.getFoKRadius(k, r, mode);
+          if (rad > maxRad) maxRad = rad;
+        }
+        return maxRad + 2 * r;
+      },
+
+      /**
+       * Generates all circle centers for Flower of Kryst up to layer N.
+       * Layer 0: Empty (0 circles).
+       * Odd layers k: Hexagonal perimeter (inscribed in outer circle if mode='inscribed').
+       * Even layers k: True Circle of radius 2kr with 6k centers evenly spaced at 360/(6k) deg.
+       */
+      generateFlowerOfKrystPoints(N, r, mode = (typeof State !== 'undefined' ? State.krystGeometryMode : 'inscribed')) {
+        const points = [];
+        for (let k = 1; k <= N; k++) {
+          const ringRadius = this.getFoKRadius(k, r, mode);
+          const totalPointsInLayer = 6 * k;
+
+          if (k % 2 === 1) {
+            // Odd Layer: Hexagonal perimeter
+            const vertices = [];
+            for (let m = 0; m < 6; m++) {
+              const angle = m * 60 * SacredMath.DEG_TO_RAD;
+              vertices.push({
+                x: ringRadius * Math.cos(angle),
+                y: ringRadius * Math.sin(angle)
+              });
+            }
+
+            let pointIndex = 0;
+            for (let m = 0; m < 6; m++) {
+              const vStart = vertices[m];
+              const vEnd = vertices[(m + 1) % 6];
+              for (let j = 0; j < k; j++) {
+                const t = j / k;
+                const x = (1 - t) * vStart.x + t * vEnd.x;
+                const y = (1 - t) * vStart.y + t * vEnd.y;
+                const d = Math.hypot(x, y);
+                let angleDeg = Math.atan2(y, x) * SacredMath.RAD_TO_DEG;
+                if (angleDeg < 0) angleDeg += 360;
+
+                points.push({
+                  id: `fok_${k}_${pointIndex++}`,
+                  pattern: 'kryst',
+                  layer: k,
+                  edge: m,
+                  step: j,
+                  x: Number(x.toFixed(4)),
+                  y: Number(y.toFixed(4)),
+                  d: Number(d.toFixed(4)),
+                  angleDeg: Number(angleDeg.toFixed(2)),
+                  isVertex: (j === 0),
+                  isCircularLayer: false
+                });
+              }
+            }
+          } else {
+            // Even Layer: True Circle (360 / 6k degrees per point)
+            const angleStep = 360 / totalPointsInLayer;
+            for (let i = 0; i < totalPointsInLayer; i++) {
+              const angleDeg = i * angleStep;
+              const angleRad = angleDeg * SacredMath.DEG_TO_RAD;
+              const x = ringRadius * Math.cos(angleRad);
+              const y = ringRadius * Math.sin(angleRad);
+              const isVertex = (i % k === 0);
+
+              points.push({
+                id: `fok_${k}_${i}`,
+                pattern: 'kryst',
+                layer: k,
+                index: i,
+                x: Number(x.toFixed(4)),
+                y: Number(y.toFixed(4)),
+                d: Number(ringRadius.toFixed(4)),
+                angleDeg: Number(angleDeg.toFixed(2)),
+                isVertex: isVertex,
+                isCircularLayer: true
+              });
+            }
+          }
+        }
+        return points;
+      },
+
+      /**
+       * Generates virtual Flower of Life centers for layers N+1 and N+2
+       * that intersect the bounding circle R_bound = (2N+2)r.
+       */
+      generateVirtualBoundaryPoints(N, r) {
+        const R_bound = (2 * N + 2) * r;
+        const virtualLayers = [N + 1, N + 2];
+        const virtualPoints = [];
+
+        for (const k of virtualLayers) {
+          const vertexRadius = 2 * k * r;
+          const vertices = [];
+          for (let m = 0; m < 6; m++) {
+            const angle = m * 60 * SacredMath.DEG_TO_RAD;
+            vertices.push({
+              x: vertexRadius * Math.cos(angle),
+              y: vertexRadius * Math.sin(angle)
+            });
+          }
+
+          for (let m = 0; m < 6; m++) {
+            const vStart = vertices[m];
+            const vEnd = vertices[(m + 1) % 6];
+            for (let j = 0; j < k; j++) {
+              const t = j / k;
+              const x = (1 - t) * vStart.x + t * vEnd.x;
+              const y = (1 - t) * vStart.y + t * vEnd.y;
+              const d = Math.hypot(x, y);
+              // Only include if the circle of radius 2r intersects the bounding circle
+              if (d - 2 * r < R_bound && d < R_bound + 2 * r) {
+                virtualPoints.push({
+                  x: Number(x.toFixed(4)),
+                  y: Number(y.toFixed(4)),
+                  d: Number(d.toFixed(4))
+                });
+              }
+            }
+          }
+        }
+        return virtualPoints;
+      },
+
+      /**
+       * Computes intersection points of circles for rendering analytical intersection nodes.
+       */
+      computeIntersectionNodes(points, R) {
+        const nodes = [];
+        const threshold = 1.0; // cluster tolerance
+
+        for (let i = 0; i < points.length; i++) {
+          for (let j = i + 1; j < points.length; j++) {
+            const p1 = points[i];
+            const p2 = points[j];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dist = Math.hypot(dx, dy);
+
+            // Two circles of radius R intersect if 0 < dist <= 2R
+            if (dist > 0.001 && dist <= 2 * R) {
+              const a = dist / 2;
+              const h = Math.sqrt(Math.max(0, R * R - a * a));
+              const mx = p1.x + dx / 2;
+              const my = p1.y + dy / 2;
+
+              const rx = -dy * (h / dist);
+              const ry = dx * (h / dist);
+
+              const candidates = [
+                { x: mx + rx, y: my + ry },
+                { x: mx - rx, y: my - ry }
+              ];
+
+              for (const cand of candidates) {
+                let duplicate = false;
+                for (const existing of nodes) {
+                  if (Math.hypot(existing.x - cand.x, existing.y - cand.y) < threshold) {
+                    duplicate = true;
+                    break;
+                  }
+                }
+                if (!duplicate && nodes.length < 450) {
+                  nodes.push({
+                    x: Number(cand.x.toFixed(2)),
+                    y: Number(cand.y.toFixed(2))
+                  });
+                }
+              }
+            }
+          }
+        }
+        return nodes;
+      },
+
+      /**
+       * 13 Fruit of Life tangent circle centers.
+       */
+      getFruitOfLifeCenters(r) {
+        const centers = [{ id: 'fol_0_0', x: 0, y: 0, layer: 0, label: 'Center (0)', isVertex: true }];
+        // 6 in Layer 1 (radius 2r)
+        for (let m = 0; m < 6; m++) {
+          const a = m * 60 * SacredMath.DEG_TO_RAD;
+          centers.push({
+            id: `fol_1_${m}`,
+            x: 2 * r * Math.cos(a),
+            y: 2 * r * Math.sin(a),
+            layer: 1,
+            label: `L1-${m}`,
+            isVertex: true
+          });
+        }
+        // 6 in Layer 2 Vertices (radius 4r)
+        for (let m = 0; m < 6; m++) {
+          const a = m * 60 * SacredMath.DEG_TO_RAD;
+          centers.push({
+            id: `fol_2_${m * 2}`,
+            x: 4 * r * Math.cos(a),
+            y: 4 * r * Math.sin(a),
+            layer: 2,
+            label: `L2-${m}`,
+            isVertex: true
+          });
+        }
+        return centers;
+      }
+    };
+
+
+    /* =========================================================================
+       3. GLOBAL APPLICATION STATE
+       ========================================================================= */
+    const State = {
+      viewportMode: 'comparison', // 'comparison' | 'superimposed' | 'single-life' | 'single-kryst'
+      activePreset: 'krystonial_comparison',
+      viewStyle: 'actual', // 'actual' | 'base' | 'combined'
+      platonicFilter: 'all', // 'all' | 'tetra' | 'cube' | 'octa' | 'dodeca'
+
+      // Lattice Geometry
+      N: 2,
+      r: 50,
+      krystGeometryMode: 'inscribed', // 'inscribed' | 'tangent' | 'linear'
+      syncPanZoom: true,
+
+      // Layers visibility
+      showActualFlower: true,
+      showBaseCircles: false,
+      showGuides: true,
+      showOuterRing: true,
+      showBoundaryPetals: true,
+      showCenterDots: true,
+      showIntersections: false,
+      showRadialAxes: false,
+      showMetatronLines: false,
+
+      // Aesthetics
+      colorByLayer: false,
+      enableGlow: true,
+      enablePulse: false,
+      sphericalShading: false,
+
+      // Colors
+      colorLife: '#ef4444',
+      colorKryst: '#06b6d4',
+      colorBase: '#3b82f6',
+      colorGuide: '#ea580c',
+      colorOuter: '#f59e0b',
+      colorAxes: '#64748b',
+
+      // Strokes & Opacities
+      strokeFlower: 1.5,
+      strokeBase: 1.0,
+      strokeGuide: 2.0,
+      fillOpacity: 0.04,
+
+      // Selections & Highlights
+      highlightedIds: new Set(),
+      hoveredItem: null,
+
+      // Pan & Zoom Transform States
+      transforms: {
+        life: { panX: 0, panY: 0, scale: 1.0 },
+        kryst: { panX: 0, panY: 0, scale: 1.0 }
+      }
+    };
+
+    // Harmonic Color Palettes for "Color by Layer"
+    const LayerColors = [
+      '#f43f5e', // Layer 0: Ruby / Rose Red
+      '#f97316', // Layer 1: Sacral Orange
+      '#eab308', // Layer 2: Solar Gold
+      '#10b981', // Layer 3: Emerald
+      '#06b6d4', // Layer 4: Cyan
+      '#6366f1', // Layer 5: Indigo
+      '#a855f7', // Layer 6: Violet
+      '#ec4899', // Layer 7: Magenta
+      '#f8fafc'  // Layer 8: Transcendental White
+    ];
+
+    /* =========================================================================
+       4. PRESETS CONFIGURATION ENGINE & MANAGER
+       ========================================================================= */
+    const PresetsManager = {
+      STORAGE_KEY: 'sacred_geometry_custom_presets_v1',
+      OVERRIDE_KEY: 'sacred_geometry_builtin_overrides_v1',
+
+      builtinPresets: [
+        {
+          id: 'krystonial_comparison',
+          title: 'Krystonial Dual',
+          subtitle: 'Life 19 vs Kryst 18 (N=2)',
+          isBuiltin: true,
+          config: {
+            N: 2,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'comparison',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: false,
+            showGuides: true,
+            showOuterRing: true,
+            showBoundaryPetals: true,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'superimposed_divergence',
+          title: 'Phase Divergence',
+          subtitle: 'FoL vs FoK Superimposed',
+          isBuiltin: true,
+          config: {
+            N: 2,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'superimposed',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: false,
+            showGuides: true,
+            showOuterRing: true,
+            showBoundaryPetals: true,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: true,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'seed_of_life',
+          title: 'Seed of Life',
+          subtitle: 'N=1 Genesis Core (7 Circles)',
+          isBuiltin: true,
+          config: {
+            N: 1,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-life',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: false,
+            showGuides: false,
+            showOuterRing: true,
+            showBoundaryPetals: false,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'egg_of_life',
+          title: 'Egg of Life',
+          subtitle: 'Spherical Volumetric Tangent',
+          isBuiltin: true,
+          config: {
+            N: 1,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-life',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: true,
+            showGuides: false,
+            showOuterRing: false,
+            showBoundaryPetals: false,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: true,
+            fillOpacity: 0.12
+          }
+        },
+        {
+          id: 'fruit_of_life',
+          title: 'Fruit of Life',
+          subtitle: '13 Tangent Circles (Radius r)',
+          isBuiltin: true,
+          config: {
+            N: 2,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-life',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: false,
+            showBaseCircles: true,
+            showGuides: false,
+            showOuterRing: true,
+            showBoundaryPetals: false,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'metatrons_cube',
+          title: "Metatron's Cube",
+          subtitle: '13 Centers + 78 Chords',
+          isBuiltin: true,
+          config: {
+            N: 2,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-life',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: false,
+            showBaseCircles: true,
+            showGuides: false,
+            showOuterRing: true,
+            showBoundaryPetals: false,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: true,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'kryst_seed',
+          title: 'Kryst Seed',
+          subtitle: '6-Petal Zero-Point Core',
+          isBuiltin: true,
+          config: {
+            N: 1,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-kryst',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: false,
+            showGuides: true,
+            showOuterRing: true,
+            showBoundaryPetals: true,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'kryst_18_standard',
+          title: 'Kryst 18-Standard',
+          subtitle: 'True Circle Ring 2 (N=2)',
+          isBuiltin: true,
+          config: {
+            N: 2,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-kryst',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: false,
+            showGuides: true,
+            showOuterRing: true,
+            showBoundaryPetals: true,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'vesica_piscis',
+          title: 'Vesica Piscis',
+          subtitle: 'Dual Circle (√3 Ratio)',
+          isBuiltin: true,
+          config: {
+            N: 1,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'single-life',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: true,
+            showGuides: false,
+            showOuterRing: false,
+            showBoundaryPetals: false,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: false,
+            showMetatronLines: false,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        },
+        {
+          id: 'kathara_alignment',
+          title: 'Kathara 12-Tree',
+          subtitle: '12-Point Morphic Grid',
+          isBuiltin: true,
+          config: {
+            N: 3,
+            r: 50,
+            krystGeometryMode: 'inscribed',
+            viewportMode: 'comparison',
+            viewStyle: 'actual',
+            platonicFilter: 'all',
+            showActualFlower: true,
+            showBaseCircles: false,
+            showGuides: true,
+            showOuterRing: true,
+            showBoundaryPetals: true,
+            showCenterDots: true,
+            showIntersections: false,
+            showRadialAxes: true,
+            showMetatronLines: true,
+            sphericalShading: false,
+            fillOpacity: 0.04
+          }
+        }
+      ],
+
+      customPresets: [],
+      builtinOverrides: {},
+
+      init() {
+        this.loadFromStorage();
+      },
+
+      loadFromStorage() {
+        try {
+          const stored = localStorage.getItem(this.STORAGE_KEY);
+          this.customPresets = stored ? JSON.parse(stored) : [];
+        } catch (e) {
+          console.warn('Failed to load custom presets:', e);
+          this.customPresets = [];
+        }
+        try {
+          const overrides = localStorage.getItem(this.OVERRIDE_KEY);
+          this.builtinOverrides = overrides ? JSON.parse(overrides) : {};
+        } catch (e) {
+          this.builtinOverrides = {};
+        }
+      },
+
+      saveToStorage() {
+        try {
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.customPresets));
+          localStorage.setItem(this.OVERRIDE_KEY, JSON.stringify(this.builtinOverrides));
+        } catch (e) {
+          console.error('Failed to save presets:', e);
+        }
+      },
+
+      getAllPresets() {
+        const builtins = this.builtinPresets.map(bp => {
+          if (this.builtinOverrides[bp.id]) {
+            return {
+              ...bp,
+              ...this.builtinOverrides[bp.id],
+              config: { ...bp.config, ...(this.builtinOverrides[bp.id].config || {}) }
+            };
+          }
+          return bp;
+        });
+        return [...builtins, ...this.customPresets];
+      },
+
+      getPreset(id) {
+        return this.getAllPresets().find(p => p.id === id);
+      },
+
+      addCustomPreset(preset) {
+        if (!preset.id) {
+          preset.id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        }
+        preset.isBuiltin = false;
+        this.customPresets.push(preset);
+        this.saveToStorage();
+        this.renderPresetGrid();
+        return preset;
+      },
+
+      updatePreset(id, updatedFields) {
+        const builtinIndex = this.builtinPresets.findIndex(p => p.id === id);
+        if (builtinIndex !== -1) {
+          this.builtinOverrides[id] = {
+            ...(this.builtinOverrides[id] || {}),
+            ...updatedFields,
+            config: {
+              ...(this.builtinPresets[builtinIndex].config),
+              ...(this.builtinOverrides[id]?.config || {}),
+              ...(updatedFields.config || {})
+            }
+          };
+          this.saveToStorage();
+          this.renderPresetGrid();
+          return this.getPreset(id);
+        }
+
+        const customIndex = this.customPresets.findIndex(p => p.id === id);
+        if (customIndex !== -1) {
+          this.customPresets[customIndex] = {
+            ...this.customPresets[customIndex],
+            ...updatedFields,
+            config: {
+              ...this.customPresets[customIndex].config,
+              ...(updatedFields.config || {})
+            }
+          };
+          this.saveToStorage();
+          this.renderPresetGrid();
+          return this.customPresets[customIndex];
+        }
+        return null;
+      },
+
+      deletePreset(id) {
+        const customIndex = this.customPresets.findIndex(p => p.id === id);
+        if (customIndex !== -1) {
+          this.customPresets.splice(customIndex, 1);
+          this.saveToStorage();
+          this.renderPresetGrid();
+          return true;
+        }
+        if (this.builtinOverrides[id]) {
+          delete this.builtinOverrides[id];
+          this.saveToStorage();
+          this.renderPresetGrid();
+          return true;
+        }
+        return false;
+      },
+
+      resetAllToDefaults() {
+        this.customPresets = [];
+        this.builtinOverrides = {};
+        try {
+          localStorage.removeItem(this.STORAGE_KEY);
+          localStorage.removeItem(this.OVERRIDE_KEY);
+        } catch (e) {}
+        this.renderPresetGrid();
+      },
+
+      captureCurrentStudioConfig() {
+        return {
+          N: State.N,
+          r: State.r,
+          krystGeometryMode: State.krystGeometryMode,
+          viewportMode: State.viewportMode,
+          viewStyle: State.viewStyle,
+          platonicFilter: State.platonicFilter,
+          showActualFlower: State.showActualFlower,
+          showBaseCircles: State.showBaseCircles,
+          showGuides: State.showGuides,
+          showOuterRing: State.showOuterRing,
+          showBoundaryPetals: State.showBoundaryPetals,
+          showCenterDots: State.showCenterDots,
+          showIntersections: State.showIntersections,
+          showRadialAxes: State.showRadialAxes,
+          showMetatronLines: State.showMetatronLines,
+          sphericalShading: State.sphericalShading,
+          fillOpacity: State.fillOpacity,
+          colorLife: State.colorLife,
+          colorKryst: State.colorKryst,
+          colorBase: State.colorBase,
+          colorGuide: State.colorGuide,
+          colorOuter: State.colorOuter,
+          colorAxes: State.colorAxes,
+          strokeFlower: State.strokeFlower,
+          strokeBase: State.strokeBase,
+          strokeGuide: State.strokeGuide,
+          colorByLayer: State.colorByLayer,
+          enableGlow: State.enableGlow,
+          enablePulse: State.enablePulse
+        };
+      },
+
+      exportToJson() {
+        const data = {
+          version: 1,
+          app: 'Sacred Geometry Studio',
+          exportedAt: new Date().toISOString(),
+          customPresets: this.customPresets,
+          builtinOverrides: this.builtinOverrides
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sacred_geometry_presets_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        UI.showToast('Presets exported to JSON.');
+      },
+
+      importFromJson(jsonStr) {
+        try {
+          const data = JSON.parse(jsonStr);
+          let importedCount = 0;
+          if (Array.isArray(data)) {
+            data.forEach(p => {
+              if (p.title && p.config) {
+                this.addCustomPreset(p);
+                importedCount++;
+              }
+            });
+          } else if (data && typeof data === 'object') {
+            if (Array.isArray(data.customPresets)) {
+              data.customPresets.forEach(p => {
+                if (p.title && p.config) {
+                  this.addCustomPreset(p);
+                  importedCount++;
+                }
+              });
+            }
+            if (data.builtinOverrides && typeof data.builtinOverrides === 'object') {
+              this.builtinOverrides = { ...this.builtinOverrides, ...data.builtinOverrides };
+              this.saveToStorage();
+            }
+          }
+          this.renderPresetGrid();
+          UI.showToast(`Imported ${importedCount} preset(s).`);
+          return true;
+        } catch (err) {
+          console.error('Import error:', err);
+          UI.showToast('Invalid preset JSON format.', 4000);
+          return false;
+        }
+      },
+
+      renderPresetGrid() {
+        const grid = document.getElementById('presetGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const allPresets = this.getAllPresets();
+        allPresets.forEach(preset => {
+          const isCustom = !preset.isBuiltin;
+          const isModifiedBuiltin = preset.isBuiltin && !!this.builtinOverrides[preset.id];
+          const isActive = State.activePreset === preset.id;
+
+          const chip = document.createElement('div');
+          chip.className = `preset-chip ${isActive ? 'active' : ''} ${isCustom ? 'custom-preset' : ''}`;
+          chip.dataset.preset = preset.id;
+
+          chip.innerHTML = `
+            <div class="preset-chip-top">
+              <div class="preset-chip-title">
+                <span class="preset-title-text" title="${preset.title}">${preset.title}</span>
+                ${isCustom ? '<span class="preset-badge-custom">Custom</span>' : ''}
+                ${isModifiedBuiltin ? '<span class="preset-badge-edited">Edited</span>' : ''}
+              </div>
+              <div class="preset-chip-actions">
+                <button class="preset-action-btn edit-preset-btn" title="Configure / Edit Preset" data-preset="${preset.id}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                ${isCustom ? `
+                  <button class="preset-action-btn delete-preset-btn" title="Delete Preset" data-preset="${preset.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                ` : (isModifiedBuiltin ? `
+                  <button class="preset-action-btn revert-preset-btn" title="Revert to Default" data-preset="${preset.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                  </button>
+                ` : '')}
+              </div>
+            </div>
+            <span class="preset-chip-subtitle" title="${preset.subtitle || ''}">${preset.subtitle || 'Custom Sacred Configuration'}</span>
+          `;
+
+          // Main chip click activates preset
+          chip.addEventListener('click', (e) => {
+            if (e.target.closest('.preset-action-btn')) return;
+            UI.applyPreset(preset.id);
+          });
+
+          // Edit action
+          const editBtn = chip.querySelector('.edit-preset-btn');
+          if (editBtn) {
+            editBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              PresetDialog.openEdit(preset.id);
+            });
+          }
+
+          // Delete action
+          const deleteBtn = chip.querySelector('.delete-preset-btn');
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (confirm(`Delete custom preset "${preset.title}"?`)) {
+                PresetsManager.deletePreset(preset.id);
+                UI.showToast(`Preset "${preset.title}" deleted.`);
+                if (State.activePreset === preset.id) {
+                  UI.applyPreset('krystonial_comparison');
+                }
+              }
+            });
+          }
+
+          // Revert action
+          const revertBtn = chip.querySelector('.revert-preset-btn');
+          if (revertBtn) {
+            revertBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              PresetsManager.deletePreset(preset.id);
+              UI.showToast(`Preset "${preset.title}" reverted to factory defaults.`);
+              if (State.activePreset === preset.id) {
+                UI.applyPreset(preset.id);
+              }
+            });
+          }
+
+          grid.appendChild(chip);
+        });
+      }
+    };
+
+    const PresetDialog = {
+      currentEditingId: null,
+
+      openNew() {
+        this.currentEditingId = null;
+        document.getElementById('presetModalTitle').textContent = 'Create New Sacred Preset';
+        document.getElementById('presetInputName').value = `Sacred Grid ${PresetsManager.getAllPresets().length + 1}`;
+        document.getElementById('presetInputSubtitle').value = `Custom N=${State.N} (${State.viewportMode})`;
+        this.populateFormFromConfig(PresetsManager.captureCurrentStudioConfig());
+        document.getElementById('presetConfigModal').classList.add('open');
+      },
+
+      openEdit(presetId) {
+        const preset = PresetsManager.getPreset(presetId);
+        if (!preset) return;
+        this.currentEditingId = presetId;
+        document.getElementById('presetModalTitle').textContent = `Configure Preset: ${preset.title}`;
+        document.getElementById('presetInputName').value = preset.title;
+        document.getElementById('presetInputSubtitle').value = preset.subtitle || '';
+        this.populateFormFromConfig(preset.config);
+        document.getElementById('presetConfigModal').classList.add('open');
+      },
+
+      populateFormFromConfig(cfg) {
+        const N = cfg.N || State.N;
+        const r = cfg.r || State.r;
+        document.getElementById('presetFormN').value = N;
+        document.getElementById('presetFormNBadge').textContent = `N = ${N}`;
+        document.getElementById('presetFormR').value = r;
+        document.getElementById('presetFormRBadge').textContent = `r = ${r}px`;
+        document.getElementById('presetFormKrystMode').value = cfg.krystGeometryMode || State.krystGeometryMode || 'inscribed';
+        document.getElementById('presetFormViewport').value = cfg.viewportMode || State.viewportMode || 'comparison';
+        document.getElementById('presetFormViewStyle').value = cfg.viewStyle || State.viewStyle || 'actual';
+
+        document.getElementById('presetFormShowActual').checked = cfg.showActualFlower ?? State.showActualFlower;
+        document.getElementById('presetFormShowBase').checked = cfg.showBaseCircles ?? State.showBaseCircles;
+        document.getElementById('presetFormShowGuides').checked = cfg.showGuides ?? State.showGuides;
+        document.getElementById('presetFormShowOuterRing').checked = cfg.showOuterRing ?? State.showOuterRing;
+        document.getElementById('presetFormShowBoundaryPetals').checked = cfg.showBoundaryPetals ?? State.showBoundaryPetals;
+        document.getElementById('presetFormShowCenterDots').checked = cfg.showCenterDots ?? State.showCenterDots;
+        document.getElementById('presetFormShowIntersections').checked = cfg.showIntersections ?? State.showIntersections;
+        document.getElementById('presetFormShowRadialAxes').checked = cfg.showRadialAxes ?? State.showRadialAxes;
+        document.getElementById('presetFormShowMetatron').checked = cfg.showMetatronLines ?? State.showMetatronLines;
+        document.getElementById('presetFormPlatonic').value = cfg.platonicFilter || State.platonicFilter || 'all';
+        document.getElementById('presetFormShading').checked = cfg.sphericalShading ?? State.sphericalShading;
+      },
+
+      readConfigFromForm() {
+        return {
+          N: parseInt(document.getElementById('presetFormN').value, 10),
+          r: parseInt(document.getElementById('presetFormR').value, 10),
+          krystGeometryMode: document.getElementById('presetFormKrystMode').value,
+          viewportMode: document.getElementById('presetFormViewport').value,
+          viewStyle: document.getElementById('presetFormViewStyle').value,
+          showActualFlower: document.getElementById('presetFormShowActual').checked,
+          showBaseCircles: document.getElementById('presetFormShowBase').checked,
+          showGuides: document.getElementById('presetFormShowGuides').checked,
+          showOuterRing: document.getElementById('presetFormShowOuterRing').checked,
+          showBoundaryPetals: document.getElementById('presetFormShowBoundaryPetals').checked,
+          showCenterDots: document.getElementById('presetFormShowCenterDots').checked,
+          showIntersections: document.getElementById('presetFormShowIntersections').checked,
+          showRadialAxes: document.getElementById('presetFormShowRadialAxes').checked,
+          showMetatronLines: document.getElementById('presetFormShowMetatron').checked,
+          platonicFilter: document.getElementById('presetFormPlatonic').value,
+          sphericalShading: document.getElementById('presetFormShading').checked,
+          fillOpacity: State.fillOpacity,
+          colorLife: State.colorLife,
+          colorKryst: State.colorKryst,
+          colorBase: State.colorBase,
+          colorGuide: State.colorGuide,
+          colorOuter: State.colorOuter,
+          colorAxes: State.colorAxes,
+          strokeFlower: State.strokeFlower,
+          strokeBase: State.strokeBase,
+          strokeGuide: State.strokeGuide
+        };
+      },
+
+      save() {
+        const title = document.getElementById('presetInputName').value.trim() || 'Untitled Preset';
+        const subtitle = document.getElementById('presetInputSubtitle').value.trim() || '';
+        const config = this.readConfigFromForm();
+
+        if (this.currentEditingId) {
+          PresetsManager.updatePreset(this.currentEditingId, { title, subtitle, config });
+          UI.showToast(`Preset "${title}" updated.`);
+          if (State.activePreset === this.currentEditingId) {
+            UI.applyPreset(this.currentEditingId);
+          }
+        } else {
+          const newPreset = PresetsManager.addCustomPreset({
+            title,
+            subtitle,
+            config
+          });
+          UI.showToast(`Preset "${title}" created.`);
+          UI.applyPreset(newPreset.id);
+        }
+        document.getElementById('presetConfigModal').classList.remove('open');
+      },
+
+      saveCurrentToActive() {
+        if (!State.activePreset) return;
+        const currentPreset = PresetsManager.getPreset(State.activePreset);
+        const name = currentPreset ? currentPreset.title : 'Active Preset';
+        PresetsManager.updatePreset(State.activePreset, {
+          config: PresetsManager.captureCurrentStudioConfig()
+        });
+        UI.showToast(`Studio settings saved to "${name}".`);
+      }
+    };
+
+    /* =========================================================================
+       5. SVG RENDERING ENGINE
+       ========================================================================= */
+    const SVGRenderer = {
+      SVG_NS: "http://www.w3.org/2000/svg",
+
+      createSvgElement(tag, attrs = {}) {
+        const el = document.createElementNS(this.SVG_NS, tag);
+        for (const [key, val] of Object.entries(attrs)) {
+          el.setAttribute(key, val);
+        }
+        return el;
+      },
+
+      /**
+       * Initializes SVG Defs (Glow filters, Radial gradients, Clip paths).
+       */
+      setupDefs(svg, idPrefix, R_bound) {
+        let defs = svg.querySelector('defs');
+        if (!defs) {
+          defs = this.createSvgElement('defs');
+          svg.appendChild(defs);
+        }
+        defs.innerHTML = '';
+
+        // Glow Filter
+        const filter = this.createSvgElement('filter', {
+          id: `${idPrefix}-glow`,
+          x: '-40%',
+          y: '-40%',
+          width: '180%',
+          height: '180%'
+        });
+        const feGaussian = this.createSvgElement('feGaussianBlur', {
+          stdDeviation: '3.5',
+          result: 'blur'
+        });
+        const feMerge = this.createSvgElement('feMerge');
+        const feMergeNode1 = this.createSvgElement('feMergeNode', { in: 'blur' });
+        const feMergeNode2 = this.createSvgElement('feMergeNode', { in: 'SourceGraphic' });
+        feMerge.appendChild(feMergeNode1);
+        feMerge.appendChild(feMergeNode2);
+        filter.appendChild(feGaussian);
+        filter.appendChild(feMerge);
+        defs.appendChild(filter);
+
+        // Boundary ClipPath for Outer Filler Petals
+        const clipPath = this.createSvgElement('clipPath', {
+          id: `${idPrefix}-bound-clip`
+        });
+        const clipCircle = this.createSvgElement('circle', {
+          cx: '0',
+          cy: '0',
+          r: R_bound
+        });
+        clipPath.appendChild(clipCircle);
+        defs.appendChild(clipPath);
+
+        // Radial sphere gradient for Egg of Life
+        const radGrad = this.createSvgElement('radialGradient', {
+          id: `${idPrefix}-sphere-grad`,
+          cx: '35%',
+          cy: '35%',
+          r: '65%'
+        });
+        const stop1 = this.createSvgElement('stop', { offset: '0%', 'stop-color': '#ffffff', 'stop-opacity': '0.75' });
+        const stop2 = this.createSvgElement('stop', { offset: '50%', 'stop-color': State.colorLife, 'stop-opacity': '0.35' });
+        const stop3 = this.createSvgElement('stop', { offset: '100%', 'stop-color': '#030712', 'stop-opacity': '0.75' });
+        radGrad.appendChild(stop1);
+        radGrad.appendChild(stop2);
+        radGrad.appendChild(stop3);
+        defs.appendChild(radGrad);
+      },
+
+      /**
+       * Renders complete geometry onto the specified SVG canvas.
+       */
+      render(svgId, patternType, transformState) {
+        const svg = document.getElementById(svgId);
+        if (!svg) return;
+
+        const N = State.N;
+        const r = State.r;
+        const R = 2 * r;
+        const R_bound = (patternType === 'kryst')
+          ? SacredMath.getFoKBoundingRadius(N, r, State.krystGeometryMode)
+          : (2 * N + 2) * r;
+        const idPrefix = svgId;
+
+        // Ensure defs exist
+        this.setupDefs(svg, idPrefix, R_bound);
+
+        // Remove old main group if present
+        let mainGroup = svg.querySelector('.sacred-main-group');
+        if (mainGroup) {
+          mainGroup.remove();
+        }
+
+        mainGroup = this.createSvgElement('g', {
+          class: `sacred-main-group ${State.enablePulse ? 'sacred-pulse' : ''}`
+        });
+
+        // 1. Radial Symmetry Axes (30 deg or 60 deg rays)
+        if (State.showRadialAxes) {
+          const axesGroup = this.createSvgElement('g', { class: 'group-axes' });
+          const rayLength = R_bound * 1.35;
+          const numRays = 12; // 30-degree increments
+          for (let i = 0; i < numRays; i++) {
+            const angle = (i * 360 / numRays) * SacredMath.DEG_TO_RAD;
+            const x2 = rayLength * Math.cos(angle);
+            const y2 = rayLength * Math.sin(angle);
+            const line = this.createSvgElement('line', {
+              x1: '0',
+              y1: '0',
+              x2: x2,
+              y2: y2,
+              stroke: State.colorAxes,
+              'stroke-width': '1',
+              'stroke-dasharray': '4 4',
+              opacity: '0.4'
+            });
+            axesGroup.appendChild(line);
+          }
+          mainGroup.appendChild(axesGroup);
+        }
+
+        // 2. Base Pattern: Shape Guides (Red/Orange Hexagons & Circles)
+        if (State.showGuides && (State.viewStyle === 'base' || State.viewStyle === 'combined' || State.showGuides)) {
+          const guidesGroup = this.createSvgElement('g', { class: 'group-guides' });
+          for (let k = 1; k <= N; k++) {
+            const d_k = (patternType === 'kryst')
+              ? SacredMath.getFoKRadius(k, r, State.krystGeometryMode)
+              : (2 * k * r);
+            const isHexagon = (patternType === 'life') || (patternType === 'kryst' && k % 2 === 1);
+
+            if (isHexagon) {
+              // Draw regular hexagon connecting the 6 vertices at radius d_k
+              const pointsStr = [];
+              for (let m = 0; m < 6; m++) {
+                const angle = m * 60 * SacredMath.DEG_TO_RAD;
+                const hx = d_k * Math.cos(angle);
+                const hy = d_k * Math.sin(angle);
+                pointsStr.push(`${hx},${hy}`);
+              }
+              const hexPolygon = this.createSvgElement('polygon', {
+                points: pointsStr.join(' '),
+                fill: 'none',
+                stroke: State.colorGuide,
+                'stroke-width': State.strokeGuide,
+                opacity: '0.85',
+                filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
+              });
+              guidesGroup.appendChild(hexPolygon);
+            } else {
+              // Draw true circle of radius d_k (Flower of Kryst even layers)
+              const guideCircle = this.createSvgElement('circle', {
+                cx: '0',
+                cy: '0',
+                r: d_k,
+                fill: 'none',
+                stroke: State.colorGuide,
+                'stroke-width': State.strokeGuide,
+                opacity: '0.9',
+                filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
+              });
+              guidesGroup.appendChild(guideCircle);
+            }
+          }
+          mainGroup.appendChild(guidesGroup);
+        }
+
+        // Generate points for the pattern
+        let points = [];
+        if (State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube') {
+          points = SacredMath.getFruitOfLifeCenters(r);
+        } else if (patternType === 'life') {
+          points = SacredMath.generateFlowerOfLifePoints(N, r);
+        } else {
+          points = SacredMath.generateFlowerOfKrystPoints(N, r, State.krystGeometryMode);
+        }
+
+        // 3. Base Pattern Circles (Blue, Radius r)
+        if (State.showBaseCircles || State.viewStyle === 'base' || State.viewStyle === 'combined' || State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube') {
+          const baseGroup = this.createSvgElement('g', { class: 'group-base-circles' });
+          points.forEach(pt => {
+            const isHighlighted = State.highlightedIds.has(pt.id);
+            const circle = this.createSvgElement('circle', {
+              cx: pt.x,
+              cy: pt.y,
+              r: r,
+              fill: State.sphericalShading ? `url(#${idPrefix}-sphere-grad)` : (isHighlighted ? 'rgba(255,255,255,0.1)' : 'none'),
+              stroke: isHighlighted ? '#ffffff' : State.colorBase,
+              'stroke-width': isHighlighted ? 2.8 : State.strokeBase,
+              opacity: isHighlighted ? '1.0' : '0.8',
+              class: 'circle-node base-circle'
+            });
+            this.attachInteractivity(circle, pt);
+            baseGroup.appendChild(circle);
+          });
+          mainGroup.appendChild(baseGroup);
+        }
+
+        // 4. Completed Boundary Petals (Clipped Mode for Flower of Life)
+        if (patternType === 'life' && State.showBoundaryPetals && (State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube') {
+          const clippedPetalsGroup = this.createSvgElement('g', {
+            class: 'group-boundary-petals',
+            'clip-path': `url(#${idPrefix}-bound-clip)`
+          });
+          const virtualPoints = SacredMath.generateVirtualBoundaryPoints(N, r);
+          virtualPoints.forEach(vpt => {
+            const circle = this.createSvgElement('circle', {
+              cx: vpt.x,
+              cy: vpt.y,
+              r: R,
+              fill: State.colorLife,
+              'fill-opacity': State.fillOpacity,
+              stroke: State.colorLife,
+              'stroke-width': State.strokeFlower,
+              opacity: '0.55'
+            });
+            clippedPetalsGroup.appendChild(circle);
+          });
+          mainGroup.appendChild(clippedPetalsGroup);
+        }
+
+        // 5. Actual Flower Overlapping Circles (Radius R = 2r)
+        if (State.showActualFlower && (State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube') {
+          const actualGroup = this.createSvgElement('g', { class: 'group-actual-flower' });
+          const flowerColor = (patternType === 'life') ? State.colorLife : State.colorKryst;
+
+          points.forEach(pt => {
+            const isHighlighted = State.highlightedIds.has(pt.id);
+            let strokeColor = flowerColor;
+
+            if (State.colorByLayer) {
+              strokeColor = LayerColors[pt.layer % LayerColors.length];
+            }
+            if (isHighlighted) {
+              strokeColor = '#ffffff';
+            }
+
+            const circle = this.createSvgElement('circle', {
+              cx: pt.x,
+              cy: pt.y,
+              r: R,
+              fill: isHighlighted ? 'rgba(255, 255, 255, 0.15)' : strokeColor,
+              'fill-opacity': isHighlighted ? '0.2' : State.fillOpacity,
+              stroke: strokeColor,
+              'stroke-width': isHighlighted ? 3.0 : State.strokeFlower,
+              opacity: isHighlighted ? '1.0' : '0.9',
+              filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
+              class: `circle-node actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`
+            });
+
+            this.attachInteractivity(circle, pt);
+            actualGroup.appendChild(circle);
+          });
+          mainGroup.appendChild(actualGroup);
+        }
+
+        // 6. Metatron Chords / Platonic Solid Lines
+        if (State.showMetatronLines) {
+          const metatronGroup = this.createSvgElement('g', { class: 'group-metatron-lines' });
+          const fruitNodes = SacredMath.getFruitOfLifeCenters(r);
+
+          if (State.platonicFilter === 'all') {
+            // Draw all 78 combinations
+            for (let i = 0; i < fruitNodes.length; i++) {
+              for (let j = i + 1; j < fruitNodes.length; j++) {
+                const line = this.createSvgElement('line', {
+                  x1: fruitNodes[i].x,
+                  y1: fruitNodes[i].y,
+                  x2: fruitNodes[j].x,
+                  y2: fruitNodes[j].y,
+                  stroke: '#ffffff',
+                  'stroke-width': '0.85',
+                  opacity: '0.4'
+                });
+                metatronGroup.appendChild(line);
+              }
+            }
+          } else if (State.platonicFilter === 'tetra') {
+            // Star Tetrahedron / Merkaba (Two interlocking triangles)
+            const outerVertices = [fruitNodes[7], fruitNodes[8], fruitNodes[9], fruitNodes[10], fruitNodes[11], fruitNodes[12]];
+            const t1 = [outerVertices[0], outerVertices[2], outerVertices[4]];
+            const t2 = [outerVertices[1], outerVertices[3], outerVertices[5]];
+
+            const drawTriangle = (arr, stroke) => {
+              for (let i = 0; i < 3; i++) {
+                const pA = arr[i];
+                const pB = arr[(i + 1) % 3];
+                metatronGroup.appendChild(this.createSvgElement('line', {
+                  x1: pA.x, y1: pA.y, x2: pB.x, y2: pB.y,
+                  stroke: stroke, 'stroke-width': '2.5', opacity: '0.9',
+                  filter: `url(#${idPrefix}-glow)`
+                }));
+              }
+            };
+            drawTriangle(t1, '#f59e0b');
+            drawTriangle(t2, '#06b6d4');
+          } else if (State.platonicFilter === 'cube') {
+            // Hexahedron / Cube (Outer hexagon + 3 internal spokes to center)
+            const outer = [fruitNodes[7], fruitNodes[8], fruitNodes[9], fruitNodes[10], fruitNodes[11], fruitNodes[12]];
+            for (let i = 0; i < 6; i++) {
+              const pA = outer[i];
+              const pB = outer[(i + 1) % 6];
+              metatronGroup.appendChild(this.createSvgElement('line', {
+                x1: pA.x, y1: pA.y, x2: pB.x, y2: pB.y,
+                stroke: '#3b82f6', 'stroke-width': '2.2', opacity: '0.85'
+              }));
+            }
+            [outer[0], outer[2], outer[4]].forEach(pt => {
+              metatronGroup.appendChild(this.createSvgElement('line', {
+                x1: pt.x, y1: pt.y, x2: 0, y2: 0,
+                stroke: '#3b82f6', 'stroke-width': '2.2', opacity: '0.85'
+              }));
+            });
+          } else if (State.platonicFilter === 'octa') {
+            // Octahedron
+            const inner = [fruitNodes[1], fruitNodes[2], fruitNodes[3], fruitNodes[4], fruitNodes[5], fruitNodes[6]];
+            for (let i = 0; i < 6; i++) {
+              const pA = inner[i];
+              const pB = inner[(i + 1) % 6];
+              metatronGroup.appendChild(this.createSvgElement('line', {
+                x1: pA.x, y1: pA.y, x2: pB.x, y2: pB.y,
+                stroke: '#10b981', 'stroke-width': '2.2', opacity: '0.85'
+              }));
+            }
+          }
+
+          mainGroup.appendChild(metatronGroup);
+        }
+
+        // 7. Outer Bounding Ring & Concentric Double Ring
+        if (State.showOuterRing) {
+          const ringGroup = this.createSvgElement('g', { class: 'group-outer-ring' });
+          const outerRing1 = this.createSvgElement('circle', {
+            cx: '0',
+            cy: '0',
+            r: R_bound,
+            fill: 'none',
+            stroke: State.colorOuter,
+            'stroke-width': '2.2',
+            filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
+          });
+          const outerRing2 = this.createSvgElement('circle', {
+            cx: '0',
+            cy: '0',
+            r: R_bound + 8,
+            fill: 'none',
+            stroke: State.colorOuter,
+            'stroke-width': '1.2',
+            opacity: '0.75'
+          });
+          ringGroup.appendChild(outerRing1);
+          ringGroup.appendChild(outerRing2);
+          mainGroup.appendChild(ringGroup);
+        }
+
+        // 8. Intersection Nodes (Lattice Dots)
+        if (State.showIntersections) {
+          const interGroup = this.createSvgElement('g', { class: 'group-intersections' });
+          const intersectionPoints = SacredMath.computeIntersectionNodes(points, R);
+          intersectionPoints.forEach(ipt => {
+            const dot = this.createSvgElement('circle', {
+              cx: ipt.x,
+              cy: ipt.y,
+              r: '2.5',
+              fill: '#ffffff',
+              opacity: '0.7',
+              class: 'intersection-node'
+            });
+            interGroup.appendChild(dot);
+          });
+          mainGroup.appendChild(interGroup);
+        }
+
+        // 9. Highlight Rings (Concentric Base Circle r + Actual Circle 2r for highlighted nodes)
+        if (State.highlightedIds.size > 0) {
+          const highlightGroup = this.createSvgElement('g', { class: 'group-highlights' });
+          points.filter(p => State.highlightedIds.has(p.id)).forEach(hpt => {
+            // Concentric Base circle
+            highlightGroup.appendChild(this.createSvgElement('circle', {
+              cx: hpt.x,
+              cy: hpt.y,
+              r: r,
+              fill: 'none',
+              stroke: '#3b82f6',
+              'stroke-width': '1.5',
+              'stroke-dasharray': '3 3',
+              opacity: '0.85'
+            }));
+            // Concentric Actual circle
+            highlightGroup.appendChild(this.createSvgElement('circle', {
+              cx: hpt.x,
+              cy: hpt.y,
+              r: R,
+              fill: 'none',
+              stroke: '#ffffff',
+              'stroke-width': '3.2',
+              filter: `url(#${idPrefix}-glow)`
+            }));
+            // Radial connector line from center to circle edge
+            highlightGroup.appendChild(this.createSvgElement('line', {
+              x1: hpt.x,
+              y1: hpt.y,
+              x2: hpt.x + R,
+              y2: hpt.y,
+              stroke: '#f59e0b',
+              'stroke-width': '1.5',
+              'stroke-dasharray': '2 2'
+            }));
+          });
+          mainGroup.appendChild(highlightGroup);
+        }
+
+        // 10. Center Nodes (Interactive Dots at circle origins)
+        if (State.showCenterDots) {
+          const centersGroup = this.createSvgElement('g', { class: 'group-center-dots' });
+          points.forEach(pt => {
+            const isHighlighted = State.highlightedIds.has(pt.id);
+            const dot = this.createSvgElement('circle', {
+              cx: pt.x,
+              cy: pt.y,
+              r: isHighlighted ? '5.5' : '3',
+              fill: isHighlighted ? '#ffffff' : State.colorOuter,
+              stroke: '#000000',
+              'stroke-width': '1',
+              class: `center-dot ${isHighlighted ? 'highlighted-dot' : ''}`
+            });
+            this.attachInteractivity(dot, pt);
+            centersGroup.appendChild(dot);
+          });
+          mainGroup.appendChild(centersGroup);
+        }
+
+        svg.appendChild(mainGroup);
+        this.updateViewBox(svg, transformState);
+      },
+
+      /**
+       * Renders Superimposed Overlay mode (Life + Kryst on single origin with phase divergence).
+       */
+      renderSuperimposed(svgId, transformState) {
+        const svg = document.getElementById(svgId);
+        if (!svg) return;
+
+        const N = State.N;
+        const r = State.r;
+        const R = 2 * r;
+        const R_bound = Math.max((2 * N + 2) * r, SacredMath.getFoKBoundingRadius(N, r, State.krystGeometryMode));
+        const idPrefix = svgId;
+
+        this.setupDefs(svg, idPrefix, R_bound);
+
+        let mainGroup = svg.querySelector('.sacred-main-group');
+        if (mainGroup) mainGroup.remove();
+
+        mainGroup = this.createSvgElement('g', {
+          class: `sacred-main-group ${State.enablePulse ? 'sacred-pulse' : ''}`
+        });
+
+        // Guides
+        if (State.showGuides) {
+          for (let k = 1; k <= N; k++) {
+            const d_k_life = 2 * k * r;
+            const d_k_kryst = SacredMath.getFoKRadius(k, r, State.krystGeometryMode);
+            // Flower of Life Hexagon (Red dashed)
+            const hexPoints = [];
+            for (let m = 0; m < 6; m++) {
+              const a = m * 60 * SacredMath.DEG_TO_RAD;
+              hexPoints.push(`${d_k_life * Math.cos(a)},${d_k_life * Math.sin(a)}`);
+            }
+            mainGroup.appendChild(this.createSvgElement('polygon', {
+              points: hexPoints.join(' '),
+              fill: 'none',
+              stroke: '#ef4444',
+              'stroke-width': '1.2',
+              'stroke-dasharray': '3 3',
+              opacity: '0.6'
+            }));
+            // Flower of Kryst Guide (Cyan: Hexagon if odd, Circle if even)
+            if (k % 2 === 1) {
+              const krystHexPoints = [];
+              for (let m = 0; m < 6; m++) {
+                const a = m * 60 * SacredMath.DEG_TO_RAD;
+                krystHexPoints.push(`${d_k_kryst * Math.cos(a)},${d_k_kryst * Math.sin(a)}`);
+              }
+              mainGroup.appendChild(this.createSvgElement('polygon', {
+                points: krystHexPoints.join(' '),
+                fill: 'none',
+                stroke: '#06b6d4',
+                'stroke-width': '1.2',
+                'stroke-dasharray': '3 3',
+                opacity: '0.6'
+              }));
+            } else {
+              mainGroup.appendChild(this.createSvgElement('circle', {
+                cx: 0,
+                cy: 0,
+                r: d_k_kryst,
+                fill: 'none',
+                stroke: '#06b6d4',
+                'stroke-width': '1.2',
+                'stroke-dasharray': '3 3',
+                opacity: '0.6'
+              }));
+            }
+          }
+        }
+
+        const folPoints = SacredMath.generateFlowerOfLifePoints(N, r);
+        const fokPoints = SacredMath.generateFlowerOfKrystPoints(N, r, State.krystGeometryMode);
+
+        // Flower of Life Layer (Amber/Gold/Red)
+        folPoints.forEach(pt => {
+          const isHighlighted = State.highlightedIds.has(pt.id);
+          const circle = this.createSvgElement('circle', {
+            cx: pt.x,
+            cy: pt.y,
+            r: R,
+            fill: 'none',
+            stroke: isHighlighted ? '#ffffff' : State.colorLife,
+            'stroke-width': isHighlighted ? 3 : State.strokeFlower,
+            opacity: '0.65',
+            class: 'circle-node'
+          });
+          this.attachInteractivity(circle, pt);
+          mainGroup.appendChild(circle);
+        });
+
+        // Flower of Kryst Layer (Electric Cyan/White)
+        fokPoints.forEach(pt => {
+          const isHighlighted = State.highlightedIds.has(pt.id);
+          const circle = this.createSvgElement('circle', {
+            cx: pt.x,
+            cy: pt.y,
+            r: R,
+            fill: 'none',
+            stroke: isHighlighted ? '#ffffff' : State.colorKryst,
+            'stroke-width': isHighlighted ? 3 : State.strokeFlower,
+            opacity: '0.75',
+            class: 'circle-node'
+          });
+          this.attachInteractivity(circle, pt);
+          mainGroup.appendChild(circle);
+        });
+
+        // Divergence Connecting Vectors (Phase Delta between FoL midpoints and FoK circular centers)
+        if (N >= 2) {
+          const divGroup = this.createSvgElement('g', { class: 'group-divergence-vectors' });
+          const folMidpoints = folPoints.filter(p => p.layer === 2 && !p.isVertex);
+          const fokCirclePoints = fokPoints.filter(p => p.layer === 2 && (p.index % 2 !== 0));
+
+          for (let i = 0; i < Math.min(folMidpoints.length, fokCirclePoints.length); i++) {
+            const p1 = folMidpoints[i];
+            const p2 = fokCirclePoints[i];
+            // Connecting vector line
+            const vec = this.createSvgElement('line', {
+              x1: p1.x,
+              y1: p1.y,
+              x2: p2.x,
+              y2: p2.y,
+              stroke: '#f59e0b',
+              'stroke-width': '2.2',
+              'stroke-dasharray': '2 2'
+            });
+            divGroup.appendChild(vec);
+
+            // Midpoint marker
+            const marker = this.createSvgElement('circle', {
+              cx: (p1.x + p2.x) / 2,
+              cy: (p1.y + p2.y) / 2,
+              r: '2.5',
+              fill: '#f59e0b'
+            });
+            divGroup.appendChild(marker);
+          }
+          mainGroup.appendChild(divGroup);
+        }
+
+        // Center dots
+        [...folPoints, ...fokPoints].forEach(pt => {
+          const isHighlighted = State.highlightedIds.has(pt.id);
+          const dot = this.createSvgElement('circle', {
+            cx: pt.x,
+            cy: pt.y,
+            r: isHighlighted ? '5' : '2.8',
+            fill: pt.pattern === 'life' ? State.colorLife : State.colorKryst,
+            stroke: '#000',
+            'stroke-width': '0.7',
+            class: `center-dot ${isHighlighted ? 'highlighted-dot' : ''}`
+          });
+          this.attachInteractivity(dot, pt);
+          mainGroup.appendChild(dot);
+        });
+
+        // Bounding ring
+        if (State.showOuterRing) {
+          const outerRing = this.createSvgElement('circle', {
+            cx: 0,
+            cy: 0,
+            r: R_bound,
+            fill: 'none',
+            stroke: State.colorOuter,
+            'stroke-width': '2'
+          });
+          mainGroup.appendChild(outerRing);
+        }
+
+        svg.appendChild(mainGroup);
+        this.updateViewBox(svg, transformState);
+      },
+
+      /**
+       * Attaches hover and click interactivity to any geometric node/circle.
+       */
+      attachInteractivity(element, pt) {
+        element.addEventListener('mouseenter', () => {
+          State.hoveredItem = pt;
+          UI.updateInspector(pt);
+        });
+
+        element.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (State.highlightedIds.has(pt.id)) {
+            State.highlightedIds.delete(pt.id);
+          } else {
+            State.highlightedIds.add(pt.id);
+          }
+          App.renderAll();
+          UI.updateInspector(pt);
+          UI.updateSidebarStats();
+        });
+      },
+
+      /**
+       * Updates the SVG viewBox centered at (0, 0) with pan and zoom.
+       */
+      updateViewBox(svg, transform) {
+        const width = svg.clientWidth || 800;
+        const height = svg.clientHeight || 800;
+        const scale = transform.scale || 1.0;
+        const panX = transform.panX || 0;
+        const panY = transform.panY || 0;
+
+        const vbWidth = width / scale;
+        const vbHeight = height / scale;
+        const minX = -vbWidth / 2 - panX;
+        const minY = -vbHeight / 2 - panY;
+
+        svg.setAttribute('viewBox', `${minX} ${minY} ${vbWidth} ${vbHeight}`);
+      }
+    };
+
+    /* =========================================================================
+       5. INTERACTION & PAN/ZOOM CONTROLLER
+       ========================================================================= */
+    class PanZoomController {
+      constructor(wrapperId, svgId, transformKey) {
+        this.wrapper = document.getElementById(wrapperId);
+        this.svg = document.getElementById(svgId);
+        this.transformKey = transformKey;
+        this.isDragging = false;
+        this.startX = 0;
+        this.startY = 0;
+
+        this.initEvents();
+      }
+
+      initEvents() {
+        if (!this.wrapper || !this.svg) return;
+
+        // Pointer Drag for Pan
+        this.wrapper.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return; // Left click only
+          this.isDragging = true;
+          this.startX = e.clientX;
+          this.startY = e.clientY;
+          this.wrapper.setPointerCapture(e.pointerId);
+        });
+
+        this.wrapper.addEventListener('pointermove', (e) => {
+          if (!this.isDragging) return;
+          const dx = e.clientX - this.startX;
+          const dy = e.clientY - this.startY;
+          this.startX = e.clientX;
+          this.startY = e.clientY;
+
+          const transform = State.transforms[this.transformKey];
+          transform.panX += dx / transform.scale;
+          transform.panY += dy / transform.scale;
+
+          if (State.syncPanZoom && State.viewportMode === 'comparison') {
+            const otherKey = (this.transformKey === 'life') ? 'kryst' : 'life';
+            State.transforms[otherKey].panX = transform.panX;
+            State.transforms[otherKey].panY = transform.panY;
+            SVGRenderer.updateViewBox(document.getElementById(otherKey === 'life' ? 'svgLife' : 'svgKryst'), State.transforms[otherKey]);
+          }
+
+          SVGRenderer.updateViewBox(this.svg, transform);
+        });
+
+        const stopDrag = () => { this.isDragging = false; };
+        this.wrapper.addEventListener('pointerup', stopDrag);
+        this.wrapper.addEventListener('pointercancel', stopDrag);
+
+        // Mouse Wheel for Zoom centered on cursor
+        this.wrapper.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+          this.zoom(zoomFactor, e.clientX, e.clientY);
+        }, { passive: false });
+      }
+
+      zoom(factor, clientX, clientY) {
+        const transform = State.transforms[this.transformKey];
+        const newScale = Math.min(Math.max(transform.scale * factor, 0.2), 12.0);
+
+        transform.scale = newScale;
+
+        if (State.syncPanZoom && State.viewportMode === 'comparison') {
+          const otherKey = (this.transformKey === 'life') ? 'kryst' : 'life';
+          State.transforms[otherKey].scale = newScale;
+          SVGRenderer.updateViewBox(document.getElementById(otherKey === 'life' ? 'svgLife' : 'svgKryst'), State.transforms[otherKey]);
+        }
+
+        SVGRenderer.updateViewBox(this.svg, transform);
+      }
+    }
+
+    /* =========================================================================
+       6. UI CONTROLLER & PRESET MANAGER
+       ========================================================================= */
+    const UI = {
+      init() {
+        PresetsManager.init();
+        this.bindAccordions();
+        this.bindViewTabs();
+        this.bindSliders();
+        this.bindToggles();
+        this.bindColorPickers();
+        PresetsManager.renderPresetGrid();
+        this.bindPresets();
+        this.bindFloatingControls();
+        this.bindModals();
+        this.bindKeyboardShortcuts();
+        this.updateSidebarStats();
+      },
+
+      bindAccordions() {
+        document.querySelectorAll('.section-header').forEach(header => {
+          header.addEventListener('click', () => {
+            const section = header.parentElement;
+            section.classList.toggle('open');
+          });
+        });
+
+        // Expand All / Collapse All in sidebar
+        const expandAllBtn = document.getElementById('expandAllSectionsBtn');
+        if (expandAllBtn) {
+          expandAllBtn.addEventListener('click', () => {
+            document.querySelectorAll('.panel-section').forEach(s => s.classList.add('open'));
+          });
+        }
+        const collapseAllBtn = document.getElementById('collapseAllSectionsBtn');
+        if (collapseAllBtn) {
+          collapseAllBtn.addEventListener('click', () => {
+            document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('open'));
+          });
+        }
+
+        // Sidebar collapse toggle
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        sidebarToggleBtn.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          sidebarToggleBtn.classList.toggle('pinned-collapsed', sidebar.classList.contains('collapsed'));
+          setTimeout(() => App.renderAll(), 300);
+        });
+
+        // Inspector card minimize toggle
+        const toggleInspectorBtn = document.getElementById('toggleInspectorCollapseBtn');
+        const inspectorCard = document.getElementById('inspectorCard');
+        if (toggleInspectorBtn && inspectorCard) {
+          toggleInspectorBtn.addEventListener('click', () => {
+            inspectorCard.classList.toggle('minimized');
+            toggleInspectorBtn.innerHTML = inspectorCard.classList.contains('minimized') ? '&#43;' : '&minus;';
+          });
+        }
+      },
+
+      bindViewTabs() {
+        document.querySelectorAll('#viewportSwitcher .view-tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('#viewportSwitcher .view-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const mode = tab.dataset.mode;
+            this.setViewportMode(mode);
+          });
+        });
+
+        // Quick Mode Bar (Actual / Base / Combined)
+        document.querySelectorAll('.quick-mode-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.quick-mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            State.viewStyle = btn.dataset.viewstyle;
+            App.renderAll();
+          });
+        });
+      },
+
+      setViewportMode(mode) {
+        State.viewportMode = mode;
+        const paneLife = document.getElementById('paneLife');
+        const paneKryst = document.getElementById('paneKryst');
+        const divergenceHud = document.getElementById('divergenceHud');
+        const badgeLifeTitle = document.getElementById('badgeLifeTitle');
+
+        divergenceHud.classList.toggle('visible', mode === 'superimposed');
+
+        if (mode === 'comparison') {
+          paneLife.style.display = 'flex';
+          paneKryst.style.display = 'flex';
+          badgeLifeTitle.textContent = 'Flower of Life';
+        } else if (mode === 'single-life') {
+          paneLife.style.display = 'flex';
+          paneKryst.style.display = 'none';
+          badgeLifeTitle.textContent = 'Flower of Life';
+        } else if (mode === 'single-kryst') {
+          paneLife.style.display = 'none';
+          paneKryst.style.display = 'flex';
+        } else if (mode === 'superimposed') {
+          paneLife.style.display = 'flex';
+          paneKryst.style.display = 'none';
+          badgeLifeTitle.textContent = 'Superimposed Matrix';
+        }
+
+        setTimeout(() => App.renderAll(), 50);
+      },
+
+      bindSliders() {
+        // Layer Slider
+        const layerSlider = document.getElementById('layerSlider');
+        const layerBadge = document.getElementById('layerCountBadge');
+        layerSlider.addEventListener('input', (e) => {
+          State.N = parseInt(e.target.value, 10);
+          layerBadge.textContent = `N = ${State.N}`;
+          this.updateCounts();
+          this.updateSidebarStats();
+          App.renderAll();
+        });
+
+        // Radius Slider
+        const radiusSlider = document.getElementById('radiusSlider');
+        const radiusBadge = document.getElementById('radiusBadge');
+        radiusSlider.addEventListener('input', (e) => {
+          State.r = parseInt(e.target.value, 10);
+          radiusBadge.textContent = `r = ${State.r}px`;
+          this.updateSidebarStats();
+          App.renderAll();
+        });
+
+        // Stroke Flower Slider
+        const strokeFlowerSlider = document.getElementById('strokeFlowerSlider');
+        const strokeFlowerBadge = document.getElementById('strokeFlowerBadge');
+        strokeFlowerSlider.addEventListener('input', (e) => {
+          State.strokeFlower = parseFloat(e.target.value);
+          strokeFlowerBadge.textContent = `${State.strokeFlower}px`;
+          App.renderAll();
+        });
+
+        // Stroke Base Slider
+        const strokeBaseSlider = document.getElementById('strokeBaseSlider');
+        const strokeBaseBadge = document.getElementById('strokeBaseBadge');
+        if (strokeBaseSlider && strokeBaseBadge) {
+          strokeBaseSlider.addEventListener('input', (e) => {
+            State.strokeBase = parseFloat(e.target.value);
+            strokeBaseBadge.textContent = `${State.strokeBase}px`;
+            App.renderAll();
+          });
+        }
+
+        // Stroke Guide Slider
+        const strokeGuideSlider = document.getElementById('strokeGuideSlider');
+        const strokeGuideBadge = document.getElementById('strokeGuideBadge');
+        if (strokeGuideSlider && strokeGuideBadge) {
+          strokeGuideSlider.addEventListener('input', (e) => {
+            State.strokeGuide = parseFloat(e.target.value);
+            strokeGuideBadge.textContent = `${State.strokeGuide}px`;
+            App.renderAll();
+          });
+        }
+
+        // Fill Opacity Slider
+        const fillSlider = document.getElementById('fillOpacitySlider');
+        const fillBadge = document.getElementById('fillOpacityBadge');
+        fillSlider.addEventListener('input', (e) => {
+          State.fillOpacity = parseInt(e.target.value, 10) / 100;
+          fillBadge.textContent = `${e.target.value}%`;
+          App.renderAll();
+        });
+
+        // Kryst Geometry Mode Select
+        const selectKryst = document.getElementById('selectKrystGeometry');
+        const krystBadge = document.getElementById('krystModeBadge');
+        const krystDesc = document.getElementById('krystModeDesc');
+        if (selectKryst) {
+          selectKryst.addEventListener('change', (e) => {
+            State.krystGeometryMode = e.target.value;
+            if (krystBadge) {
+              krystBadge.textContent = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1);
+            }
+            if (krystDesc) {
+              if (e.target.value === 'inscribed') {
+                krystDesc.textContent = 'Hexagon 2 circumradius = 8r. Touches Circle 2 at all 6 vertices; base circles 100% non-overlapping (0.93r clearance).';
+              } else if (e.target.value === 'tangent') {
+                krystDesc.textContent = 'Hexagon 2 radius = 4√3r (6.93r). Base circles are exactly tangent to Circle 1 with zero overlap.';
+              } else {
+                krystDesc.textContent = 'Hexagon 2 radius = 6r (linear 2kr step). Concentric spacing.';
+              }
+            }
+            this.updateSidebarStats();
+            App.renderAll();
+          });
+        }
+      },
+
+      bindToggles() {
+        const toggleMap = [
+          { id: 'toggleActualFlower', prop: 'showActualFlower' },
+          { id: 'toggleBaseCircles', prop: 'showBaseCircles' },
+          { id: 'toggleGuides', prop: 'showGuides' },
+          { id: 'toggleOuterRing', prop: 'showOuterRing' },
+          { id: 'toggleBoundaryPetals', prop: 'showBoundaryPetals' },
+          { id: 'toggleCenterDots', prop: 'showCenterDots' },
+          { id: 'toggleIntersections', prop: 'showIntersections' },
+          { id: 'toggleRadialAxes', prop: 'showRadialAxes' },
+          { id: 'toggleMetatronLines', prop: 'showMetatronLines' },
+          { id: 'toggleColorByLayer', prop: 'colorByLayer' },
+          { id: 'toggleGlow', prop: 'enableGlow' },
+          { id: 'togglePulse', prop: 'enablePulse' }
+        ];
+
+        toggleMap.forEach(item => {
+          const el = document.getElementById(item.id);
+          if (el) {
+            el.addEventListener('change', (e) => {
+              State[item.prop] = e.target.checked;
+              App.renderAll();
+            });
+          }
+        });
+
+        // Platonic solid buttons
+        document.querySelectorAll('.platonic-btn').forEach(pbtn => {
+          pbtn.addEventListener('click', () => {
+            document.querySelectorAll('.platonic-btn').forEach(b => b.classList.remove('active'));
+            pbtn.classList.add('active');
+            State.platonicFilter = pbtn.dataset.solid;
+            App.renderAll();
+          });
+        });
+      },
+
+      bindColorPickers() {
+        const colorInputs = [
+          { id: 'colorLife', prop: 'colorLife' },
+          { id: 'colorKryst', prop: 'colorKryst' },
+          { id: 'colorBase', prop: 'colorBase' },
+          { id: 'colorGuide', prop: 'colorGuide' },
+          { id: 'colorOuter', prop: 'colorOuter' },
+          { id: 'colorAxes', prop: 'colorAxes' }
+        ];
+
+        colorInputs.forEach(item => {
+          const el = document.getElementById(item.id);
+          if (el) {
+            el.addEventListener('input', (e) => {
+              State[item.prop] = e.target.value;
+              App.renderAll();
+            });
+          }
+        });
+      },
+
+      bindPresets() {
+        // Toolbar buttons
+        const btnAdd = document.getElementById('btnAddNewPreset');
+        if (btnAdd) {
+          btnAdd.addEventListener('click', () => PresetDialog.openNew());
+        }
+
+        const btnUpdate = document.getElementById('btnUpdateCurrentPreset');
+        if (btnUpdate) {
+          btnUpdate.addEventListener('click', () => PresetDialog.saveCurrentToActive());
+        }
+
+        const btnManage = document.getElementById('btnManagePresets');
+        const manageModal = document.getElementById('presetManageModal');
+        if (btnManage && manageModal) {
+          btnManage.addEventListener('click', () => manageModal.classList.add('open'));
+        }
+
+        // Preset Config Modal controls
+        const configModal = document.getElementById('presetConfigModal');
+        const closeConfigBtn = document.getElementById('closePresetModalBtn');
+        const cancelConfigBtn = document.getElementById('cancelPresetModalBtn');
+        const saveConfigBtn = document.getElementById('savePresetBtn');
+        const captureBtn = document.getElementById('btnCaptureStudioParams');
+
+        if (closeConfigBtn) {
+          closeConfigBtn.addEventListener('click', () => configModal.classList.remove('open'));
+        }
+        if (cancelConfigBtn) {
+          cancelConfigBtn.addEventListener('click', () => configModal.classList.remove('open'));
+        }
+        if (configModal) {
+          configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) configModal.classList.remove('open');
+          });
+        }
+        if (saveConfigBtn) {
+          saveConfigBtn.addEventListener('click', () => PresetDialog.save());
+        }
+        if (captureBtn) {
+          captureBtn.addEventListener('click', () => {
+            PresetDialog.populateFormFromConfig(PresetsManager.captureCurrentStudioConfig());
+            UI.showToast('Copied current live studio parameters into form.');
+          });
+        }
+
+        // Sliders inside Preset Config Modal
+        const modalNSlider = document.getElementById('presetFormN');
+        const modalNBadge = document.getElementById('presetFormNBadge');
+        if (modalNSlider && modalNBadge) {
+          modalNSlider.addEventListener('input', (e) => {
+            modalNBadge.textContent = `N = ${e.target.value}`;
+          });
+        }
+
+        const modalRSlider = document.getElementById('presetFormR');
+        const modalRBadge = document.getElementById('presetFormRBadge');
+        if (modalRSlider && modalRBadge) {
+          modalRSlider.addEventListener('input', (e) => {
+            modalRBadge.textContent = `r = ${e.target.value}px`;
+          });
+        }
+
+        // Preset Manage Modal controls
+        const closeManageBtn = document.getElementById('closeManagePresetsBtn');
+        if (closeManageBtn && manageModal) {
+          closeManageBtn.addEventListener('click', () => manageModal.classList.remove('open'));
+        }
+        if (manageModal) {
+          manageModal.addEventListener('click', (e) => {
+            if (e.target === manageModal) manageModal.classList.remove('open');
+          });
+        }
+
+        const btnExportJson = document.getElementById('btnExportPresetsJson');
+        if (btnExportJson) {
+          btnExportJson.addEventListener('click', () => {
+            PresetsManager.exportToJson();
+            manageModal.classList.remove('open');
+          });
+        }
+
+        const fileInput = document.getElementById('importPresetsFileInput');
+        if (fileInput) {
+          fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              PresetsManager.importFromJson(event.target.result);
+              manageModal.classList.remove('open');
+              fileInput.value = '';
+            };
+            reader.readAsText(file);
+          });
+        }
+
+        const btnResetDefaults = document.getElementById('btnResetPresetsDefaults');
+        if (btnResetDefaults) {
+          btnResetDefaults.addEventListener('click', () => {
+            if (confirm('Reset all presets to factory defaults? Custom presets will be cleared.')) {
+              PresetsManager.resetAllToDefaults();
+              UI.applyPreset('krystonial_comparison');
+              UI.showToast('Presets reset to factory defaults.');
+              manageModal.classList.remove('open');
+            }
+          });
+        }
+      },
+
+      applyPreset(key) {
+        const preset = PresetsManager.getPreset(key);
+        if (!preset) return;
+
+        State.activePreset = key;
+        State.highlightedIds.clear();
+
+        const cfg = preset.config || {};
+        if (cfg.N !== undefined) State.N = cfg.N;
+        if (cfg.r !== undefined) State.r = cfg.r;
+        if (cfg.krystGeometryMode !== undefined) State.krystGeometryMode = cfg.krystGeometryMode;
+        if (cfg.viewportMode !== undefined) State.viewportMode = cfg.viewportMode;
+        if (cfg.viewStyle !== undefined) State.viewStyle = cfg.viewStyle;
+        if (cfg.platonicFilter !== undefined) State.platonicFilter = cfg.platonicFilter;
+        if (cfg.showActualFlower !== undefined) State.showActualFlower = cfg.showActualFlower;
+        if (cfg.showBaseCircles !== undefined) State.showBaseCircles = cfg.showBaseCircles;
+        if (cfg.showGuides !== undefined) State.showGuides = cfg.showGuides;
+        if (cfg.showOuterRing !== undefined) State.showOuterRing = cfg.showOuterRing;
+        if (cfg.showBoundaryPetals !== undefined) State.showBoundaryPetals = cfg.showBoundaryPetals;
+        if (cfg.showCenterDots !== undefined) State.showCenterDots = cfg.showCenterDots;
+        if (cfg.showIntersections !== undefined) State.showIntersections = cfg.showIntersections;
+        if (cfg.showRadialAxes !== undefined) State.showRadialAxes = cfg.showRadialAxes;
+        if (cfg.showMetatronLines !== undefined) State.showMetatronLines = cfg.showMetatronLines;
+        if (cfg.sphericalShading !== undefined) State.sphericalShading = cfg.sphericalShading;
+        if (cfg.fillOpacity !== undefined) State.fillOpacity = cfg.fillOpacity;
+        if (cfg.colorLife !== undefined) State.colorLife = cfg.colorLife;
+        if (cfg.colorKryst !== undefined) State.colorKryst = cfg.colorKryst;
+        if (cfg.colorBase !== undefined) State.colorBase = cfg.colorBase;
+        if (cfg.colorGuide !== undefined) State.colorGuide = cfg.colorGuide;
+        if (cfg.colorOuter !== undefined) State.colorOuter = cfg.colorOuter;
+        if (cfg.colorAxes !== undefined) State.colorAxes = cfg.colorAxes;
+        if (cfg.strokeFlower !== undefined) State.strokeFlower = cfg.strokeFlower;
+        if (cfg.strokeBase !== undefined) State.strokeBase = cfg.strokeBase;
+        if (cfg.strokeGuide !== undefined) State.strokeGuide = cfg.strokeGuide;
+        if (cfg.colorByLayer !== undefined) State.colorByLayer = cfg.colorByLayer;
+        if (cfg.enableGlow !== undefined) State.enableGlow = cfg.enableGlow;
+        if (cfg.enablePulse !== undefined) State.enablePulse = cfg.enablePulse;
+
+        const platonicBar = document.getElementById('platonicBar');
+        if (platonicBar) {
+          platonicBar.classList.toggle('visible', !!State.showMetatronLines || key === 'metatrons_cube');
+        }
+
+        // Update active class in preset grid
+        document.querySelectorAll('.preset-chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.preset === key);
+        });
+
+        // Update platonic buttons
+        document.querySelectorAll('.platonic-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.solid === State.platonicFilter);
+        });
+
+        this.setViewportTab(State.viewportMode);
+        this.syncInputsWithState();
+        this.updateCounts();
+        this.updateSidebarStats();
+        App.renderAll();
+        UI.showToast(`Applied preset: ${preset.title}`);
+      },
+
+      setViewportTab(mode) {
+        document.querySelectorAll('#viewportSwitcher .view-tab').forEach(t => {
+          t.classList.toggle('active', t.dataset.mode === mode);
+        });
+        this.setViewportMode(mode);
+      },
+
+      syncInputsWithState() {
+        document.getElementById('layerSlider').value = State.N;
+        document.getElementById('layerCountBadge').textContent = `N = ${State.N}`;
+        document.getElementById('toggleActualFlower').checked = State.showActualFlower;
+        document.getElementById('toggleBaseCircles').checked = State.showBaseCircles;
+        document.getElementById('toggleGuides').checked = State.showGuides;
+        document.getElementById('toggleOuterRing').checked = State.showOuterRing;
+        document.getElementById('toggleBoundaryPetals').checked = State.showBoundaryPetals;
+        document.getElementById('toggleCenterDots').checked = State.showCenterDots;
+        document.getElementById('toggleRadialAxes').checked = State.showRadialAxes;
+        document.getElementById('toggleMetatronLines').checked = State.showMetatronLines;
+
+        const selectKryst = document.getElementById('selectKrystGeometry');
+        if (selectKryst) selectKryst.value = State.krystGeometryMode;
+        const krystBadge = document.getElementById('krystModeBadge');
+        if (krystBadge) {
+          krystBadge.textContent = State.krystGeometryMode.charAt(0).toUpperCase() + State.krystGeometryMode.slice(1);
+        }
+        const krystDesc = document.getElementById('krystModeDesc');
+        if (krystDesc) {
+          if (State.krystGeometryMode === 'inscribed') {
+            krystDesc.textContent = 'Hexagon 2 circumradius = 8r. Touches Circle 2 at all 6 vertices; base circles 100% non-overlapping (0.93r clearance).';
+          } else if (State.krystGeometryMode === 'tangent') {
+            krystDesc.textContent = 'Hexagon 2 radius = 4√3r (6.93r). Base circles are exactly tangent to Circle 1 with zero overlap.';
+          } else {
+            krystDesc.textContent = 'Hexagon 2 radius = 6r (linear 2kr step). Concentric spacing.';
+          }
+        }
+      },
+
+      updateCounts() {
+        const N = State.N;
+        const folCount = (State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube')
+          ? 13
+          : 1 + 3 * N * (N + 1);
+        const fokCount = 3 * N * (N + 1);
+
+        document.getElementById('folCountStat').textContent = `${folCount} Circles`;
+        document.getElementById('fokCountStat').textContent = `${fokCount} (3N(N+1))`;
+        document.getElementById('badgeLifeCount').textContent = `${folCount} Circles`;
+        document.getElementById('badgeKrystCount').textContent = `${fokCount} Circles`;
+      },
+
+      updateSidebarStats() {
+        const R_bound_life = (2 * State.N + 2) * State.r;
+        const R_bound_kryst = SacredMath.getFoKBoundingRadius(State.N, State.r, State.krystGeometryMode);
+        const boundEl = document.getElementById('sidebarBoundRad');
+        if (boundEl) {
+          if (State.viewportMode === 'single-kryst') {
+            boundEl.textContent = `${R_bound_kryst}px (${(R_bound_kryst / State.r).toFixed(1)}r)`;
+          } else if (State.viewportMode === 'single-life') {
+            boundEl.textContent = `${R_bound_life}px (${2 * State.N + 2}r)`;
+          } else {
+            boundEl.textContent = `${R_bound_life}px / ${R_bound_kryst}px`;
+          }
+        }
+        const hlEl = document.getElementById('sidebarHighlightCount');
+        if (hlEl) {
+          hlEl.textContent = `${State.highlightedIds.size}`;
+        }
+      },
+
+      updateInspector(pt) {
+        if (!pt) return;
+        document.getElementById('inspectPattern').textContent = pt.pattern === 'life' ? 'Flower of Life' : 'Flower of Kryst';
+        document.getElementById('inspectLayer').textContent = `Layer ${pt.layer} ${pt.isCircularLayer ? '(Circle)' : '(Hex)'}`;
+        document.getElementById('inspectRadius').textContent = `${pt.d}px (${(pt.d / State.r).toFixed(2)}r)`;
+        document.getElementById('inspectAngle').textContent = `${pt.angleDeg || 0}°`;
+        document.getElementById('inspectCoords').textContent = `(${pt.x}, ${pt.y})`;
+        document.getElementById('inspectStatus').textContent = State.highlightedIds.has(pt.id) ? 'Highlighted' : 'Active';
+      },
+
+      bindFloatingControls() {
+        // Zoom In
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+          App.panZoomControllers.forEach(pz => pz.zoom(1.25));
+        });
+        // Zoom Out
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+          App.panZoomControllers.forEach(pz => pz.zoom(0.8));
+        });
+        // Reset Zoom
+        document.getElementById('resetZoomBtn').addEventListener('click', () => {
+          State.transforms.life = { panX: 0, panY: 0, scale: 1.0 };
+          State.transforms.kryst = { panX: 0, panY: 0, scale: 1.0 };
+          App.renderAll();
+        });
+        // Fit to Viewport
+        document.getElementById('fitZoomBtn').addEventListener('click', () => {
+          const R_bound = Math.max((2 * State.N + 2) * State.r, SacredMath.getFoKBoundingRadius(State.N, State.r, State.krystGeometryMode));
+          const pane = document.querySelector('.viewport-pane');
+          const minDim = Math.min(pane.clientWidth, pane.clientHeight) * 0.85;
+          const fitScale = minDim / (2 * R_bound);
+          State.transforms.life = { panX: 0, panY: 0, scale: fitScale };
+          State.transforms.kryst = { panX: 0, panY: 0, scale: fitScale };
+          App.renderAll();
+        });
+        // Sync Lock Toggle
+        const syncBtn = document.getElementById('syncPanBtn');
+        syncBtn.addEventListener('click', () => {
+          State.syncPanZoom = !State.syncPanZoom;
+          syncBtn.classList.toggle('active', State.syncPanZoom);
+          UI.showToast(`Pan & Zoom Sync: ${State.syncPanZoom ? 'Enabled' : 'Disabled'}`);
+        });
+
+        // Clear Highlights
+        document.getElementById('clearHighlightBtn').addEventListener('click', () => {
+          State.highlightedIds.clear();
+          App.renderAll();
+          document.getElementById('inspectStatus').textContent = 'Cleared';
+          UI.updateSidebarStats();
+        });
+      },
+
+      bindModals() {
+        // Theory Modal
+        const theoryModal = document.getElementById('theoryModal');
+        document.getElementById('openTheoryBtn').addEventListener('click', () => {
+          theoryModal.classList.add('open');
+        });
+        document.getElementById('closeTheoryBtn').addEventListener('click', () => {
+          theoryModal.classList.remove('open');
+        });
+        theoryModal.addEventListener('click', (e) => {
+          if (e.target === theoryModal) theoryModal.classList.remove('open');
+        });
+
+        // Export Modal
+        const exportModal = document.getElementById('exportModal');
+        document.getElementById('exportBtn').addEventListener('click', () => {
+          exportModal.classList.add('open');
+        });
+        document.getElementById('closeExportBtn').addEventListener('click', () => {
+          exportModal.classList.remove('open');
+        });
+        exportModal.addEventListener('click', (e) => {
+          if (e.target === exportModal) exportModal.classList.remove('open');
+        });
+
+
+        // Exporter buttons
+        document.getElementById('downloadSvgBtn').addEventListener('click', () => {
+          Exporter.downloadSVG();
+          exportModal.classList.remove('open');
+        });
+        document.getElementById('downloadPng2kBtn').addEventListener('click', () => {
+          Exporter.downloadPNG(2400, 2400);
+          exportModal.classList.remove('open');
+        });
+        document.getElementById('downloadPng4kBtn').addEventListener('click', () => {
+          Exporter.downloadPNG(3840, 3840);
+          exportModal.classList.remove('open');
+        });
+      },
+
+      bindKeyboardShortcuts() {
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            document.getElementById('sidebarToggleBtn').click();
+          } else if (e.key === '0') {
+            document.getElementById('resetZoomBtn').click();
+          } else if (e.key === '+' || e.key === '=') {
+            document.getElementById('zoomInBtn').click();
+          } else if (e.key === '-') {
+            document.getElementById('zoomOutBtn').click();
+          } else if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+            State.highlightedIds.clear();
+            App.renderAll();
+          }
+        });
+      },
+
+      showToast(text) {
+        const toast = document.getElementById('toastMessage');
+        toast.textContent = text;
+        toast.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+          toast.classList.remove('show');
+        }, 2400);
+      }
+    };
+
+    /* =========================================================================
+       7. HIGH-RESOLUTION EXPORTER (SVG & PNG)
+       ========================================================================= */
+    const Exporter = {
+      downloadSVG() {
+        const svg = (State.viewportMode === 'single-kryst')
+          ? document.getElementById('svgKryst')
+          : document.getElementById('svgLife');
+
+        const serializer = new XMLSerializer();
+        let source = serializer.serializeToString(svg);
+
+        // Add XML namespace and styling headers
+        if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
+          source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sacred_geometry_${State.activePreset}_N${State.N}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        UI.showToast('SVG exported successfully');
+      },
+
+      downloadPNG(width, height) {
+        UI.showToast(`Rendering high-DPI canvas (${width}x${height})...`);
+        const svg = (State.viewportMode === 'single-kryst')
+          ? document.getElementById('svgKryst')
+          : document.getElementById('svgLife');
+
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const URLObj = window.URL || window.webkitURL || window;
+        const blobURL = URLObj.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+
+          // Dark space background
+          ctx.fillStyle = '#07090e';
+          ctx.fillRect(0, 0, width, height);
+
+          // Render image centered
+          ctx.drawImage(img, 0, 0, width, height);
+          URLObj.revokeObjectURL(blobURL);
+
+          const pngData = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = pngData;
+          a.download = `sacred_geometry_${State.activePreset}_N${State.N}_${width}px.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          UI.showToast('PNG image exported successfully');
+        };
+        img.src = blobURL;
+      }
+    };
+
+    /* =========================================================================
+       8. APPLICATION INITIALIZATION
+       ========================================================================= */
+    const App = {
+      panZoomControllers: [],
+
+      init() {
+        UI.init();
+
+        this.panZoomControllers.push(new PanZoomController('svgWrapperLife', 'svgLife', 'life'));
+        this.panZoomControllers.push(new PanZoomController('svgWrapperKryst', 'svgKryst', 'kryst'));
+
+        window.addEventListener('resize', () => this.renderAll());
+
+        // Default: Apply Krystonial comparison
+        UI.applyPreset('krystonial_comparison');
+      },
+
+      renderAll() {
+        if (State.viewportMode === 'superimposed') {
+          SVGRenderer.renderSuperimposed('svgLife', State.transforms.life);
+        } else {
+          SVGRenderer.render('svgLife', 'life', State.transforms.life);
+          SVGRenderer.render('svgKryst', 'kryst', State.transforms.kryst);
+        }
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      App.init();
+    });
+  </script>
+</body>
+</html>
