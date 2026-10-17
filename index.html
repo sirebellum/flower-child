@@ -390,8 +390,12 @@
                 <label for="colorKryst" class="color-picker-label">Kryst Flower</label>
               </div>
               <div class="color-picker-item">
-                <input type="color" id="colorBase" value="#3b82f6" aria-label="Base Circles Color">
-                <label for="colorBase" class="color-picker-label">Base Circles</label>
+                <input type="color" id="colorBase" value="#3b82f6" aria-label="Base Hexagons Color">
+                <label for="colorBase" class="color-picker-label">Base Hexagons</label>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorTriangle" value="#eab308" aria-label="Base Triangles Color">
+                <label for="colorTriangle" class="color-picker-label">Base Triangles</label>
               </div>
               <div class="color-picker-item">
                 <input type="color" id="colorGuide" value="#ea580c" aria-label="Shape Guides Color">
@@ -641,59 +645,55 @@
               <tr>
                 <td><strong>Layer 0 (Origin)</strong></td>
                 <td>1 Center at (0, 0)</td>
-                <td><strong>0 Centers (Empty Zero-Point)</strong></td>
+                <td><strong>0 Centers (Empty Zero-Point Origin)</strong></td>
               </tr>
               <tr>
-                <td><strong>Layer 1 (Inner Hexagon)</strong></td>
+                <td><strong>Innermost Hexagon</strong></td>
                 <td>6 centers at radius 2r (angles m &times; 60&deg;)</td>
-                <td><strong>6 centers</strong> at radius R_1 = 2r (angles m &times; 60&deg;, pass through 0,0)</td>
+                <td><strong>6 centers</strong> at radius 2r (angles m &times; 60&deg;), surrounding empty center at (0, 0)</td>
               </tr>
               <tr>
-                <td><strong>Layer 2 (Middle Circle)</strong></td>
-                <td>12 centers on hexagon perimeter</td>
-                <td><strong>12 centers</strong> on pure circle R_2 = r / sin(15&deg;) &approx; 3.8637r (angles m &times; 30&deg;)</td>
-              </tr>
-              <tr>
-                <td><strong>Layer 3 (Outer Hexagon)</strong></td>
-                <td>18 centers on hexagon perimeter</td>
-                <td><strong>12 centers:</strong> 6 vertices at R_3 = R_2 + 2r &approx; 5.8637r + 6 edge midpoints at apothem A_3 = R_3 &middot; cos(30&deg;)</td>
-              </tr>
-              <tr>
-                <td><strong>Tiled Progression (N &ge; 4)</strong></td>
+                <td><strong>Surrounding Triangles</strong></td>
                 <td>Concentric hexagonal perimeter rings</td>
-                <td><strong>Honeycomb Stamp Tiling:</strong> Outer hexagon edge-to-edge alignment with step size D = 2A_3 = &radic;3 R_3</td>
+                <td><strong>6 Triangles &times; 3 circles (18 circles):</strong> Base midpoint at (2+&radic;3)r &approx; 3.732r, Apex at (2+2&radic;3)r &approx; 5.464r</td>
               </tr>
               <tr>
-                <td><strong>Standard Counts</strong></td>
-                <td>N=1: 7 | N=2: 19 | N=3: 37</td>
-                <td><strong>N=1: 6 (Seed) | N=2: 18 (Flower) | N=3: 30 (Fruit)</strong></td>
+                <td><strong>Outer Ring of 6 Hexagons</strong></td>
+                <td>Hexagonal perimeter progression</td>
+                <td><strong>6 Hexagons &times; 7 circles (42 ring + 6 center circles):</strong> Centers at (4+2&radic;3)r &approx; 7.464r along 30&deg; axes + 6 Bridge Triangles (18 circles)</td>
               </tr>
               <tr>
-                <td><strong>Layer 2 Divergence</strong></td>
-                <td>Hexagonal midpoints at d = 2&radic;3 r &approx; 3.464 r</td>
-                <td><strong>Circle radius R_2 = r / sin(15&deg;) &approx; 3.8637 r</strong> (+11.5% phase expansion)</td>
+                <td><strong>Stamp Expansion (N &ge; 2)</strong></td>
+                <td>Concentric hexagonal perimeter rings</td>
+                <td><strong>Hexagon Lattice Restamping:</strong> Stamp translates outward to each outer hexagon center, strictly preserving the empty origin at (0, 0)</td>
+              </tr>
+              <tr>
+                <td><strong>Tangency &amp; Alignment</strong></td>
+                <td>Overlapping 2r radius circles</td>
+                <td><strong>Strict Tangency (Distance = 2r):</strong> Zero overlaps and zero gaps between all adjacent base circles</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h3>2. Why 19 vs. 18 Circles?</h3>
+        <h3>2. Why 19 vs. 18 Circles &amp; The Zero-Point Center</h3>
         <p>
           In traditional sacred geometry, the <strong>Flower of Life</strong> is a closed hexagonal loop with 19 complete circles enclosed by a double outer ring. The central circle at <code>(0,0)</code> acts as the genesis seed.
         </p>
         <p>
-          In Krystonial mechanics, the <strong>Flower of Kryst</strong> omits the central circle. Instead, the 6 circles of Layer 1 have radius <code>2r</code> and are centered at distance <code>2r</code> from the origin; thus, all 6 circles naturally pass directly through the origin <code>(0,0)</code>, forming the 6-petal core meeting at a pure zero-point singularity. Layer 2 then places its 12 circles evenly around a smooth 360° circle, allowing open-ended spherical expansion rather than finite hexagonal collapse.
+          In Krystonial mechanics, the <strong>Flower of Kryst</strong> omits the central circle at <code>(0,0)</code>. Instead, the 6 circles of the innermost hexagon have radius <code>2r</code> and are centered at distance <code>2r</code> from the origin; thus, all 6 circles naturally pass directly through the origin <code>(0,0)</code>, forming the 6-petal core meeting at a pure zero-point singularity. Every other hexagon outside <code>(0,0)</code> contains a center circle.
         </p>
 
-        <h3>3. 3-Layer Fruit of Kryst &amp; Honeycomb Stamp Tiling</h3>
+        <h3>3. Hexagon-and-Triangle Stamp Pattern Mathematics</h3>
         <p>
-          The Fruit of Kryst forms a self-contained 3-layer stamp (30 circles total: 6 + 12 + 12) bounded by a scalloped 12-lobed perimeter:
+          The authoritative Flower of Kryst geometry is generated by a single cohesive <strong>Stamp</strong> constructed from nested 6-circle Hexagons and 3-circle Triangles:
         </p>
         <ul style="padding-left: 20px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin: 8px 0 14px 0;">
-          <li><strong>Layer 1 (Inner Hexagon):</strong> Radius <code>R_1 = 2r</code>, 6 vertex circles passing through origin <code>(0,0)</code>.</li>
-          <li><strong>Layer 2 (Middle Circle):</strong> Radius <code>R_2 = r / sin(15&deg;) &approx; 3.8637r</code>, 12 circles evenly spaced at 30&deg; increments. Every adjacent pair along the circle is separated by exactly <code>2r</code>.</li>
-          <li><strong>Layer 3 (Outer Circle):</strong> Radius <code>R_3 = &radic;2 &middot; R_2 = 2(&radic;3 + 1)r &approx; 5.4641r</code>. Consists of 12 circles rotated by 15&deg; (centered along <code>15&deg; + m &middot; 30&deg;</code> axes) such that each outer circle nests cleanly and tangentially into the groove between two adjacent circles of the middle circle with exact distance <code>2r</code>.</li>
-          <li><strong>Honeycomb Stamp Tiling (N &ge; 4):</strong> For higher layers, stamps tile outward along 30&deg; axes with center-to-center lattice step size <code>D = 2 R_3 &middot; cos(15&deg;) = 2&radic;2(2 + &radic;3)r &approx; 10.5558r</code>, where neighboring stamps share outer circles in pairs to form seamless 7-stamp (Word of Kryst) and 19-stamp (Water of Kryst) lattices.</li>
+          <li><strong>Innermost Hexagon:</strong> 6 circles at distance <code>2r</code> along <code>m &times; 60&deg;</code> axes. Only hexagons away from the global origin <code>(0,0)</code> receive a center circle.</li>
+          <li><strong>Inner Triangles (6 &times; 3 = 18 circles):</strong> Along each <code>m &times; 60&deg;</code> axis, an inner pair at distance <code>(2 + &radic;3)r &approx; 3.732r &plusmn; r</code> tangent, plus an apex circle at distance <code>(2 + 2&radic;3)r &approx; 5.464r</code>.</li>
+          <li><strong>Outer Hexagons (6 &times; 7 = 42 ring + 6 center circles):</strong> Centers positioned at distance <code>(4 + 2&radic;3)r &approx; 7.464r</code> along <code>30&deg; + m &times; 60&deg;</code> rays. Each outer hexagon has its center circle plus 6 ring circles of radius <code>2r</code>.</li>
+          <li><strong>Bridge Triangles (6 &times; 3 = 18 circles):</strong> Outward-facing 3-circle triangles placed between adjacent outer hexagons along <code>m &times; 60&deg;</code> rays, perfectly touching the inner triangle apex circles.</li>
+          <li><strong>Iterative Restamping (N &ge; 2):</strong> Breadth-first translation outward moves the stamp onto each outer hexagon center, seamlessly tiling the lattice while keeping <code>(0,0)</code> as the only hexagon without a center circle.</li>
         </ul>
 
         <h3>4. Embedded Platonic Solids (Metatron's Cube)</h3>

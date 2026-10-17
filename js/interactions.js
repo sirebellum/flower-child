@@ -380,6 +380,7 @@ const UI = {
       { id: 'colorLife', prop: 'colorLife' },
       { id: 'colorKryst', prop: 'colorKryst' },
       { id: 'colorBase', prop: 'colorBase' },
+      { id: 'colorTriangle', prop: 'colorTriangle' },
       { id: 'colorGuide', prop: 'colorGuide' },
       { id: 'colorOuter', prop: 'colorOuter' },
       { id: 'colorAxes', prop: 'colorAxes' }
@@ -532,6 +533,7 @@ const UI = {
     if (cfg.colorLife !== undefined) State.colorLife = cfg.colorLife;
     if (cfg.colorKryst !== undefined) State.colorKryst = cfg.colorKryst;
     if (cfg.colorBase !== undefined) State.colorBase = cfg.colorBase;
+    if (cfg.colorTriangle !== undefined) State.colorTriangle = cfg.colorTriangle;
     if (cfg.colorGuide !== undefined) State.colorGuide = cfg.colorGuide;
     if (cfg.colorOuter !== undefined) State.colorOuter = cfg.colorOuter;
     if (cfg.colorAxes !== undefined) State.colorAxes = cfg.colorAxes;

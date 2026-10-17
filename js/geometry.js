@@ -5,32 +5,23 @@
  */
 
 /* =========================================================================
-   NAMED MATHEMATICAL CONSTANTS
+   1. CORE GEOMETRIC RULES & CONSTANTS
    ========================================================================= */
+const SQRT3 = Math.sqrt(3);
+const DIST_TRI_INNER = 2 + SQRT3;         // (2 + √3) ≈ 3.7320508 (radial distance to triangle base midpoint)
+const DIST_TRI_APEX  = 2 + 2 * SQRT3;     // (2 + 2√3) ≈ 5.4641016 (radial distance to triangle apex circle)
+const STAMP_STEP     = 4 + 2 * SQRT3;     // (4 + 2√3) ≈ 7.4641016 (center-to-center distance between hexagons)
+const EPSILON        = 1e-3;
+
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
-const SQRT_3 = Math.sqrt(3);
+const SQRT_3 = SQRT3;
 const COS_30 = SQRT_3 / 2; // Math.cos(Math.PI / 6)
 const SIN_30 = 0.5;        // Math.sin(Math.PI / 6)
 const COS_60 = 0.5;        // Math.cos(Math.PI / 3)
 const SIN_60 = SQRT_3 / 2; // Math.sin(Math.PI / 3)
-
-/**
- * Exact closed-form sin(15°) = (sqrt(6) - sqrt(2)) / 4
- * Used for Layer 2 Middle Circle radius: R2 = r / sin(15°) ≈ 3.8637033 r
- */
 const SIN_15 = (Math.sqrt(6) - Math.sqrt(2)) / 4;
-
-/**
- * Exact closed-form cos(15°) = (sqrt(6) + sqrt(2)) / 4
- * Used for Layer 3 honeycomb step size: D = 2 * R3 * cos(15°)
- */
 const COS_15 = (Math.sqrt(6) + Math.sqrt(2)) / 4;
-
-/**
- * Relative tolerance factor for floating-point coordinate comparisons
- */
-const EPSILON = 1e-4;
 
 /* =========================================================================
    PURE HELPER FUNCTIONS
@@ -38,7 +29,6 @@ const EPSILON = 1e-4;
 
 /**
  * Checks whether a 2D coordinate is within spatial tolerance of any point in the list.
- * Uses squared Euclidean distance to eliminate redundant square roots.
  * @param {Array<{x: number, y: number}>} points - List of points.
  * @param {number} x - X-coordinate to test.
  * @param {number} y - Y-coordinate to test.
@@ -58,17 +48,17 @@ function isDuplicatePoint(points, x, y, tolerance) {
 }
 
 /**
- * Checks whether a guide shape (hexagon or circle) already exists in the list.
- * @param {Array<{type: string, cx: number, cy: number, radius: number}>} guides - Existing guides.
- * @param {{type: string, cx: number, cy: number, radius: number}} candidate - Candidate guide.
- * @param {number} tolerance - Spatial and radial tolerance threshold.
+ * Checks whether a guide shape already exists in the list.
+ * @param {Array<{type: string, cx: number, cy: number, radius?: number}>} guides - Existing guides.
+ * @param {{type: string, cx: number, cy: number, radius?: number}} candidate - Candidate guide.
+ * @param {number} tolerance - Spatial tolerance threshold.
  * @returns {boolean} True if an equivalent guide exists.
  */
 function isDuplicateGuide(guides, candidate, tolerance) {
   const tolSq = tolerance * tolerance;
   for (let i = 0; i < guides.length; i++) {
     const g = guides[i];
-    if (g.type === candidate.type && Math.abs(g.radius - candidate.radius) < tolerance) {
+    if (g.type === candidate.type) {
       const dx = g.cx - candidate.cx;
       const dy = g.cy - candidate.cy;
       if (dx * dx + dy * dy < tolSq) {
@@ -80,7 +70,339 @@ function isDuplicateGuide(guides, candidate, tolerance) {
 }
 
 /* =========================================================================
-   MATHEMATICAL GEOMETRY ENGINE
+   2. SINGLE STAMP DEFINITION (createKrystStamp)
+   ========================================================================= */
+
+/**
+ * Generates a single Kryst Stamp centered at (cx, cy).
+ * Extends from its innermost hexagon out to its surrounding ring of 6 outer hexagons,
+ * with 3-circle triangles filling the spaces in between.
+ *
+ * Crucial Center-Circle Rule:
+ * - ONLY the global center hexagon at (0, 0) has NO circle in its center.
+ * - Every hexagon outside (0, 0) MUST have a circle placed at its center (hx, hy).
+ *
+ * @param {number} cx - Center X coordinate.
+ * @param {number} cy - Center Y coordinate.
+ * @param {number} r - Base circle radius.
+ * @returns {{circles: Array<{x: number, y: number, role: 'hexagon'|'hexagon-center'|'triangle'}>, guides: Array<{type: 'hexagon'|'triangle', cx: number, cy: number, radius?: number, vertices: Array<{x: number, y: number}>}>, outerHexagonCenters: Array<{x: number, y: number}>}}
+ */
+function createKrystStamp(cx, cy, r) {
+  const circles = [];
+  const guides = [];
+  const outerHexagonCenters = [];
+
+  // -----------------------------------------------------------------------
+  // A. Innermost Hexagon (at cx, cy)
+  // -----------------------------------------------------------------------
+
+  // 1. Center Circle (Only during restamp / away from origin)
+  if (Math.hypot(cx, cy) > EPSILON * r) {
+    circles.push({ x: cx, y: cy, role: 'hexagon-center' });
+  }
+
+  // 2. 6 Hexagon Ring Circles
+  const innerHexVertices = [];
+  for (let m = 0; m < 6; m++) {
+    const theta = m * (Math.PI / 3);
+    const x = cx + 2 * r * Math.cos(theta);
+    const y = cy + 2 * r * Math.sin(theta);
+    circles.push({ x, y, role: 'hexagon' });
+    innerHexVertices.push({ x, y });
+  }
+  guides.push({
+    type: 'hexagon',
+    cx,
+    cy,
+    radius: 2 * r,
+    vertices: innerHexVertices
+  });
+
+  // -----------------------------------------------------------------------
+  // B. Filling Triangles Around the Inner Hexagon (6 Triangles x 3 Circles = 18 Circles)
+  // -----------------------------------------------------------------------
+  for (let m = 0; m < 6; m++) {
+    const theta = m * (Math.PI / 3);
+    const ux = Math.cos(theta);
+    const uy = Math.sin(theta);
+    const tx = -Math.sin(theta);
+    const ty = Math.cos(theta);
+
+    // 1. Inner Pair of Triangle Circles (2 circles)
+    const Tm1 = {
+      x: cx + DIST_TRI_INNER * r * ux - r * tx,
+      y: cy + DIST_TRI_INNER * r * uy - r * ty,
+      role: 'triangle'
+    };
+    const Tm2 = {
+      x: cx + DIST_TRI_INNER * r * ux + r * tx,
+      y: cy + DIST_TRI_INNER * r * uy + r * ty,
+      role: 'triangle'
+    };
+
+    // 2. Outer Apex Triangle Circle (1 circle)
+    const Tm3 = {
+      x: cx + DIST_TRI_APEX * r * ux,
+      y: cy + DIST_TRI_APEX * r * uy,
+      role: 'triangle'
+    };
+
+    circles.push(Tm1, Tm2, Tm3);
+    guides.push({
+      type: 'triangle',
+      cx: (Tm1.x + Tm2.x + Tm3.x) / 3,
+      cy: (Tm1.y + Tm2.y + Tm3.y) / 3,
+      vertices: [Tm1, Tm2, Tm3]
+    });
+  }
+
+  // -----------------------------------------------------------------------
+  // C. Outer Ring of 6 Hexagons (Plus Gap-Filling Bridge Triangles Between Them)
+  // -----------------------------------------------------------------------
+  for (let m = 0; m < 6; m++) {
+    const phi = m * (Math.PI / 3) + (Math.PI / 6);
+    const hx = cx + STAMP_STEP * r * Math.cos(phi);
+    const hy = cy + STAMP_STEP * r * Math.sin(phi);
+    outerHexagonCenters.push({ x: hx, y: hy });
+
+    // 1. Outer Hexagon Center Circle (only if not at global origin (0, 0))
+    if (Math.hypot(hx, hy) > EPSILON * r) {
+      circles.push({ x: hx, y: hy, role: 'hexagon-center' });
+    }
+
+    // 2. Outer Hexagon 6 Ring Circles
+    const outerHexVertices = [];
+    for (let j = 0; j < 6; j++) {
+      const theta = j * (Math.PI / 3);
+      const ox = hx + 2 * r * Math.cos(theta);
+      const oy = hy + 2 * r * Math.sin(theta);
+      circles.push({ x: ox, y: oy, role: 'hexagon' });
+      outerHexVertices.push({ x: ox, y: oy });
+    }
+    guides.push({
+      type: 'hexagon',
+      cx: hx,
+      cy: hy,
+      radius: 2 * r,
+      vertices: outerHexVertices
+    });
+  }
+
+  // 3. Gap-Filling Bridge Triangles Between Adjacent Outer Hexagons
+  for (let m = 0; m < 6; m++) {
+    const theta = m * (Math.PI / 3);
+    const ux = Math.cos(theta);
+    const uy = Math.sin(theta);
+    const tx = -Math.sin(theta);
+    const ty = Math.cos(theta);
+
+    // Bridge apex circle (touching Tm3)
+    const Bm1 = {
+      x: cx + STAMP_STEP * r * ux,
+      y: cy + STAMP_STEP * r * uy,
+      role: 'triangle'
+    };
+    // Outer pair of bridge triangle circles
+    const Bm2 = {
+      x: cx + (4 + 3 * SQRT3) * r * ux - r * tx,
+      y: cy + (4 + 3 * SQRT3) * r * uy - r * ty,
+      role: 'triangle'
+    };
+    const Bm3 = {
+      x: cx + (4 + 3 * SQRT3) * r * ux + r * tx,
+      y: cy + (4 + 3 * SQRT3) * r * uy + r * ty,
+      role: 'triangle'
+    };
+
+    circles.push(Bm1, Bm2, Bm3);
+    guides.push({
+      type: 'triangle',
+      cx: (Bm1.x + Bm2.x + Bm3.x) / 3,
+      cy: (Bm1.y + Bm2.y + Bm3.y) / 3,
+      vertices: [Bm1, Bm2, Bm3]
+    });
+  }
+
+  return { circles, guides, outerHexagonCenters };
+}
+
+/* =========================================================================
+   3. ITERATIVE RESTAMPING OUTWARD (getKrystGeometry)
+   ========================================================================= */
+
+/**
+ * Iterative Restamping Outward Engine:
+ * Restamps outward from (0, 0) across hexagon centers using layer count N >= 1.
+ *
+ * @param {number} N - Layer count (N >= 1).
+ * @param {number} r - Base circle radius.
+ * @returns {{points: Array<{x: number, y: number, role: string, layer?: number}>, circles: Array<{x: number, y: number, role: string, layer?: number}>, guides: Array<{type: string, cx: number, cy: number, radius?: number, vertices?: Array<{x: number, y: number}>}>, boundingRadius: number, activeStampCenters: Array<{x: number, y: number}>}}
+ */
+function getKrystGeometry(N, r) {
+  if (N <= 0) {
+    return {
+      points: [],
+      circles: [],
+      guides: [],
+      boundingRadius: 2 * r,
+      activeStampCenters: []
+    };
+  }
+
+  // 1. Breadth-First Stamp Expansion Across Hexagon Centers
+  const activeStampCenters = [{ x: 0, y: 0, ring: 0 }];
+  const visitedStampCenters = [{ x: 0, y: 0 }];
+  let frontier = [{ x: 0, y: 0 }];
+
+  const isVisited = (pt) => {
+    const tolSq = (EPSILON * r) * (EPSILON * r);
+    return visitedStampCenters.some(v => (v.x - pt.x) ** 2 + (v.y - pt.y) ** 2 < tolSq);
+  };
+
+  for (let step = 2; step <= N; step++) {
+    const nextFrontier = [];
+    for (const c of frontier) {
+      for (let m = 0; m < 6; m++) {
+        const phi = m * (Math.PI / 3) + (Math.PI / 6);
+        const hx = c.x + STAMP_STEP * r * Math.cos(phi);
+        const hy = c.y + STAMP_STEP * r * Math.sin(phi);
+        const cand = { x: hx, y: hy, ring: step - 1 };
+        if (!isVisited(cand)) {
+          visitedStampCenters.push(cand);
+          activeStampCenters.push(cand);
+          nextFrontier.push(cand);
+        }
+      }
+    }
+    frontier = nextFrontier;
+  }
+
+  // 2. Stamp, Deduplicate & Enforce Global Origin Rule
+  const rawCircles = [];
+  const rawGuides = [];
+  for (const c of activeStampCenters) {
+    const stamp = createKrystStamp(c.x, c.y, r);
+    for (const pt of stamp.circles) {
+      rawCircles.push({
+        ...pt,
+        layer: (c.ring || 0) + 1,
+        stampCx: c.x,
+        stampCy: c.y
+      });
+    }
+    rawGuides.push(...stamp.guides);
+  }
+
+  // Deduplicate circles using spatial hash grid
+  const cellSize = 2 * r;
+  const grid = new Map();
+  const dedupedCircles = [];
+  const tolSq = (EPSILON * r) * (EPSILON * r);
+
+  for (const pt of rawCircles) {
+    // Global Origin Safeguard: Filter out any circle whose coordinates satisfy hypot(x, y) < EPSILON * r
+    if (Math.hypot(pt.x, pt.y) < EPSILON * r) continue;
+
+    const gx = Math.floor(pt.x / cellSize);
+    const gy = Math.floor(pt.y / cellSize);
+    let found = null;
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const cell = grid.get(`${gx + dx},${gy + dy}`);
+        if (cell) {
+          for (let i = 0; i < cell.length; i++) {
+            const other = cell[i];
+            const distSq = (other.x - pt.x) ** 2 + (other.y - pt.y) ** 2;
+            if (distSq < tolSq) {
+              found = other;
+              break;
+            }
+          }
+        }
+        if (found) break;
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      // Preserve hexagon / hexagon-center priority
+      if ((pt.role === 'hexagon' || pt.role === 'hexagon-center') && found.role === 'triangle') {
+        found.role = pt.role;
+      }
+      found.layer = Math.min(found.layer, pt.layer);
+    } else {
+      const newPt = { ...pt };
+      dedupedCircles.push(newPt);
+      const key = `${gx},${gy}`;
+      let cell = grid.get(key);
+      if (!cell) {
+        cell = [];
+        grid.set(key, cell);
+      }
+      cell.push(newPt);
+    }
+  }
+
+  // Deduplicate guides by centroid (cx, cy) and type
+  const guideGrid = new Map();
+  const dedupedGuides = [];
+  for (const g of rawGuides) {
+    const gx = Math.floor(g.cx / cellSize);
+    const gy = Math.floor(g.cy / cellSize);
+    let found = false;
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const cell = guideGrid.get(`${gx + dx},${gy + dy}`);
+        if (cell) {
+          for (let i = 0; i < cell.length; i++) {
+            const other = cell[i];
+            if (other.type === g.type) {
+              const distSq = (other.cx - g.cx) ** 2 + (other.cy - g.cy) ** 2;
+              if (distSq < tolSq) {
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+        if (found) break;
+      }
+      if (found) break;
+    }
+
+    if (!found) {
+      dedupedGuides.push(g);
+      const key = `${gx},${gy}`;
+      let cell = guideGrid.get(key);
+      if (!cell) {
+        cell = [];
+        guideGrid.set(key, cell);
+      }
+      cell.push(g);
+    }
+  }
+
+  // Dynamic Outer Bounding Circle Radius: max_i sqrt(x_i^2 + y_i^2) + 2r
+  let maxDist = 0;
+  for (const pt of dedupedCircles) {
+    const d = Math.hypot(pt.x, pt.y);
+    if (d > maxDist) maxDist = d;
+  }
+  const boundingRadius = (dedupedCircles.length > 0) ? (maxDist + 2 * r) : (2 * r);
+
+  return {
+    points: dedupedCircles,
+    circles: dedupedCircles,
+    guides: dedupedGuides,
+    boundingRadius,
+    activeStampCenters
+  };
+}
+
+/* =========================================================================
+   MATHEMATICAL GEOMETRY ENGINE OBJECT
    ========================================================================= */
 const SacredMath = {
   DEG_TO_RAD,
@@ -92,16 +414,52 @@ const SacredMath = {
   SIN_15,
   COS_15,
   SQRT_3,
+  SQRT3,
+  DIST_TRI_INNER,
+  DIST_TRI_APEX,
+  STAMP_STEP,
   EPSILON,
+
+  createKrystStamp,
+  getKrystGeometry,
+
+  /**
+   * Alias for createKrystStamp for backward compatibility
+   */
+  getKrystStamp(cx, cy, r) {
+    return createKrystStamp(cx, cy, r);
+  },
+
+  /**
+   * Generates hexagonal lattice ring centers for ring index s >= 1 with step size stepSize.
+   */
+  getHexRingCenters(ring, stepSize, angleOffsetDeg = 0) {
+    if (ring <= 0) return [{ x: 0, y: 0 }];
+    const centers = [];
+    const ringRadius = ring * stepSize;
+    const vertices = [];
+    for (let m = 0; m < 6; m++) {
+      const a = (m * 60 + angleOffsetDeg) * DEG_TO_RAD;
+      vertices.push({
+        x: ringRadius * Math.cos(a),
+        y: ringRadius * Math.sin(a)
+      });
+    }
+    for (let m = 0; m < 6; m++) {
+      const vStart = vertices[m];
+      const vEnd = vertices[(m + 1) % 6];
+      for (let j = 0; j < ring; j++) {
+        const t = j / ring;
+        const x = (1 - t) * vStart.x + t * vEnd.x;
+        const y = (1 - t) * vStart.y + t * vEnd.y;
+        centers.push({ x, y });
+      }
+    }
+    return centers;
+  },
 
   /**
    * Generates all circle centers for Flower of Life up to layer N.
-   * - Layer 0: 1 center at (0, 0).
-   * - Layer k >= 1: 6k centers on perimeter of regular hexagon of vertex radius 2kr.
-   *
-   * @param {number} N - Number of concentric hexagonal layers (N >= 1).
-   * @param {number} r - Base circle radius in pixels.
-   * @returns {Array<{id: string, pattern: string, layer: number, edge?: number, step?: number, x: number, y: number, d: number, angleDeg: number, isVertex: boolean}>}
    */
   generateFlowerOfLifePoints(N, r) {
     const points = [];
@@ -160,231 +518,7 @@ const SacredMath = {
   },
 
   /**
-   * Generates a 3-Layer Base Stamp (Fruit of Kryst) centered at (cx, cy).
-   * - Layer 1 (Inner Hexagon, 6 circles): Radius R1 = 2r, angles m * 60°
-   *   Guide: Regular Hexagon of vertex radius R1 centered at (cx, cy).
-   * - Layer 2 (Middle Circle, 12 circles): Radius R2 = r / sin(15°) ≈ 3.8637r, angles m * 30°
-   *   Guide: Circle of radius R2 centered at (cx, cy).
-   * - Layer 3 (Outer Hexagon, 12 circles): Vertex radius R3 = R2 + 2r ≈ 5.8637r
-   *     6 vertices at R3 ∠ (m * 60°)
-   *     6 edge-midpoints at apothem A3 = R3 * cos(30°) ∠ (m * 60° + 30°)
-   *   Guide: Regular Hexagon of vertex radius R3 centered at (cx, cy).
-   *
-   * maxLocalLayer is strictly clamped to 1, 2, or 3 (never a 4th concentric guide/layer).
-   *
-   * @param {number} cx - X-coordinate of stamp center.
-   * @param {number} cy - Y-coordinate of stamp center.
-   * @param {number} r - Base circle radius.
-   * @param {number} [maxLocalLayer=3] - Maximum local layer to generate (1, 2, or 3).
-   * @returns {{points: Array<{x: number, y: number, layer: number, isVertex: boolean}>, guides: Array<{type: string, cx: number, cy: number, radius: number}>}}
-   */
-  getKrystStamp(cx, cy, r, maxLocalLayer = 3) {
-    const points = [];
-    const guides = [];
-    const L = Math.max(1, Math.min(3, Math.floor(maxLocalLayer || 3)));
-
-    const R1 = 2 * r;
-    const R2 = r / SIN_15;
-    // R3 = R2 * sqrt(2) = 2 * (sqrt(3) + 1) * r ≈ 5.4641016 r
-    // Tangent distance to both adjacent Layer 2 circles is exactly 2r
-    const R3 = R2 * Math.SQRT2;
-
-    // Layer 1: Inner Hexagon (6 circles)
-    if (L >= 1) {
-      for (let m = 0; m < 6; m++) {
-        const a = m * 60 * DEG_TO_RAD;
-        points.push({
-          x: cx + R1 * Math.cos(a),
-          y: cy + R1 * Math.sin(a),
-          layer: 1,
-          isVertex: true
-        });
-      }
-      guides.push({ type: 'hexagon', cx, cy, radius: R1 });
-    }
-
-    // Layer 2: Middle Circle (12 circles)
-    if (L >= 2) {
-      for (let m = 0; m < 12; m++) {
-        const a = m * 30 * DEG_TO_RAD;
-        points.push({
-          x: cx + R2 * Math.cos(a),
-          y: cy + R2 * Math.sin(a),
-          layer: 2,
-          isVertex: (m % 2 === 0)
-        });
-      }
-      guides.push({ type: 'circle', cx, cy, radius: R2 });
-    }
-
-    // Layer 3: Outer Circle (12 circles rotated by 15° to nest cleanly between middle circle circles)
-    if (L >= 3) {
-      for (let m = 0; m < 12; m++) {
-        const a = (m * 30 + 15) * DEG_TO_RAD;
-        points.push({
-          x: cx + R3 * Math.cos(a),
-          y: cy + R3 * Math.sin(a),
-          layer: 3,
-          isVertex: (m % 2 === 0)
-        });
-      }
-      guides.push({ type: 'circle', cx, cy, radius: R3 });
-    }
-
-    return { points, guides };
-  },
-
-  /**
-   * Generates hexagonal lattice ring centers for ring index s >= 1 with step size stepSize.
-   * Optional angleOffsetDeg rotates the primary lattice directions (e.g. 30° for honeycomb alignment).
-   *
-   * @param {number} ring - Ring index (s >= 1).
-   * @param {number} stepSize - Center-to-center distance between neighboring stamps.
-   * @param {number} [angleOffsetDeg=0] - Rotational offset in degrees.
-   * @returns {Array<{x: number, y: number}>} Array of lattice center coordinates.
-   */
-  getHexRingCenters(ring, stepSize, angleOffsetDeg = 0) {
-    if (ring <= 0) return [{ x: 0, y: 0 }];
-    const centers = [];
-    const ringRadius = ring * stepSize;
-    const vertices = [];
-    for (let m = 0; m < 6; m++) {
-      const a = (m * 60 + angleOffsetDeg) * DEG_TO_RAD;
-      vertices.push({
-        x: ringRadius * Math.cos(a),
-        y: ringRadius * Math.sin(a)
-      });
-    }
-    for (let m = 0; m < 6; m++) {
-      const vStart = vertices[m];
-      const vEnd = vertices[(m + 1) % 6];
-      for (let j = 0; j < ring; j++) {
-        const t = j / ring;
-        const x = (1 - t) * vStart.x + t * vEnd.x;
-        const y = (1 - t) * vStart.y + t * vEnd.y;
-        centers.push({ x, y });
-      }
-    }
-    return centers;
-  },
-
-  /**
-   * Honeycomb Stamp Tiling Engine: getKrystGeometry(N, r)
-   * The center stamp has 6 stamps around it with the outermost (Layer 3) circles
-   * overlapping and sharing pairs of circles in a seamless honeycomb lattice tiling.
-   * Center-to-center distance is D = 2 * R3 * cos(15°) = 2 * sqrt(2) * (2 + sqrt(3)) * r along the 30° radial axes.
-   * - N=1..3: Central stamp at (0, 0) with maxLocalLayer = N
-   * - N=4..6: Central stamp (Layers 1-3) + 6 outer honeycomb stamps with maxLocalLayer = N - 3
-   * - N>6: Extended honeycomb lattice rings of step size D = 2 * R3 * cos(15°)
-   *
-   * @param {number} N - Layer progression depth.
-   * @param {number} r - Base circle radius.
-   * @returns {{points: Array<{x: number, y: number, layer: number, isVertex: boolean, stampCx: number, stampCy: number, stampRing: number}>, guides: Array<{type: string, cx: number, cy: number, radius: number}>, boundingRadius: number, stamps: Array<{cx: number, cy: number, maxLocalLayer: number, ring: number}>}}
-   */
-  getKrystGeometry(N, r) {
-    if (N <= 0) {
-      return { points: [], guides: [], boundingRadius: 2 * r, stamps: [] };
-    }
-
-    const R2 = r / SIN_15;
-    const R3 = R2 * Math.SQRT2;
-    const stepSize = 2 * R3 * COS_15; // Honeycomb lattice spacing: 2 * R3 * cos(15°)
-    const s_max = Math.floor((N - 1) / 3);
-    const L_active = ((N - 1) % 3) + 1;
-
-    const stamps = [];
-    if (s_max === 0) {
-      stamps.push({ cx: 0, cy: 0, maxLocalLayer: L_active, ring: 0 });
-    } else {
-      // Ring 0: Central stamp is fully built (Layers 1-3)
-      stamps.push({ cx: 0, cy: 0, maxLocalLayer: 3, ring: 0 });
-
-      // Prior rings 1 ... s_max - 1
-      for (let s = 1; s < s_max; s++) {
-        const ringCenters = this.getHexRingCenters(s, stepSize, 30);
-        for (const c of ringCenters) {
-          stamps.push({ cx: c.x, cy: c.y, maxLocalLayer: 3, ring: s });
-        }
-      }
-
-      // Outermost active stamp ring s_max
-      const outerCenters = this.getHexRingCenters(s_max, stepSize, 30);
-      for (const c of outerCenters) {
-        stamps.push({ cx: c.x, cy: c.y, maxLocalLayer: L_active, ring: s_max });
-      }
-    }
-
-    const rawPoints = [];
-    const rawGuides = [];
-    for (const s of stamps) {
-      const stamp = this.getKrystStamp(s.cx, s.cy, r, s.maxLocalLayer);
-      for (const pt of stamp.points) {
-        rawPoints.push({
-          ...pt,
-          stampCx: s.cx,
-          stampCy: s.cy,
-          stampRing: s.ring
-        });
-      }
-      rawGuides.push(...stamp.guides);
-    }
-
-    // Exclude (0, 0) and any stamp center C_m from having a circle placed on it
-    // (guarantees empty zero-point center at every stamp origin)
-    const minOriginDistSq = (0.5 * r) * (0.5 * r);
-    const filteredPoints = rawPoints.filter(pt => {
-      for (const s of stamps) {
-        const dx = pt.x - s.cx;
-        const dy = pt.y - s.cy;
-        if (dx * dx + dy * dy < minOriginDistSq) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    // Deduplicate points using consistent relative tolerance check:
-    // Relative tolerance ensures numerical stability across float trig evaluations
-    const tol = Math.max(0.2, EPSILON * r * 100);
-    const dedupedPoints = [];
-
-    for (const pt of filteredPoints) {
-      if (!isDuplicatePoint(dedupedPoints, pt.x, pt.y, tol)) {
-        dedupedPoints.push(pt);
-      }
-    }
-
-    // Deduplicate guide shapes by (type, cx, cy, radius)
-    const dedupedGuides = [];
-    for (const g of rawGuides) {
-      if (!isDuplicateGuide(dedupedGuides, g, tol)) {
-        dedupedGuides.push(g);
-      }
-    }
-
-    // Dynamic Outer Bounding Ring: R_bound = max_i sqrt(x_i^2 + y_i^2) + 2r
-    let maxDistSq = 0;
-    for (const pt of dedupedPoints) {
-      const dSq = pt.x * pt.x + pt.y * pt.y;
-      if (dSq > maxDistSq) maxDistSq = dSq;
-    }
-    const maxDist = Math.sqrt(maxDistSq);
-    const boundingRadius = (dedupedPoints.length > 0) ? (maxDist + 2 * r) : (2 * r);
-
-    return {
-      points: dedupedPoints,
-      guides: dedupedGuides,
-      boundingRadius,
-      stamps
-    };
-  },
-
-  /**
    * Returns deduplicated circle center points for Flower of Kryst up to layer N.
-   *
-   * @param {number} N - Layer progression depth.
-   * @param {number} r - Base circle radius.
-   * @returns {Array<{x: number, y: number, layer: number, isVertex: boolean, stampCx: number, stampCy: number, stampRing: number}>}
    */
   getKrystCoordinates(N, r) {
     return this.getKrystGeometry(N, r).points;
@@ -392,10 +526,6 @@ const SacredMath = {
 
   /**
    * Dynamic Outer Bounding Circle radius for Flower of Kryst: max_i sqrt(x_i^2 + y_i^2) + 2r
-   *
-   * @param {number} N - Layer progression depth.
-   * @param {number} r - Base circle radius.
-   * @returns {number} Outer circumscribing boundary radius.
    */
   getFoKBoundingRadius(N, r) {
     return this.getKrystGeometry(N, r).boundingRadius;
@@ -404,40 +534,31 @@ const SacredMath = {
   /**
    * Generates all circle center node objects for Flower of Kryst up to layer N.
    * Adapts the deduplicated array of coordinates for SVG rendering and interactivity.
-   *
-   * @param {number} N - Layer progression depth.
-   * @param {number} r - Base circle radius.
-   * @returns {Array<{id: string, pattern: string, layer: number, index: number, x: number, y: number, d: number, angleDeg: number, isVertex: boolean, isCircularLayer: boolean, stampRing: number}>}
    */
   generateFlowerOfKrystPoints(N, r) {
-    const coords = this.getKrystCoordinates(N, r);
-    return coords.map((pt, idx) => {
+    const geom = this.getKrystGeometry(N, r);
+    return geom.points.map((pt, idx) => {
       const d = Math.hypot(pt.x, pt.y);
       let angleDeg = Math.atan2(pt.y, pt.x) * RAD_TO_DEG;
       if (angleDeg < 0) angleDeg += 360;
       return {
-        id: `fok_${pt.layer || 1}_${idx}`,
+        id: `fok_${pt.role || 'kryst'}_${idx}`,
         pattern: 'kryst',
+        role: pt.role,
         layer: pt.layer || 1,
         index: idx,
         x: Number(pt.x.toFixed(4)),
         y: Number(pt.y.toFixed(4)),
         d: Number(d.toFixed(4)),
         angleDeg: Number(angleDeg.toFixed(2)),
-        isVertex: Boolean(pt.isVertex),
-        isCircularLayer: (pt.layer === 2 || pt.layer === 3),
-        stampRing: pt.stampRing ?? 0
+        isVertex: Boolean(pt.isVertex || pt.role === 'hexagon'),
+        stampRing: pt.layer ? pt.layer - 1 : 0
       };
     });
   },
 
   /**
    * Computes the 3 Pairs of Eyes (6 vesica piscis lens intersections) of Kryst.
-   * Formed along the 3 primary axes (0-180°, 60-240°, 120-300°) between
-   * Layer 1 circles (radius 2r at distance 2r) and Layer 2 circles (radius 2r at distance R_2).
-   *
-   * @param {number} r - Base circle radius.
-   * @returns {Array<{id: string, axisIndex: number, pairIndex: number, angleDeg: number, center: {x: number, y: number}, pathD: string}>}
    */
   getEyesOfKryst(r) {
     const R = 2 * r;
@@ -482,10 +603,6 @@ const SacredMath = {
   /**
    * Generates virtual Flower of Life centers for layers N+1 and N+2
    * that intersect the bounding circle R_bound = (2N+2)r.
-   *
-   * @param {number} N - Layer count.
-   * @param {number} r - Base circle radius.
-   * @returns {Array<{x: number, y: number, d: number}>}
    */
   generateVirtualBoundaryPoints(N, r) {
     const R_bound = (2 * N + 2) * r;
@@ -511,7 +628,6 @@ const SacredMath = {
           const x = (1 - t) * vStart.x + t * vEnd.x;
           const y = (1 - t) * vStart.y + t * vEnd.y;
           const d = Math.hypot(x, y);
-          // Only include if the circle of radius 2r intersects the bounding circle
           if (d - 2 * r < R_bound && d < R_bound + 2 * r) {
             virtualPoints.push({
               x: Number(x.toFixed(4)),
@@ -527,18 +643,12 @@ const SacredMath = {
 
   /**
    * Computes intersection points of circles for rendering analytical intersection nodes.
-   * Uses squared distance spatial thresholding to optimize performance.
-   *
-   * @param {Array<{x: number, y: number}>} points - Circle center coordinates.
-   * @param {number} R - Circle radius (2r).
-   * @returns {Array<{x: number, y: number}>} Deduplicated intersection node coordinates.
    */
   computeIntersectionNodes(points, R) {
     const nodes = [];
-    const thresholdSq = 1.0; // 1px cluster tolerance squared
+    const thresholdSq = 1.0;
     const maxNodes = 450;
     const R_sq = R * R;
-    const two_R = 2 * R;
 
     for (let i = 0; i < points.length && nodes.length < maxNodes; i++) {
       for (let j = i + 1; j < points.length && nodes.length < maxNodes; j++) {
@@ -548,7 +658,6 @@ const SacredMath = {
         const dy = p2.y - p1.y;
         const distSq = dx * dx + dy * dy;
 
-        // Two circles of radius R intersect if 0 < dist <= 2R
         if (distSq > 1e-4 && distSq <= 4 * R_sq) {
           const dist = Math.sqrt(distSq);
           const a = dist / 2;
@@ -590,13 +699,9 @@ const SacredMath = {
 
   /**
    * Returns the 13 Fruit of Life tangent circle centers.
-   *
-   * @param {number} r - Base circle radius.
-   * @returns {Array<{id: string, x: number, y: number, layer: number, label: string, isVertex: boolean}>}
    */
   getFruitOfLifeCenters(r) {
     const centers = [{ id: 'fol_0_0', x: 0, y: 0, layer: 0, label: 'Center (0)', isVertex: true }];
-    // 6 in Layer 1 (radius 2r)
     for (let m = 0; m < 6; m++) {
       const a = m * 60 * DEG_TO_RAD;
       centers.push({
@@ -608,7 +713,6 @@ const SacredMath = {
         isVertex: true
       });
     }
-    // 6 in Layer 2 Vertices (radius 4r)
     for (let m = 0; m < 6; m++) {
       const a = m * 60 * DEG_TO_RAD;
       centers.push({
@@ -624,5 +728,5 @@ const SacredMath = {
   }
 };
 
-export { SacredMath };
+export { SacredMath, createKrystStamp, getKrystGeometry };
 export default SacredMath;

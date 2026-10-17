@@ -179,10 +179,20 @@ const SVGRenderer = {
           }));
         }
       } else {
-        // Flower of Kryst: Guide shapes collected from active stamps
+        // Flower of Kryst: Guide shapes collected from active stamps (Hexagons & Triangles)
         const krystGeometry = SacredMath.getKrystGeometry(N, r);
         krystGeometry.guides.forEach(g => {
-          if (g.type === 'hexagon') {
+          if (g.vertices && g.vertices.length > 0) {
+            const pointsStr = g.vertices.map(v => `${v.x.toFixed(3)},${v.y.toFixed(3)}`).join(' ');
+            guidesFrag.appendChild(this.createSvgElement('polygon', {
+              points: pointsStr,
+              fill: 'none',
+              stroke: State.colorGuide,
+              'stroke-width': State.strokeGuide,
+              opacity: '0.85',
+              filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
+            }));
+          } else if (g.type === 'hexagon' && g.radius) {
             const pointsStr = [];
             for (let m = 0; m < 6; m++) {
               const angle = m * 60 * SacredMath.DEG_TO_RAD;
@@ -196,17 +206,6 @@ const SVGRenderer = {
               stroke: State.colorGuide,
               'stroke-width': State.strokeGuide,
               opacity: '0.85',
-              filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
-            }));
-          } else if (g.type === 'circle') {
-            guidesFrag.appendChild(this.createSvgElement('circle', {
-              cx: g.cx.toFixed(3),
-              cy: g.cy.toFixed(3),
-              r: g.radius.toFixed(3),
-              fill: 'none',
-              stroke: State.colorGuide,
-              'stroke-width': State.strokeGuide,
-              opacity: '0.9',
               filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
             }));
           }
@@ -241,18 +240,27 @@ const SVGRenderer = {
         renderedBase.push(pt);
 
         const isHighlighted = State.highlightedIds.has(pt.id);
+        let baseStroke = State.colorBase;
+        if (patternType === 'kryst') {
+          if (pt.role === 'triangle') {
+            baseStroke = State.colorTriangle || '#eab308';
+          } else {
+            baseStroke = State.colorBase || '#3b82f6';
+          }
+        }
+
         const circle = this.createSvgElement('circle', {
           cx: pt.x,
           cy: pt.y,
           r: r,
           fill: State.sphericalShading ? `url(#${idPrefix}-sphere-grad)` : (isHighlighted ? 'rgba(255,255,255,0.1)' : 'none'),
-          stroke: isHighlighted ? '#ffffff' : State.colorBase,
+          stroke: isHighlighted ? '#ffffff' : baseStroke,
           'stroke-width': isHighlighted ? 2.8 : State.strokeBase,
           opacity: isHighlighted ? '1.0' : '0.8',
           class: `circle-node base-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'data-circle-id': pt.id,
           'data-pattern': pt.pattern || patternType,
-          'data-default-stroke': State.colorBase
+          'data-default-stroke': baseStroke
         });
         baseFrag.appendChild(circle);
       });
@@ -550,10 +558,20 @@ const SVGRenderer = {
         }));
       }
 
-      // Flower of Kryst Guides (Cyan dashed: Hexagons & Circles)
+      // Flower of Kryst Guides (Cyan dashed: Hexagons & Triangles)
       const krystGeometry = SacredMath.getKrystGeometry(N, r);
       krystGeometry.guides.forEach(g => {
-        if (g.type === 'hexagon') {
+        if (g.vertices && g.vertices.length > 0) {
+          const krystGuidePoints = g.vertices.map(v => `${v.x.toFixed(3)},${v.y.toFixed(3)}`).join(' ');
+          guidesFrag.appendChild(this.createSvgElement('polygon', {
+            points: krystGuidePoints,
+            fill: 'none',
+            stroke: '#06b6d4',
+            'stroke-width': '1.2',
+            'stroke-dasharray': '3 3',
+            opacity: '0.6'
+          }));
+        } else if (g.type === 'hexagon' && g.radius) {
           const krystHexPoints = [];
           for (let m = 0; m < 6; m++) {
             const a = m * 60 * SacredMath.DEG_TO_RAD;
@@ -561,17 +579,6 @@ const SVGRenderer = {
           }
           guidesFrag.appendChild(this.createSvgElement('polygon', {
             points: krystHexPoints.join(' '),
-            fill: 'none',
-            stroke: '#06b6d4',
-            'stroke-width': '1.2',
-            'stroke-dasharray': '3 3',
-            opacity: '0.6'
-          }));
-        } else if (g.type === 'circle') {
-          guidesFrag.appendChild(this.createSvgElement('circle', {
-            cx: g.cx.toFixed(3),
-            cy: g.cy.toFixed(3),
-            r: g.radius.toFixed(3),
             fill: 'none',
             stroke: '#06b6d4',
             'stroke-width': '1.2',
