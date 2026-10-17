@@ -470,10 +470,44 @@ const SacredMath = {
   },
 
   /**
-   * Generates all circle centers for Flower of Life up to layer N.
+   * Returns the effective number of Flower of Life concentric hexagonal layers
+   * required to match the spatial expansion rate of the Flower of Kryst at depth N.
+   *
+   * @param {number} N - Layer progression depth.
+   * @param {number} [r=50] - Base circle radius.
+   * @returns {number} Number of hexagonal concentric layers.
    */
-  generateFlowerOfLifePoints(N, r) {
+  getEffectiveLifeLayers(N, r = 50) {
+    if (N <= 0) return 0;
+    const fokBound = this.getFoKBoundingRadius(N, r);
+    return Math.max(1, Math.round((fokBound - 2 * r) / (2 * r)));
+  },
+
+  /**
+   * Dynamic Outer Bounding Circle radius for Flower of Life matching Flower of Kryst expansion:
+   * (2 * effectiveLayers + 2) * r
+   *
+   * @param {number} N - Layer progression depth.
+   * @param {number} [r=50] - Base circle radius.
+   * @returns {number} Outer circumscribing boundary radius.
+   */
+  getFoLBoundingRadius(N, r = 50) {
+    const K = this.getEffectiveLifeLayers(N, r);
+    return (2 * K + 2) * r;
+  },
+
+  /**
+   * Generates all circle centers for Flower of Life up to layer N.
+   * Automatically expands the concentric hexagonal rings to match the spatial rate of Flower of Kryst.
+   *
+   * @param {number} N - Layer progression depth.
+   * @param {number} r - Base circle radius.
+   * @param {number|null} [explicitLayers=null] - Optional override for explicit layer count.
+   */
+  generateFlowerOfLifePoints(N, r, explicitLayers = null) {
     const points = [];
+    const effectiveLayers = (explicitLayers !== null) ? explicitLayers : this.getEffectiveLifeLayers(N, r);
+
     // Layer 0: Origin Center
     points.push({
       id: 'fol_0_0',
@@ -487,7 +521,7 @@ const SacredMath = {
       isVertex: true
     });
 
-    for (let k = 1; k <= N; k++) {
+    for (let k = 1; k <= effectiveLayers; k++) {
       const vertexRadius = 2 * k * r;
       const vertices = [];
       for (let m = 0; m < 6; m++) {
@@ -612,12 +646,13 @@ const SacredMath = {
   },
 
   /**
-   * Generates virtual Flower of Life centers for layers N+1 and N+2
-   * that intersect the bounding circle R_bound = (2N+2)r.
+   * Generates virtual Flower of Life centers for layers K+1 and K+2
+   * that intersect the bounding circle R_bound matching Flower of Kryst expansion.
    */
   generateVirtualBoundaryPoints(N, r) {
-    const R_bound = (2 * N + 2) * r;
-    const virtualLayers = [N + 1, N + 2];
+    const K = this.getEffectiveLifeLayers(N, r);
+    const R_bound = (2 * K + 2) * r;
+    const virtualLayers = [K + 1, K + 2];
     const virtualPoints = [];
 
     for (const k of virtualLayers) {
@@ -823,8 +858,8 @@ const State = {
 
   // Pan & Zoom Transform States
   transforms: {
-    life: { panX: 0, panY: 0, scale: 1.0 },
-    kryst: { panX: 0, panY: 0, scale: 1.0 }
+    life: { panX: 0, panY: 0, scale: 0.38 },
+    kryst: { panX: 0, panY: 0, scale: 0.38 }
   },
 
   /**
@@ -1831,7 +1866,7 @@ const SVGRenderer = {
     const R = 2 * r;
     const R_bound = (patternType === 'kryst')
       ? SacredMath.getFoKBoundingRadius(N, r)
-      : (2 * N + 2) * r;
+      : SacredMath.getFoLBoundingRadius(N, r);
     const idPrefix = svgId;
 
     // Ensure scoped defs are initialized
@@ -1876,7 +1911,8 @@ const SVGRenderer = {
       const guidesFrag = document.createDocumentFragment();
 
       if (patternType === 'life') {
-        for (let k = 1; k <= N; k++) {
+        const effectiveLayers = SacredMath.getEffectiveLifeLayers(N, r);
+        for (let k = 1; k <= effectiveLayers; k++) {
           const d_k = 2 * k * r;
           const pointsStr = [];
           for (let m = 0; m < 6; m++) {
@@ -2237,7 +2273,7 @@ const SVGRenderer = {
     const N = State.N;
     const r = State.r;
     const R = 2 * r;
-    const R_bound = Math.max((2 * N + 2) * r, SacredMath.getFoKBoundingRadius(N, r));
+    const R_bound = Math.max(SacredMath.getFoLBoundingRadius(N, r), SacredMath.getFoKBoundingRadius(N, r));
     const idPrefix = svgId;
 
     this.setupDefs(svg, idPrefix, R_bound);
@@ -2255,7 +2291,8 @@ const SVGRenderer = {
       const guidesFrag = document.createDocumentFragment();
 
       // Flower of Life Hexagons (Red dashed)
-      for (let k = 1; k <= N; k++) {
+      const effectiveLifeLayers = SacredMath.getEffectiveLifeLayers(N, r);
+      for (let k = 1; k <= effectiveLifeLayers; k++) {
         const d_k_life = 2 * k * r;
         const hexPoints = [];
         for (let m = 0; m < 6; m++) {
@@ -3194,9 +3231,10 @@ const UI = {
 
   updateCounts() {
     const N = State.N;
+    const effectiveLifeLayers = SacredMath.getEffectiveLifeLayers(N, State.r);
     const folCount = (State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube')
       ? 13
-      : 1 + 3 * N * (N + 1);
+      : 1 + 3 * effectiveLifeLayers * (effectiveLifeLayers + 1);
     const fokPoints = SacredMath.generateFlowerOfKrystPoints(N, State.r);
     const fokCount = fokPoints.length;
 
@@ -3220,12 +3258,13 @@ const UI = {
   },
 
   updateSidebarStats() {
-    const R_bound_life = (2 * State.N + 2) * State.r;
+    const R_bound_life = SacredMath.getFoLBoundingRadius(State.N, State.r);
     const R_bound_kryst = SacredMath.getFoKBoundingRadius(State.N, State.r);
     const boundEl = document.getElementById('sidebarBoundRad');
     if (boundEl) {
       const krystStr = `${Math.round(R_bound_kryst)}px (${(R_bound_kryst / State.r).toFixed(2)}r)`;
-      const lifeStr = `${Math.round(R_bound_life)}px (${2 * State.N + 2}r)`;
+      const lifeLayers = SacredMath.getEffectiveLifeLayers(State.N, State.r);
+      const lifeStr = `${Math.round(R_bound_life)}px (${2 * lifeLayers + 2}r)`;
       if (State.viewportMode === 'single-kryst') {
         boundEl.textContent = krystStr;
       } else if (State.viewportMode === 'single-life') {
@@ -3267,21 +3306,11 @@ const UI = {
     });
 
     document.getElementById('resetZoomBtn')?.addEventListener('click', () => {
-      State.transforms.life = { panX: 0, panY: 0, scale: 1.0 };
-      State.transforms.kryst = { panX: 0, panY: 0, scale: 1.0 };
-      App.renderAll();
+      this.fitToScreen();
     });
 
     document.getElementById('fitZoomBtn')?.addEventListener('click', () => {
-      const R_bound = Math.max((2 * State.N + 2) * State.r, SacredMath.getFoKBoundingRadius(State.N, State.r));
-      const pane = document.querySelector('.viewport-pane');
-      if (pane) {
-        const minDim = Math.min(pane.clientWidth, pane.clientHeight) * 0.85;
-        const fitScale = clampNumber(minDim / (2 * R_bound), 0.1, 10.0, 1.0);
-        State.transforms.life = { panX: 0, panY: 0, scale: fitScale };
-        State.transforms.kryst = { panX: 0, panY: 0, scale: fitScale };
-        App.renderAll();
-      }
+      this.fitToScreen();
     });
 
     const syncBtn = document.getElementById('syncPanBtn');
@@ -3376,6 +3405,18 @@ const UI = {
     this._toastTimer = setTimeout(() => {
       toast.classList.remove('show');
     }, duration);
+  },
+
+  fitToScreen() {
+    const R_bound = Math.max(SacredMath.getFoLBoundingRadius(State.N, State.r), SacredMath.getFoKBoundingRadius(State.N, State.r));
+    const pane = document.querySelector('.viewport-pane');
+    const width = pane?.clientWidth || 800;
+    const height = pane?.clientHeight || 800;
+    const minDim = Math.min(width, height) * 0.85;
+    const fitScale = clampNumber(minDim / (2 * R_bound), 0.05, 5.0, 0.38);
+    State.transforms.life = { panX: 0, panY: 0, scale: fitScale };
+    State.transforms.kryst = { panX: 0, panY: 0, scale: fitScale };
+    App.renderAll();
   }
 };
 
@@ -3613,6 +3654,11 @@ const App = {
 
     // Default: Apply Krystonial comparison preset
     UI.applyPreset('krystonial_comparison');
+
+    // Automatically fit initial view to display whole initial flowers
+    requestAnimationFrame(() => {
+      UI.fitToScreen();
+    });
   },
 
   renderAll() {

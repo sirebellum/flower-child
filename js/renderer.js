@@ -117,7 +117,7 @@ const SVGRenderer = {
     const R = 2 * r;
     const R_bound = (patternType === 'kryst')
       ? SacredMath.getFoKBoundingRadius(N, r)
-      : (2 * N + 2) * r;
+      : SacredMath.getFoLBoundingRadius(N, r);
     const idPrefix = svgId;
 
     // Ensure scoped defs are initialized
@@ -162,7 +162,8 @@ const SVGRenderer = {
       const guidesFrag = document.createDocumentFragment();
 
       if (patternType === 'life') {
-        for (let k = 1; k <= N; k++) {
+        const effectiveLayers = SacredMath.getEffectiveLifeLayers(N, r);
+        for (let k = 1; k <= effectiveLayers; k++) {
           const d_k = 2 * k * r;
           const pointsStr = [];
           for (let m = 0; m < 6; m++) {
@@ -523,7 +524,7 @@ const SVGRenderer = {
     const N = State.N;
     const r = State.r;
     const R = 2 * r;
-    const R_bound = Math.max((2 * N + 2) * r, SacredMath.getFoKBoundingRadius(N, r));
+    const R_bound = Math.max(SacredMath.getFoLBoundingRadius(N, r), SacredMath.getFoKBoundingRadius(N, r));
     const idPrefix = svgId;
 
     this.setupDefs(svg, idPrefix, R_bound);
@@ -541,7 +542,8 @@ const SVGRenderer = {
       const guidesFrag = document.createDocumentFragment();
 
       // Flower of Life Hexagons (Red dashed)
-      for (let k = 1; k <= N; k++) {
+      const effectiveLifeLayers = SacredMath.getEffectiveLifeLayers(N, r);
+      for (let k = 1; k <= effectiveLifeLayers; k++) {
         const d_k_life = 2 * k * r;
         const hexPoints = [];
         for (let m = 0; m < 6; m++) {

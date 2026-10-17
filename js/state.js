@@ -76,8 +76,8 @@ const State = {
 
   // Pan & Zoom Transform States
   transforms: {
-    life: { panX: 0, panY: 0, scale: 1.0 },
-    kryst: { panX: 0, panY: 0, scale: 1.0 }
+    life: { panX: 0, panY: 0, scale: 0.38 },
+    kryst: { panX: 0, panY: 0, scale: 0.38 }
   },
 
   /**

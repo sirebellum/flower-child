@@ -38,6 +38,11 @@ const App = {
 
     // Default: Apply Krystonial comparison preset
     UI.applyPreset('krystonial_comparison');
+
+    // Automatically fit initial view to display whole initial flowers
+    requestAnimationFrame(() => {
+      UI.fitToScreen();
+    });
   },
 
   renderAll() {

@@ -459,10 +459,44 @@ const SacredMath = {
   },
 
   /**
-   * Generates all circle centers for Flower of Life up to layer N.
+   * Returns the effective number of Flower of Life concentric hexagonal layers
+   * required to match the spatial expansion rate of the Flower of Kryst at depth N.
+   *
+   * @param {number} N - Layer progression depth.
+   * @param {number} [r=50] - Base circle radius.
+   * @returns {number} Number of hexagonal concentric layers.
    */
-  generateFlowerOfLifePoints(N, r) {
+  getEffectiveLifeLayers(N, r = 50) {
+    if (N <= 0) return 0;
+    const fokBound = this.getFoKBoundingRadius(N, r);
+    return Math.max(1, Math.round((fokBound - 2 * r) / (2 * r)));
+  },
+
+  /**
+   * Dynamic Outer Bounding Circle radius for Flower of Life matching Flower of Kryst expansion:
+   * (2 * effectiveLayers + 2) * r
+   *
+   * @param {number} N - Layer progression depth.
+   * @param {number} [r=50] - Base circle radius.
+   * @returns {number} Outer circumscribing boundary radius.
+   */
+  getFoLBoundingRadius(N, r = 50) {
+    const K = this.getEffectiveLifeLayers(N, r);
+    return (2 * K + 2) * r;
+  },
+
+  /**
+   * Generates all circle centers for Flower of Life up to layer N.
+   * Automatically expands the concentric hexagonal rings to match the spatial rate of Flower of Kryst.
+   *
+   * @param {number} N - Layer progression depth.
+   * @param {number} r - Base circle radius.
+   * @param {number|null} [explicitLayers=null] - Optional override for explicit layer count.
+   */
+  generateFlowerOfLifePoints(N, r, explicitLayers = null) {
     const points = [];
+    const effectiveLayers = (explicitLayers !== null) ? explicitLayers : this.getEffectiveLifeLayers(N, r);
+
     // Layer 0: Origin Center
     points.push({
       id: 'fol_0_0',
@@ -476,7 +510,7 @@ const SacredMath = {
       isVertex: true
     });
 
-    for (let k = 1; k <= N; k++) {
+    for (let k = 1; k <= effectiveLayers; k++) {
       const vertexRadius = 2 * k * r;
       const vertices = [];
       for (let m = 0; m < 6; m++) {
@@ -601,12 +635,13 @@ const SacredMath = {
   },
 
   /**
-   * Generates virtual Flower of Life centers for layers N+1 and N+2
-   * that intersect the bounding circle R_bound = (2N+2)r.
+   * Generates virtual Flower of Life centers for layers K+1 and K+2
+   * that intersect the bounding circle R_bound matching Flower of Kryst expansion.
    */
   generateVirtualBoundaryPoints(N, r) {
-    const R_bound = (2 * N + 2) * r;
-    const virtualLayers = [N + 1, N + 2];
+    const K = this.getEffectiveLifeLayers(N, r);
+    const R_bound = (2 * K + 2) * r;
+    const virtualLayers = [K + 1, K + 2];
     const virtualPoints = [];
 
     for (const k of virtualLayers) {

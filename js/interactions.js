@@ -615,9 +615,10 @@ const UI = {
 
   updateCounts() {
     const N = State.N;
+    const effectiveLifeLayers = SacredMath.getEffectiveLifeLayers(N, State.r);
     const folCount = (State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube')
       ? 13
-      : 1 + 3 * N * (N + 1);
+      : 1 + 3 * effectiveLifeLayers * (effectiveLifeLayers + 1);
     const fokPoints = SacredMath.generateFlowerOfKrystPoints(N, State.r);
     const fokCount = fokPoints.length;
 
@@ -641,12 +642,13 @@ const UI = {
   },
 
   updateSidebarStats() {
-    const R_bound_life = (2 * State.N + 2) * State.r;
+    const R_bound_life = SacredMath.getFoLBoundingRadius(State.N, State.r);
     const R_bound_kryst = SacredMath.getFoKBoundingRadius(State.N, State.r);
     const boundEl = document.getElementById('sidebarBoundRad');
     if (boundEl) {
       const krystStr = `${Math.round(R_bound_kryst)}px (${(R_bound_kryst / State.r).toFixed(2)}r)`;
-      const lifeStr = `${Math.round(R_bound_life)}px (${2 * State.N + 2}r)`;
+      const lifeLayers = SacredMath.getEffectiveLifeLayers(State.N, State.r);
+      const lifeStr = `${Math.round(R_bound_life)}px (${2 * lifeLayers + 2}r)`;
       if (State.viewportMode === 'single-kryst') {
         boundEl.textContent = krystStr;
       } else if (State.viewportMode === 'single-life') {
@@ -688,21 +690,11 @@ const UI = {
     });
 
     document.getElementById('resetZoomBtn')?.addEventListener('click', () => {
-      State.transforms.life = { panX: 0, panY: 0, scale: 1.0 };
-      State.transforms.kryst = { panX: 0, panY: 0, scale: 1.0 };
-      App.renderAll();
+      this.fitToScreen();
     });
 
     document.getElementById('fitZoomBtn')?.addEventListener('click', () => {
-      const R_bound = Math.max((2 * State.N + 2) * State.r, SacredMath.getFoKBoundingRadius(State.N, State.r));
-      const pane = document.querySelector('.viewport-pane');
-      if (pane) {
-        const minDim = Math.min(pane.clientWidth, pane.clientHeight) * 0.85;
-        const fitScale = clampNumber(minDim / (2 * R_bound), 0.1, 10.0, 1.0);
-        State.transforms.life = { panX: 0, panY: 0, scale: fitScale };
-        State.transforms.kryst = { panX: 0, panY: 0, scale: fitScale };
-        App.renderAll();
-      }
+      this.fitToScreen();
     });
 
     const syncBtn = document.getElementById('syncPanBtn');
@@ -797,6 +789,18 @@ const UI = {
     this._toastTimer = setTimeout(() => {
       toast.classList.remove('show');
     }, duration);
+  },
+
+  fitToScreen() {
+    const R_bound = Math.max(SacredMath.getFoLBoundingRadius(State.N, State.r), SacredMath.getFoKBoundingRadius(State.N, State.r));
+    const pane = document.querySelector('.viewport-pane');
+    const width = pane?.clientWidth || 800;
+    const height = pane?.clientHeight || 800;
+    const minDim = Math.min(width, height) * 0.85;
+    const fitScale = clampNumber(minDim / (2 * R_bound), 0.05, 5.0, 0.38);
+    State.transforms.life = { panX: 0, panY: 0, scale: fitScale };
+    State.transforms.kryst = { panX: 0, panY: 0, scale: fitScale };
+    App.renderAll();
   }
 };
 
