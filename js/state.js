@@ -80,6 +80,30 @@ const State = {
     kryst: { panX: 0, panY: 0, scale: 0.38 }
   },
 
+  // 3D WebGL Engine States
+  dimension: '2d', // '2d' | '3d'
+  model3D: 'triaxial', // 'triaxial' (90° Rotated Axis & Infill) | 'fcc' (Face-Centered Cubic)
+  triaxialInfill: 'both', // 'both' | 'angular' | 'grid' | 'planes'
+  infillSteps: 2, // 1 to 4
+  showPlaneXY: true,
+  showPlaneXZ: true,
+  showPlaneYZ: true,
+  showInfill3D: true,
+  showAxialRims: true,
+  fccPlaneFilter: 'all', // 'all' | 'A' | 'B' | 'C'
+  fccExpansionMode: 'volumetric', // 'volumetric' | 'stratified'
+  show3DSpheres: true,
+  show3DTorus: false,
+  show3DShells: false,
+  show3DGuides: true,
+  showZeroPointMarker: true,
+  sliceZ: 100, // -100 to 100 (%)
+  autoRotate3D: false,
+  sphereOpacity: 0.35, // Translucent spheres by default
+  sphereRoughness: 0.15,
+  sphereMetalness: 0.1,
+  cameraPreset3D: 'isometric',
+
   /**
    * Clamps and sets layer count N safely.
    * @param {number} n
@@ -475,6 +499,63 @@ const PresetsManager = {
         showEyesOfKryst: false,
         fillOpacity: 0.04
       }
+    },
+    {
+      id: 'fcc_vector_equilibrium',
+      title: '3D Vector Equilibrium',
+      subtitle: '13-Sphere Cuboctahedron (FoL K=1 vs FoK N=1)',
+      isBuiltin: true,
+      config: {
+        dimension: '3d',
+        N: 1,
+        r: 50,
+        viewportMode: 'comparison',
+        fccExpansionMode: 'volumetric',
+        fccPlaneFilter: 'all',
+        show3DSpheres: true,
+        show3DGuides: true,
+        showZeroPointMarker: true,
+        sliceZ: 100,
+        fillOpacity: 0.04
+      }
+    },
+    {
+      id: 'fcc_kryst_matrix_3d',
+      title: '3D Kryst Void Matrix',
+      subtitle: 'Hollow Zero-Point Core FCC Packing (N=2)',
+      isBuiltin: true,
+      config: {
+        dimension: '3d',
+        N: 2,
+        r: 50,
+        viewportMode: 'comparison',
+        fccExpansionMode: 'volumetric',
+        fccPlaneFilter: 'all',
+        show3DSpheres: true,
+        show3DGuides: true,
+        showZeroPointMarker: true,
+        sliceZ: 100,
+        fillOpacity: 0.04
+      }
+    },
+    {
+      id: 'fcc_cleavage_slice',
+      title: 'FCC (111) Slicer',
+      subtitle: 'Cross-Section Revealing ABC Layer Pockets',
+      isBuiltin: true,
+      config: {
+        dimension: '3d',
+        N: 2,
+        r: 50,
+        viewportMode: 'comparison',
+        fccExpansionMode: 'volumetric',
+        fccPlaneFilter: 'all',
+        show3DSpheres: true,
+        show3DGuides: true,
+        showZeroPointMarker: true,
+        sliceZ: 20,
+        fillOpacity: 0.04
+      }
     }
   ],
 
@@ -635,7 +716,19 @@ const PresetsManager = {
       strokeGuide: State.strokeGuide,
       colorByLayer: State.colorByLayer,
       enableGlow: State.enableGlow,
-      enablePulse: State.enablePulse
+      enablePulse: State.enablePulse,
+      dimension: State.dimension,
+      fccPlaneFilter: State.fccPlaneFilter,
+      fccExpansionMode: State.fccExpansionMode,
+      show3DSpheres: State.show3DSpheres,
+      show3DTorus: State.show3DTorus,
+      show3DShells: State.show3DShells,
+      show3DGuides: State.show3DGuides,
+      showZeroPointMarker: State.showZeroPointMarker,
+      sliceZ: State.sliceZ,
+      sphereOpacity: State.sphereOpacity,
+      sphereRoughness: State.sphereRoughness,
+      sphereMetalness: State.sphereMetalness
     };
   },
 

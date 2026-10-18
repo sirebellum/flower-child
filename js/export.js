@@ -107,13 +107,17 @@ const Exporter = {
 
   /**
    * Generates and triggers download of a high-resolution PNG raster image.
-   * Renders the SVG clone onto an offscreen canvas with deep background fill,
-   * wrapped in guaranteed cleanup blocks.
+   * If in 3D WebGL mode, directly captures the high-DPI WebGL canvas buffer.
+   * If in 2D mode, renders SVG onto an offscreen canvas.
    *
    * @param {number} width - Output image width in pixels (e.g. 2400 or 3840).
    * @param {number} height - Output image height in pixels (e.g. 2400 or 3840).
    */
   downloadPNG(width, height) {
+    if (State.dimension === '3d') {
+      return this.downloadPNG3D();
+    }
+
     if (window.UI?.showToast) window.UI.showToast(`Rendering high-DPI canvas (${width}×${height})...`);
 
     const svg = (State.viewportMode === 'single-kryst')
@@ -179,6 +183,52 @@ const Exporter = {
     };
 
     img.src = blobURL;
+  },
+
+  /**
+   * Captures the high-resolution 3D WebGL canvas buffer.
+   */
+  downloadPNG3D() {
+    if (window.Renderer3D) {
+      const pngData = window.Renderer3D.capturePNG();
+      if (pngData) {
+        const a = document.createElement('a');
+        a.href = pngData;
+        a.download = `sacred_geometry_3D_${State.activePreset}_N${State.N}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (window.UI?.showToast) window.UI.showToast('3D WebGL image exported successfully');
+        return;
+      }
+    }
+    if (window.UI?.showToast) window.UI.showToast('Error capturing 3D canvas', 3000);
+  },
+
+  /**
+   * Exports the active 3D FCC crystal geometry as a 3D Wavefront .OBJ file.
+   */
+  downloadOBJ() {
+    if (window.Renderer3D) {
+      const objData = window.Renderer3D.exportOBJ();
+      if (objData) {
+        const blob = new Blob([objData], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        try {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `sacred_geometry_3D_FCC_${State.activePreset}_N${State.N}.obj`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          if (window.UI?.showToast) window.UI.showToast('3D Wavefront .OBJ model exported');
+          return;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+    }
+    if (window.UI?.showToast) window.UI.showToast('Error exporting 3D OBJ model', 3000);
   }
 };
 

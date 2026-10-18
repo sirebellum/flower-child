@@ -7,7 +7,6 @@ import { State, PresetsManager, PresetDialog, clampNumber } from './state.js';
 import { SacredMath } from './geometry.js';
 import { SVGRenderer } from './renderer.js';
 import { Exporter } from './export.js';
-import { App } from './main.js';
 
 /* =========================================================================
    PAN/ZOOM CONTROLLER (RAF-THROTTLED)
@@ -121,9 +120,11 @@ const UI = {
   init() {
     PresetsManager.init();
     this.bindAccordions();
+    this.bindDimensionTabs();
     this.bindViewTabs();
     this.bindSliders();
     this.bindToggles();
+    this.bind3DControls();
     this.bindColorPickers();
     PresetsManager.renderPresetGrid();
     this.bindPresets();
@@ -220,6 +221,53 @@ const UI = {
         toggleInspectorBtn.innerHTML = inspectorCard.classList.contains('minimized') ? '&#43;' : '&minus;';
       });
     }
+  },
+
+  bindDimensionTabs() {
+    document.querySelectorAll('#dimensionSwitcher .dim-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const dim = tab.dataset.dim;
+        this.setDimension(dim);
+      });
+    });
+  },
+
+  setDimension(dim) {
+    State.dimension = dim;
+    document.querySelectorAll('#dimensionSwitcher .dim-tab').forEach(tab => {
+      const isActive = tab.dataset.dim === dim;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    const svgLife = document.getElementById('svgWrapperLife');
+    const svgKryst = document.getElementById('svgWrapperKryst');
+    const webglLife = document.getElementById('webglWrapperLife');
+    const webglKryst = document.getElementById('webglWrapperKryst');
+    const section3d = document.getElementById('section3dControls');
+
+    if (dim === '3d') {
+      if (svgLife) svgLife.style.display = 'none';
+      if (svgKryst) svgKryst.style.display = 'none';
+      if (webglLife) webglLife.style.display = 'flex';
+      if (webglKryst) webglKryst.style.display = 'flex';
+      if (section3d) section3d.classList.add('open');
+
+      if (window.Renderer3D) {
+        window.Renderer3D.renderAll();
+        window.Renderer3D.fitCameraAll();
+      }
+      this.showToast('3D FCC WebGL Engine Active');
+    } else {
+      if (svgLife) svgLife.style.display = '';
+      if (svgKryst) svgKryst.style.display = '';
+      if (webglLife) webglLife.style.display = 'none';
+      if (webglKryst) webglKryst.style.display = 'none';
+
+      App.renderAll();
+      this.showToast('2D SVG Engine Active');
+    }
+    this.updateCounts();
   },
 
   bindViewTabs() {
@@ -373,6 +421,162 @@ const UI = {
         App.renderAll();
       });
     });
+  },
+
+  bind3DControls() {
+    // 3D Architecture Model Switcher
+    const modelSelect = document.getElementById('select3DModel');
+    if (modelSelect) {
+      modelSelect.addEventListener('change', (e) => {
+        State.model3D = e.target.value;
+        const isFcc = (State.model3D === 'fcc');
+        const fccGroup = document.getElementById('groupFccControls');
+        const triaxialPlanes = document.getElementById('groupTriaxialPlanes');
+        const infillModeGroup = document.getElementById('groupInfillMode');
+        const infillStepsGroup = document.getElementById('groupInfillSteps');
+
+        if (fccGroup) fccGroup.style.display = isFcc ? 'block' : 'none';
+        if (triaxialPlanes) triaxialPlanes.style.display = isFcc ? 'none' : 'block';
+        if (infillModeGroup) infillModeGroup.style.display = isFcc ? 'none' : 'block';
+        if (infillStepsGroup) infillStepsGroup.style.display = isFcc ? 'none' : 'block';
+
+        if (State.dimension === '3d' && window.Renderer3D) {
+          window.Renderer3D.renderAll();
+          window.Renderer3D.fitCameraAll();
+        }
+      });
+    }
+
+    // Infill Mode Selector
+    const infillSelect = document.getElementById('selectInfillMode');
+    if (infillSelect) {
+      infillSelect.addEventListener('change', (e) => {
+        State.triaxialInfill = e.target.value;
+        if (State.dimension === '3d' && window.Renderer3D) {
+          window.Renderer3D.renderAll();
+        }
+      });
+    }
+
+    // Infill Density Steps Slider
+    const infillStepsSlider = document.getElementById('infillStepsSlider');
+    const infillStepsBadge = document.getElementById('infillStepsBadge');
+    if (infillStepsSlider && infillStepsBadge) {
+      infillStepsSlider.addEventListener('input', (e) => {
+        const val = Number(e.target.value);
+        State.infillSteps = val;
+        infillStepsBadge.textContent = `${val} ${val === 1 ? 'Step' : 'Steps'}`;
+        if (State.dimension === '3d' && window.Renderer3D) {
+          window.Renderer3D.renderAll();
+        }
+      });
+    }
+
+    // 3D Representation toggles
+    const toggles = [
+      { id: 'togglePlaneXY', prop: 'showPlaneXY' },
+      { id: 'togglePlaneXZ', prop: 'showPlaneXZ' },
+      { id: 'togglePlaneYZ', prop: 'showPlaneYZ' },
+      { id: 'toggleInfill3D', prop: 'showInfill3D' },
+      { id: 'toggleAxialRims', prop: 'showAxialRims' },
+      { id: 'toggle3DSpheres', prop: 'show3DSpheres' },
+      { id: 'toggle3DTorus', prop: 'show3DTorus' },
+      { id: 'toggle3DShells', prop: 'show3DShells' },
+      { id: 'toggle3DGuides', prop: 'show3DGuides' },
+      { id: 'toggleZeroPointMarker', prop: 'showZeroPointMarker' }
+    ];
+
+    toggles.forEach(t => {
+      const el = document.getElementById(t.id);
+      if (el) {
+        el.addEventListener('change', (e) => {
+          State[t.prop] = e.target.checked;
+          if (State.dimension === '3d' && window.Renderer3D) {
+            window.Renderer3D.renderAll();
+          }
+        });
+      }
+    });
+
+    // 3D Kryst Expansion Mode
+    const expSelect = document.getElementById('select3DExpansionMode');
+    if (expSelect) {
+      expSelect.addEventListener('change', (e) => {
+        State.fccExpansionMode = e.target.value;
+        if (State.dimension === '3d' && window.Renderer3D) {
+          window.Renderer3D.renderAll();
+        }
+      });
+    }
+
+    // Isolate FCC Plane Buttons
+    document.querySelectorAll('#fccPlaneBar .fcc-plane-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#fccPlaneBar .fcc-plane-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        State.fccPlaneFilter = btn.dataset.plane;
+        if (State.dimension === '3d' && window.Renderer3D) {
+          window.Renderer3D.renderAll();
+        }
+      });
+    });
+
+    // Z-Slice Slider
+    const sliceSlider = document.getElementById('sliceZSlider');
+    const sliceBadge = document.getElementById('sliceZBadge');
+    if (sliceSlider && sliceBadge) {
+      sliceSlider.addEventListener('input', (e) => {
+        State.sliceZ = Number(e.target.value);
+        sliceBadge.textContent = `${State.sliceZ}%`;
+        if (window.Renderer3D) {
+          window.Renderer3D.updateZSlice();
+        }
+      });
+    }
+
+    // Sphere Opacity Slider
+    const opacitySlider = document.getElementById('sphereOpacitySlider');
+    const opacityBadge = document.getElementById('sphereOpacityBadge');
+    if (opacitySlider && opacityBadge) {
+      opacitySlider.addEventListener('input', (e) => {
+        const val = Number(e.target.value);
+        State.sphereOpacity = val / 100;
+        opacityBadge.textContent = `${val}%`;
+        if (window.Renderer3D) {
+          window.Renderer3D.renderAll();
+        }
+      });
+    }
+
+    // Camera Presets
+    document.getElementById('camPresetTop')?.addEventListener('click', () => {
+      document.querySelectorAll('#camPresetTop, #camPresetFront, #camPresetIso').forEach(b => b.classList.remove('active'));
+      document.getElementById('camPresetTop')?.classList.add('active');
+      State.cameraPreset3D = 'top';
+      if (window.Renderer3D) window.Renderer3D.setCameraPreset('top');
+    });
+
+    document.getElementById('camPresetFront')?.addEventListener('click', () => {
+      document.querySelectorAll('#camPresetTop, #camPresetFront, #camPresetIso').forEach(b => b.classList.remove('active'));
+      document.getElementById('camPresetFront')?.classList.add('active');
+      State.cameraPreset3D = 'front';
+      if (window.Renderer3D) window.Renderer3D.setCameraPreset('front');
+    });
+
+    document.getElementById('camPresetIso')?.addEventListener('click', () => {
+      document.querySelectorAll('#camPresetTop, #camPresetFront, #camPresetIso').forEach(b => b.classList.remove('active'));
+      document.getElementById('camPresetIso')?.classList.add('active');
+      State.cameraPreset3D = 'isometric';
+      if (window.Renderer3D) window.Renderer3D.setCameraPreset('isometric');
+    });
+
+    // Auto-Rotate Toggle
+    const autoRotateToggle = document.getElementById('toggleAutoRotate3D');
+    if (autoRotateToggle) {
+      autoRotateToggle.addEventListener('change', (e) => {
+        State.autoRotate3D = e.target.checked;
+      });
+    }
   },
 
   bindColorPickers() {
@@ -544,6 +748,21 @@ const UI = {
     if (cfg.enableGlow !== undefined) State.enableGlow = Boolean(cfg.enableGlow);
     if (cfg.enablePulse !== undefined) State.enablePulse = Boolean(cfg.enablePulse);
 
+    // 3D FCC parameters
+    if (cfg.dimension !== undefined) {
+      this.setDimension(cfg.dimension);
+    } else {
+      this.setDimension('2d');
+    }
+    if (cfg.fccPlaneFilter !== undefined) State.fccPlaneFilter = cfg.fccPlaneFilter;
+    if (cfg.fccExpansionMode !== undefined) State.fccExpansionMode = cfg.fccExpansionMode;
+    if (cfg.show3DSpheres !== undefined) State.show3DSpheres = Boolean(cfg.show3DSpheres);
+    if (cfg.show3DTorus !== undefined) State.show3DTorus = Boolean(cfg.show3DTorus);
+    if (cfg.show3DShells !== undefined) State.show3DShells = Boolean(cfg.show3DShells);
+    if (cfg.show3DGuides !== undefined) State.show3DGuides = Boolean(cfg.show3DGuides);
+    if (cfg.showZeroPointMarker !== undefined) State.showZeroPointMarker = Boolean(cfg.showZeroPointMarker);
+    if (cfg.sliceZ !== undefined) State.sliceZ = Number(cfg.sliceZ);
+
     const platonicBar = document.getElementById('platonicBar');
     if (platonicBar) {
       platonicBar.classList.toggle('visible', Boolean(State.showMetatronLines || key === 'metatrons_cube'));
@@ -604,16 +823,49 @@ const UI = {
       { id: 'toggleCenterDots', val: State.showCenterDots },
       { id: 'toggleRadialAxes', val: State.showRadialAxes },
       { id: 'toggleMetatronLines', val: State.showMetatronLines },
-      { id: 'toggleEyesOfKryst', val: State.showEyesOfKryst }
+      { id: 'toggleEyesOfKryst', val: State.showEyesOfKryst },
+      { id: 'toggle3DSpheres', val: State.show3DSpheres },
+      { id: 'toggle3DTorus', val: State.show3DTorus },
+      { id: 'toggle3DShells', val: State.show3DShells },
+      { id: 'toggle3DGuides', val: State.show3DGuides },
+      { id: 'toggleZeroPointMarker', val: State.showZeroPointMarker },
+      { id: 'toggleAutoRotate3D', val: State.autoRotate3D }
     ];
 
     boolInputs.forEach(item => {
       const el = document.getElementById(item.id);
       if (el) el.checked = Boolean(item.val);
     });
+
+    const expSelect = document.getElementById('select3DExpansionMode');
+    if (expSelect) expSelect.value = State.fccExpansionMode || 'volumetric';
+
+    document.querySelectorAll('#fccPlaneBar .fcc-plane-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.plane === (State.fccPlaneFilter || 'all'));
+    });
+
+    const sliceSlider = document.getElementById('sliceZSlider');
+    const sliceBadge = document.getElementById('sliceZBadge');
+    if (sliceSlider && sliceBadge) {
+      sliceSlider.value = State.sliceZ !== undefined ? State.sliceZ : 100;
+      sliceBadge.textContent = `${sliceSlider.value}%`;
+    }
+
+    const opacitySlider = document.getElementById('sphereOpacitySlider');
+    const opacityBadge = document.getElementById('sphereOpacityBadge');
+    if (opacitySlider && opacityBadge) {
+      const val = Math.round((State.sphereOpacity || 0.92) * 100);
+      opacitySlider.value = val;
+      opacityBadge.textContent = `${val}%`;
+    }
   },
 
   updateCounts() {
+    if (State.dimension === '3d' && window.Renderer3D) {
+      window.Renderer3D.update3DStats();
+      return;
+    }
+
     const N = State.N;
     const effectiveLifeLayers = SacredMath.getEffectiveLifeLayers(N, State.r);
     const folCount = (State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube')
@@ -682,15 +934,39 @@ const UI = {
 
   bindFloatingControls() {
     document.getElementById('zoomInBtn')?.addEventListener('click', () => {
-      App.panZoomControllers.forEach(pz => pz.zoom(1.25));
+      if (State.dimension === '3d' && window.Renderer3D) {
+        ['life', 'kryst'].forEach(k => {
+          const vp = window.Renderer3D.viewports[k];
+          if (vp && vp.camera) {
+            vp.camera.position.multiplyScalar(0.85);
+            vp.controls?.update();
+          }
+        });
+      } else {
+        App.panZoomControllers.forEach(pz => pz.zoom(1.25));
+      }
     });
 
     document.getElementById('zoomOutBtn')?.addEventListener('click', () => {
-      App.panZoomControllers.forEach(pz => pz.zoom(0.8));
+      if (State.dimension === '3d' && window.Renderer3D) {
+        ['life', 'kryst'].forEach(k => {
+          const vp = window.Renderer3D.viewports[k];
+          if (vp && vp.camera) {
+            vp.camera.position.multiplyScalar(1.18);
+            vp.controls?.update();
+          }
+        });
+      } else {
+        App.panZoomControllers.forEach(pz => pz.zoom(0.8));
+      }
     });
 
     document.getElementById('resetZoomBtn')?.addEventListener('click', () => {
-      this.fitToScreen();
+      if (State.dimension === '3d' && window.Renderer3D) {
+        window.Renderer3D.setCameraPreset(State.cameraPreset3D || 'isometric');
+      } else {
+        this.fitToScreen();
+      }
     });
 
     document.getElementById('fitZoomBtn')?.addEventListener('click', () => {
@@ -710,6 +986,10 @@ const UI = {
       State.highlightedIds.clear();
       SVGRenderer.updateHighlights('svgLife');
       SVGRenderer.updateHighlights('svgKryst');
+      if (State.dimension === '3d' && window.Renderer3D) {
+        if (window.Renderer3D.viewports.life) window.Renderer3D.viewports.life.clearHighlight();
+        if (window.Renderer3D.viewports.kryst) window.Renderer3D.viewports.kryst.clearHighlight();
+      }
       const inspectStatus = document.getElementById('inspectStatus');
       if (inspectStatus) inspectStatus.textContent = 'Cleared';
       this.updateSidebarStats();
@@ -757,6 +1037,14 @@ const UI = {
       Exporter.downloadPNG(3840, 3840);
       exportModal?.classList.remove('open');
     });
+    document.getElementById('downloadPng3dBtn')?.addEventListener('click', () => {
+      Exporter.downloadPNG3D();
+      exportModal?.classList.remove('open');
+    });
+    document.getElementById('downloadObjBtn')?.addEventListener('click', () => {
+      Exporter.downloadOBJ();
+      exportModal?.classList.remove('open');
+    });
   },
 
   bindKeyboardShortcuts() {
@@ -792,6 +1080,10 @@ const UI = {
   },
 
   fitToScreen() {
+    if (State.dimension === '3d' && window.Renderer3D) {
+      window.Renderer3D.fitCameraAll();
+      return;
+    }
     const R_bound = Math.max(SacredMath.getFoLBoundingRadius(State.N, State.r), SacredMath.getFoKBoundingRadius(State.N, State.r));
     const pane = document.querySelector('.viewport-pane');
     const width = pane?.clientWidth || 800;
@@ -803,6 +1095,8 @@ const UI = {
     App.renderAll();
   }
 };
+
+window.UI = UI;
 
 export { PanZoomController, UI };
 export default UI;

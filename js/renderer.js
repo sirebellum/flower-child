@@ -162,23 +162,22 @@ const SVGRenderer = {
       const guidesFrag = document.createDocumentFragment();
 
       if (patternType === 'life') {
-        const effectiveLayers = SacredMath.getEffectiveLifeLayers(N, r);
-        for (let k = 1; k <= effectiveLayers; k++) {
-          const d_k = 2 * k * r;
-          const pointsStr = [];
-          for (let m = 0; m < 6; m++) {
-            const angle = m * 60 * SacredMath.DEG_TO_RAD;
-            pointsStr.push(`${(d_k * Math.cos(angle)).toFixed(3)},${(d_k * Math.sin(angle)).toFixed(3)}`);
+        const lifeGeometry = SacredMath.getFlowerOfLifeGeometry(N, r);
+        lifeGeometry.guides.forEach(g => {
+          if (g.vertices && g.vertices.length > 0) {
+            const pointsStr = g.vertices.map(v => `${v.x.toFixed(3)},${v.y.toFixed(3)}`).join(' ');
+            guidesFrag.appendChild(this.createSvgElement('polygon', {
+              points: pointsStr,
+              fill: 'none',
+              stroke: State.colorGuide,
+              'stroke-width': State.strokeGuide,
+              opacity: '0.85',
+              filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
+              'data-layer': g.layer,
+              'data-rotation': g.rotationDeg
+            }));
           }
-          guidesFrag.appendChild(this.createSvgElement('polygon', {
-            points: pointsStr.join(' '),
-            fill: 'none',
-            stroke: State.colorGuide,
-            'stroke-width': State.strokeGuide,
-            opacity: '0.85',
-            filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none'
-          }));
-        }
+        });
       } else {
         // Flower of Kryst: Guide shapes collected from active stamps (Hexagons & Triangles)
         const krystGeometry = SacredMath.getKrystGeometry(N, r);
@@ -541,24 +540,23 @@ const SVGRenderer = {
       const guidesGroup = this.createSvgElement('g', { class: 'group-superimposed-guides' });
       const guidesFrag = document.createDocumentFragment();
 
-      // Flower of Life Hexagons (Red dashed)
-      const effectiveLifeLayers = SacredMath.getEffectiveLifeLayers(N, r);
-      for (let k = 1; k <= effectiveLifeLayers; k++) {
-        const d_k_life = 2 * k * r;
-        const hexPoints = [];
-        for (let m = 0; m < 6; m++) {
-          const a = m * 60 * SacredMath.DEG_TO_RAD;
-          hexPoints.push(`${(d_k_life * Math.cos(a)).toFixed(3)},${(d_k_life * Math.sin(a)).toFixed(3)}`);
+      // Flower of Life Hexagons (Red dashed: rendered directly from lifeGeometry.guides)
+      const lifeGeometry = SacredMath.getFlowerOfLifeGeometry(N, r);
+      lifeGeometry.guides.forEach(g => {
+        if (g.vertices && g.vertices.length > 0) {
+          const hexPoints = g.vertices.map(v => `${v.x.toFixed(3)},${v.y.toFixed(3)}`).join(' ');
+          guidesFrag.appendChild(this.createSvgElement('polygon', {
+            points: hexPoints,
+            fill: 'none',
+            stroke: '#ef4444',
+            'stroke-width': '1.2',
+            'stroke-dasharray': '3 3',
+            opacity: '0.6',
+            'data-layer': g.layer,
+            'data-rotation': g.rotationDeg
+          }));
         }
-        guidesFrag.appendChild(this.createSvgElement('polygon', {
-          points: hexPoints.join(' '),
-          fill: 'none',
-          stroke: '#ef4444',
-          'stroke-width': '1.2',
-          'stroke-dasharray': '3 3',
-          opacity: '0.6'
-        }));
-      }
+      });
 
       // Flower of Kryst Guides (Cyan dashed: Hexagons & Triangles)
       const krystGeometry = SacredMath.getKrystGeometry(N, r);

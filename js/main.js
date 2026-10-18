@@ -4,7 +4,9 @@
  */
 import { State, PresetsManager } from './state.js';
 import { SacredMath } from './geometry.js';
+import { SacredMath3D } from './geometry3d.js';
 import { SVGRenderer } from './renderer.js';
+import { Renderer3D } from './renderer3d.js';
 import { PanZoomController, UI } from './interactions.js';
 import { Exporter } from './export.js';
 
@@ -17,7 +19,9 @@ const App = {
     window.App = App;
     window.State = State;
     window.SacredMath = SacredMath;
+    window.SacredMath3D = SacredMath3D;
     window.SVGRenderer = SVGRenderer;
+    window.Renderer3D = Renderer3D;
     window.UI = UI;
     window.PresetsManager = PresetsManager;
     window.Exporter = Exporter;
@@ -26,6 +30,13 @@ const App = {
 
     this.panZoomControllers.push(new PanZoomController('svgWrapperLife', 'svgLife', 'life'));
     this.panZoomControllers.push(new PanZoomController('svgWrapperKryst', 'svgKryst', 'kryst'));
+
+    // Initialize 3D WebGL renderer lazily or on demand
+    try {
+      Renderer3D.init();
+    } catch (e) {
+      console.warn('3D WebGL engine deferred initialization:', e);
+    }
 
     // RAF-throttled window resize handler
     window.addEventListener('resize', () => {
@@ -46,6 +57,10 @@ const App = {
   },
 
   renderAll() {
+    if (State.dimension === '3d') {
+      Renderer3D.renderAll();
+      return;
+    }
     if (State.viewportMode === 'superimposed') {
       SVGRenderer.renderSuperimposed('svgLife', State.transforms.life);
     } else {
@@ -58,7 +73,7 @@ const App = {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => App.init());
 } else {
-  App.init();
+  setTimeout(() => App.init(), 0);
 }
 
 export { App };

@@ -9,9 +9,9 @@
    ========================================================================= */
 const SQRT3 = Math.sqrt(3);
 const DIST_TRI_INNER = 2 + SQRT3;         // (2 + √3) ≈ 3.7320508 (radial distance to triangle base midpoint)
-const DIST_TRI_APEX  = 2 + 2 * SQRT3;     // (2 + 2√3) ≈ 5.4641016 (radial distance to triangle apex circle)
-const STAMP_STEP     = 4 + 2 * SQRT3;     // (4 + 2√3) ≈ 7.4641016 (center-to-center distance between hexagons)
-const EPSILON        = 1e-3;
+const DIST_TRI_APEX = 2 + 2 * SQRT3;     // (2 + 2√3) ≈ 5.4641016 (radial distance to triangle apex circle)
+const STAMP_STEP = 4 + 2 * SQRT3;     // (4 + 2√3) ≈ 7.4641016 (center-to-center distance between hexagons)
+const EPSILON = 1e-3;
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -170,7 +170,7 @@ function createKrystStamp(cx, cy, r) {
       circles.push({ x: hx, y: hy, role: 'hexagon-center' });
     }
 
-    // 2. Outer Hexagon 6 Ring Circles
+    // 2. Outer Hexagon 6 Ring Circles (Flower of Kryst concentric hexagons are unrotated)
     const outerHexVertices = [];
     for (let j = 0; j < 6; j++) {
       const theta = j * (Math.PI / 3);
@@ -401,6 +401,134 @@ function getKrystGeometry(N, r) {
   };
 }
 
+/**
+ * Computes the rotation angle in degrees for concentric hexagonal layer k in Flower of Life.
+ * Layer 1 (Genesis core / center ring): 0°
+ * Layer 2 (First outer ring): +30°
+ * Layer 3 (Third ring): -30° (or 330°)
+ * Alternating valley nesting: k % 2 === 0 ? 30 : -30 for k >= 2.
+ *
+ * @param {number} k - Concentric layer index (k >= 1)
+ * @returns {number} Rotation angle in degrees
+ */
+function getFlowerOfLifeLayerRotation(k) {
+  if (k <= 1) return 0;
+  return (k % 2 === 0) ? 30 : -30;
+}
+
+/**
+ * Returns the effective number of Flower of Life concentric hexagonal layers
+ * required to match the spatial expansion rate of the Flower of Kryst at depth N.
+ *
+ * @param {number} N - Layer progression depth.
+ * @param {number} [r=50] - Base circle radius.
+ * @returns {number} Number of hexagonal concentric layers.
+ */
+function getEffectiveLifeLayers(N, r = 50) {
+  if (N <= 0) return 0;
+  const fokGeom = getKrystGeometry(N, r);
+  const fokBound = fokGeom.boundingRadius || (2 * r);
+  return Math.max(1, Math.round((fokBound - 2 * r) / (2 * r)));
+}
+
+/**
+ * Pure generator for Flower of Life geometry up to depth N.
+ * Tracks concentric layer rotations (Layer 1: 0°, Layer 2: +30°, Layer 3: -30°)
+ * and outputs circle center points and guide hexagons with rotation tracked and passed along.
+ *
+ * @param {number} N - Layer progression depth.
+ * @param {number} r - Base circle radius.
+ * @param {number|null} [explicitLayers=null] - Optional override for explicit layer count.
+ * @returns {{
+ *   points: Array<{id: string, pattern: 'life', layer: number, edge: number, step: number, x: number, y: number, d: number, angleDeg: number, rotationDeg: number, isVertex: boolean}>,
+ *   circles: Array<any>,
+ *   guides: Array<{type: 'hexagon', cx: number, cy: number, radius: number, layer: number, rotationDeg: number, vertices: Array<{x: number, y: number}>}>,
+ *   boundingRadius: number
+ * }}
+ */
+function getFlowerOfLifeGeometry(N, r, explicitLayers = null) {
+  const points = [];
+  const guides = [];
+  const effectiveLayers = (explicitLayers !== null) ? explicitLayers : getEffectiveLifeLayers(N, r);
+
+  // Layer 0: Origin Center Point
+  points.push({
+    id: 'fol_0_0',
+    pattern: 'life',
+    layer: 0,
+    edge: 0,
+    step: 0,
+    index: 0,
+    x: 0,
+    y: 0,
+    d: 0,
+    angleDeg: 0,
+    rotationDeg: 0,
+    isVertex: true
+  });
+
+  for (let k = 1; k <= effectiveLayers; k++) {
+    const vertexRadius = 2 * k * r;
+    const iterationRotationDeg = getFlowerOfLifeLayerRotation(k);
+    const vertices = [];
+
+    for (let m = 0; m < 6; m++) {
+      const angle = (m * 60 + iterationRotationDeg) * DEG_TO_RAD;
+      vertices.push({
+        x: Number((vertexRadius * Math.cos(angle)).toFixed(4)),
+        y: Number((vertexRadius * Math.sin(angle)).toFixed(4))
+      });
+    }
+
+    // Guide Hexagon: rotation and vertices tracked and passed along
+    guides.push({
+      type: 'hexagon',
+      cx: 0,
+      cy: 0,
+      radius: vertexRadius,
+      layer: k,
+      rotationDeg: iterationRotationDeg,
+      vertices
+    });
+
+    let pointIndex = 0;
+    for (let m = 0; m < 6; m++) {
+      const vStart = vertices[m];
+      const vEnd = vertices[(m + 1) % 6];
+      for (let j = 0; j < k; j++) {
+        const t = j / k;
+        const x = (1 - t) * vStart.x + t * vEnd.x;
+        const y = (1 - t) * vStart.y + t * vEnd.y;
+        const d = Math.hypot(x, y);
+        let angleDeg = Math.atan2(y, x) * RAD_TO_DEG;
+        if (angleDeg < 0) angleDeg += 360;
+
+        points.push({
+          id: `fol_${k}_${pointIndex++}`,
+          pattern: 'life',
+          layer: k,
+          edge: m,
+          step: j,
+          x: Number(x.toFixed(4)),
+          y: Number(y.toFixed(4)),
+          d: Number(d.toFixed(4)),
+          angleDeg: Number(angleDeg.toFixed(2)),
+          rotationDeg: iterationRotationDeg,
+          isVertex: (j === 0)
+        });
+      }
+    }
+  }
+
+  const boundingRadius = (2 * effectiveLayers + 2) * r;
+  return {
+    points,
+    circles: points,
+    guides,
+    boundingRadius
+  };
+}
+
 /* =========================================================================
    MATHEMATICAL GEOMETRY ENGINE OBJECT
    ========================================================================= */
@@ -422,6 +550,8 @@ const SacredMath = {
 
   createKrystStamp,
   getKrystGeometry,
+  getFlowerOfLifeGeometry,
+  getFlowerOfLifeLayerRotation,
 
   /**
    * Alias for createKrystStamp for backward compatibility
@@ -432,14 +562,23 @@ const SacredMath = {
 
   /**
    * Generates hexagonal lattice ring centers for ring index s >= 1 with step size stepSize.
+   * Tracks rotation according to layer rotation progression (0°, +30°, -30° alternating).
+   *
+   * @param {number} ring - Concentric hexagonal ring index (ring >= 1).
+   * @param {number} stepSize - Distance spacing between concentric rings.
+   * @param {number|null} [angleOffsetDeg=null] - Optional override angle offset.
+   * @returns {Array<{x: number, y: number}>} Array of ring center coordinates.
    */
-  getHexRingCenters(ring, stepSize, angleOffsetDeg = 0) {
+  getHexRingCenters(ring, stepSize, angleOffsetDeg = null) {
     if (ring <= 0) return [{ x: 0, y: 0 }];
     const centers = [];
     const ringRadius = ring * stepSize;
     const vertices = [];
+    const baseOffset = (angleOffsetDeg !== null && angleOffsetDeg !== undefined)
+      ? angleOffsetDeg
+      : getFlowerOfLifeLayerRotation(ring);
     for (let m = 0; m < 6; m++) {
-      const a = (m * 60 + angleOffsetDeg) * DEG_TO_RAD;
+      const a = (m * 60 + baseOffset) * DEG_TO_RAD;
       vertices.push({
         x: ringRadius * Math.cos(a),
         y: ringRadius * Math.sin(a)
@@ -467,9 +606,7 @@ const SacredMath = {
    * @returns {number} Number of hexagonal concentric layers.
    */
   getEffectiveLifeLayers(N, r = 50) {
-    if (N <= 0) return 0;
-    const fokBound = this.getFoKBoundingRadius(N, r);
-    return Math.max(1, Math.round((fokBound - 2 * r) / (2 * r)));
+    return getEffectiveLifeLayers(N, r);
   },
 
   /**
@@ -487,68 +624,16 @@ const SacredMath = {
 
   /**
    * Generates all circle centers for Flower of Life up to layer N.
+   * Tracks and passes along rotation per layer (Layer 1: 0°, Layer 2: +30°, Layer 3: -30°).
    * Automatically expands the concentric hexagonal rings to match the spatial rate of Flower of Kryst.
    *
    * @param {number} N - Layer progression depth.
    * @param {number} r - Base circle radius.
    * @param {number|null} [explicitLayers=null] - Optional override for explicit layer count.
+   * @returns {Array<any>} Array of circle center points with rotationDeg and layer metadata.
    */
   generateFlowerOfLifePoints(N, r, explicitLayers = null) {
-    const points = [];
-    const effectiveLayers = (explicitLayers !== null) ? explicitLayers : this.getEffectiveLifeLayers(N, r);
-
-    // Layer 0: Origin Center
-    points.push({
-      id: 'fol_0_0',
-      pattern: 'life',
-      layer: 0,
-      index: 0,
-      x: 0,
-      y: 0,
-      d: 0,
-      angleDeg: 0,
-      isVertex: true
-    });
-
-    for (let k = 1; k <= effectiveLayers; k++) {
-      const vertexRadius = 2 * k * r;
-      const vertices = [];
-      for (let m = 0; m < 6; m++) {
-        const angle = m * 60 * DEG_TO_RAD;
-        vertices.push({
-          x: vertexRadius * Math.cos(angle),
-          y: vertexRadius * Math.sin(angle)
-        });
-      }
-
-      let pointIndex = 0;
-      for (let m = 0; m < 6; m++) {
-        const vStart = vertices[m];
-        const vEnd = vertices[(m + 1) % 6];
-        for (let j = 0; j < k; j++) {
-          const t = j / k;
-          const x = (1 - t) * vStart.x + t * vEnd.x;
-          const y = (1 - t) * vStart.y + t * vEnd.y;
-          const d = Math.hypot(x, y);
-          let angleDeg = Math.atan2(y, x) * RAD_TO_DEG;
-          if (angleDeg < 0) angleDeg += 360;
-
-          points.push({
-            id: `fol_${k}_${pointIndex++}`,
-            pattern: 'life',
-            layer: k,
-            edge: m,
-            step: j,
-            x: Number(x.toFixed(4)),
-            y: Number(y.toFixed(4)),
-            d: Number(d.toFixed(4)),
-            angleDeg: Number(angleDeg.toFixed(2)),
-            isVertex: (j === 0)
-          });
-        }
-      }
-    }
-    return points;
+    return getFlowerOfLifeGeometry(N, r, explicitLayers).points;
   },
 
   /**
@@ -647,8 +732,9 @@ const SacredMath = {
     for (const k of virtualLayers) {
       const vertexRadius = 2 * k * r;
       const vertices = [];
+      const iterationRotationDeg = getFlowerOfLifeLayerRotation(k);
       for (let m = 0; m < 6; m++) {
-        const angle = m * 60 * DEG_TO_RAD;
+        const angle = (m * 60 + iterationRotationDeg) * DEG_TO_RAD;
         vertices.push({
           x: vertexRadius * Math.cos(angle),
           y: vertexRadius * Math.sin(angle)
@@ -763,5 +849,12 @@ const SacredMath = {
   }
 };
 
-export { SacredMath, createKrystStamp, getKrystGeometry };
+export {
+  SacredMath,
+  createKrystStamp,
+  getKrystGeometry,
+  getFlowerOfLifeGeometry,
+  getFlowerOfLifeLayerRotation,
+  getEffectiveLifeLayers
+};
 export default SacredMath;
