@@ -228,9 +228,10 @@ const SVGRenderer = {
     // Cache points in pointsMap for O(1) lookup
     points.forEach(pt => this.pointsMap.set(pt.id, pt));
 
-    // 3. Base Pattern Circles (Radius r)
-    if (State.showBaseCircles || State.viewStyle === 'base' || State.viewStyle === 'combined' || State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube') {
-      const baseGroup = this.createSvgElement('g', { class: 'group-base-circles' });
+    // 3. Body Pattern Circles (Radius r)
+    const isBodyActive = State.showBodyCircles || State.showBaseCircles || State.viewStyle === 'body' || State.viewStyle === 'base' || State.viewStyle === 'combined' || State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube';
+    if (isBodyActive) {
+      const baseGroup = this.createSvgElement('g', { class: 'group-body-circles group-base-circles' });
       const baseFrag = document.createDocumentFragment();
       const renderedBase = [];
       const dedupTol = Math.max(0.5, 0.02 * r);
@@ -240,12 +241,12 @@ const SVGRenderer = {
         renderedBase.push(pt);
 
         const isHighlighted = State.highlightedIds.has(pt.id);
-        let baseStroke = State.colorBase;
+        let baseStroke = State.colorBody || State.colorBase;
         if (patternType === 'kryst') {
           if (pt.role === 'triangle') {
             baseStroke = State.colorTriangle || '#eab308';
           } else {
-            baseStroke = State.colorBase || '#3b82f6';
+            baseStroke = State.colorBody || State.colorBase || '#3b82f6';
           }
         }
 
@@ -255,9 +256,9 @@ const SVGRenderer = {
           r: r,
           fill: State.sphericalShading ? `url(#${idPrefix}-sphere-grad)` : (isHighlighted ? 'rgba(255,255,255,0.1)' : 'none'),
           stroke: isHighlighted ? '#ffffff' : baseStroke,
-          'stroke-width': isHighlighted ? 2.8 : State.strokeBase,
+          'stroke-width': isHighlighted ? 2.8 : (State.strokeBody || State.strokeBase),
           opacity: isHighlighted ? '1.0' : '0.8',
-          class: `circle-node base-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+          class: `circle-node body-circle base-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'data-circle-id': pt.id,
           'data-pattern': pt.pattern || patternType,
           'data-default-stroke': baseStroke
@@ -269,7 +270,8 @@ const SVGRenderer = {
     }
 
     // 4. Completed Boundary Petals (Clipped Mode for Flower of Life)
-    if (patternType === 'life' && State.showBoundaryPetals && (State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube') {
+    const isBoundaryPetalsActive = patternType === 'life' && State.showBoundaryPetals && (State.viewStyle === 'aura' || State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube';
+    if (isBoundaryPetalsActive) {
       const clippedPetalsGroup = this.createSvgElement('g', {
         class: 'group-boundary-petals',
         'clip-path': `url(#${idPrefix}-bound-clip)`
@@ -284,7 +286,7 @@ const SVGRenderer = {
           fill: State.colorLife,
           'fill-opacity': State.fillOpacity,
           stroke: State.colorLife,
-          'stroke-width': State.strokeFlower,
+          'stroke-width': State.strokeAura || State.strokeFlower,
           opacity: '0.55'
         }));
       });
@@ -292,23 +294,51 @@ const SVGRenderer = {
       mainGroup.appendChild(clippedPetalsGroup);
     }
 
-    // 5. Actual Flower Overlapping Circles (Radius R = 2r)
-    if (State.showActualFlower && (State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube') {
-      const actualGroup = this.createSvgElement('g', { class: 'group-actual-flower' });
+    // 5. Aura Overlapping Circles & Individual Clickable Sections (Radius R = 2r over center of body circles)
+    const isAuraActive = (State.showAuraFlower || State.showActualFlower) && (State.viewStyle === 'aura' || State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube';
+    if (isAuraActive) {
+      const renderedAura = [];
+      const dedupTol = Math.max(0.5, 0.02 * r);
+      points.forEach(pt => {
+        if (renderedAura.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
+        renderedAura.push(pt);
+      });
+
+      // 5a. Clickable Individual Sections (spaces bound by circle intersections)
+      const sectionsGroup = this.createSvgElement('g', { class: 'group-flower-sections' });
+      const sectionsFrag = document.createDocumentFragment();
+      const cacheKey = `${patternType}_${N}_${r}_${renderedAura.length}`;
+      if (!this.sectionsCache) this.sectionsCache = new Map();
+      let sections = this.sectionsCache.get(cacheKey);
+      if (!sections) {
+        sections = (renderedAura.length <= 150) ? SacredMath.computeCircleSections(renderedAura, R) : [];
+        this.sectionsCache.set(cacheKey, sections);
+      }
+
+      sections.forEach(sec => {
+        const isSecHighlighted = State.highlightedSectionIds.has(sec.id);
+        const secPath = this.createSvgElement('path', {
+          d: sec.d,
+          class: `flower-section ${isSecHighlighted ? 'highlighted-section' : ''}`,
+          'data-section-id': sec.id,
+          'data-pattern': patternType
+        });
+        sectionsFrag.appendChild(secPath);
+      });
+      sectionsGroup.appendChild(sectionsFrag);
+      mainGroup.appendChild(sectionsGroup);
+
+      // 5b. Aura Overlapping Circles (pointer-events: none so clicks hit sections)
+      const actualGroup = this.createSvgElement('g', { class: 'group-aura-flower group-actual-flower' });
       const actualFrag = document.createDocumentFragment();
       const flowerColor = (patternType === 'life') ? State.colorLife : State.colorKryst;
-      const renderedActual = [];
-      const dedupTol = Math.max(0.5, 0.02 * r);
 
-      points.forEach(pt => {
-        if (renderedActual.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
-        renderedActual.push(pt);
-
+      renderedAura.forEach((pt, idx) => {
         const isHighlighted = State.highlightedIds.has(pt.id);
         let strokeColor = flowerColor;
 
         if (State.colorByLayer) {
-          strokeColor = LayerColors[pt.layer % LayerColors.length];
+          strokeColor = LayerColors[(pt.layer || idx) % LayerColors.length];
         }
         if (isHighlighted) {
           strokeColor = '#ffffff';
@@ -318,42 +348,23 @@ const SVGRenderer = {
           cx: pt.x,
           cy: pt.y,
           r: R,
-          fill: isHighlighted ? 'rgba(255, 255, 255, 0.15)' : strokeColor,
-          'fill-opacity': isHighlighted ? '0.2' : State.fillOpacity,
+          fill: 'none',
+          'fill-opacity': '0',
           stroke: strokeColor,
-          'stroke-width': isHighlighted ? 3.0 : State.strokeFlower,
+          'stroke-width': isHighlighted ? 3.0 : (State.strokeAura || State.strokeFlower),
           opacity: isHighlighted ? '1.0' : '0.9',
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
-          class: `circle-node actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+          class: `circle-node aura-circle actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+          'pointer-events': 'none',
           'data-circle-id': pt.id,
           'data-pattern': pt.pattern || patternType,
-          'data-default-stroke': (State.colorByLayer ? LayerColors[pt.layer % LayerColors.length] : flowerColor)
+          'data-default-stroke': (State.colorByLayer ? LayerColors[(pt.layer || idx) % LayerColors.length] : flowerColor)
         });
 
         actualFrag.appendChild(circle);
       });
       actualGroup.appendChild(actualFrag);
       mainGroup.appendChild(actualGroup);
-    }
-
-    // 5b. Eyes of Kryst (3 Pairs = 6 Vesica Piscis Lenses in Magenta)
-    if (patternType === 'kryst' && (State.showEyesOfKryst || State.activePreset === 'eyes_of_kryst')) {
-      const eyesGroup = this.createSvgElement('g', { class: 'group-eyes-of-kryst' });
-      const eyesFrag = document.createDocumentFragment();
-      const eyes = SacredMath.getEyesOfKryst(r);
-      eyes.forEach(eye => {
-        eyesFrag.appendChild(this.createSvgElement('path', {
-          d: eye.pathD,
-          fill: '#ff00ff',
-          'fill-opacity': '0.7',
-          stroke: '#ff00ff',
-          'stroke-width': '2.2',
-          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
-          class: 'eye-of-kryst'
-        }));
-      });
-      eyesGroup.appendChild(eyesFrag);
-      mainGroup.appendChild(eyesGroup);
     }
 
     // 6. Metatron Chords / Platonic Solid Lines
@@ -449,19 +460,33 @@ const SVGRenderer = {
       mainGroup.appendChild(ringGroup);
     }
 
-    // 8. Intersection Nodes (Lattice Dots)
+    // 8. Intersection Nodes (Lattice Dots where guide hexagons/triangles cross body circles)
     if (State.showIntersections) {
       const interGroup = this.createSvgElement('g', { class: 'group-intersections' });
       const interFrag = document.createDocumentFragment();
-      const intersectionPoints = SacredMath.computeIntersectionNodes(points, R);
-      intersectionPoints.forEach(ipt => {
+
+      let currentGuides = [];
+      if (patternType === 'life') {
+        currentGuides = SacredMath.getFlowerOfLifeGeometry(N, r).guides;
+      } else {
+        currentGuides = SacredMath.getKrystGeometry(N, r).guides;
+      }
+
+      const intersectionPoints = SacredMath.computeIntersectionNodes(currentGuides, points, r, R);
+      const interColor = State.colorIntersection || '#ec4899';
+
+      // Draw the intersection node marker at each guide crossing
+      intersectionPoints.forEach((ipt, idx) => {
         interFrag.appendChild(this.createSvgElement('circle', {
           cx: ipt.x,
           cy: ipt.y,
-          r: '2.5',
-          fill: '#ffffff',
-          opacity: '0.7',
-          class: 'intersection-node'
+          r: '3.5',
+          fill: interColor,
+          stroke: '#ffffff',
+          'stroke-width': '1.2',
+          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
+          class: 'intersection-node',
+          id: `inter_node_${patternType}_${idx}`
         }));
       });
       interGroup.appendChild(interFrag);
@@ -598,7 +623,39 @@ const SVGRenderer = {
     folPoints.forEach(pt => this.pointsMap.set(pt.id, pt));
     fokPoints.forEach(pt => this.pointsMap.set(pt.id, pt));
 
-    // Flower of Life Layer (Red)
+    // Deduplicate Flower of Kryst body circle points for aura circles
+    const renderedFok = [];
+    const dedupTol = Math.max(0.5, 0.02 * r);
+    fokPoints.forEach(pt => {
+      if (renderedFok.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
+      renderedFok.push(pt);
+    });
+
+    // Superimposed Sections & Aura Circles over body circle centers
+    const allSuperCircles = [...folPoints, ...renderedFok];
+    const sectionsGroup = this.createSvgElement('g', { class: 'group-flower-sections' });
+    const sectionsFrag = document.createDocumentFragment();
+    const cacheKey = `super_${N}_${r}_${allSuperCircles.length}`;
+    if (!this.sectionsCache) this.sectionsCache = new Map();
+    let sections = this.sectionsCache.get(cacheKey);
+    if (!sections) {
+      sections = SacredMath.computeCircleSections(allSuperCircles, R);
+      this.sectionsCache.set(cacheKey, sections);
+    }
+    sections.forEach(sec => {
+      const isSecHighlighted = State.highlightedSectionIds.has(sec.id);
+      const secPath = this.createSvgElement('path', {
+        d: sec.d,
+        class: `flower-section ${isSecHighlighted ? 'highlighted-section' : ''}`,
+        'data-section-id': sec.id,
+        'data-pattern': 'superimposed'
+      });
+      sectionsFrag.appendChild(secPath);
+    });
+    sectionsGroup.appendChild(sectionsFrag);
+    mainGroup.appendChild(sectionsGroup);
+
+    // Flower of Life Layer (Red) - Aura circles over body circle centers at 2x size (R = 2r)
     const folGroup = this.createSvgElement('g', { class: 'group-fol-overlay' });
     const folFrag = document.createDocumentFragment();
     folPoints.forEach(pt => {
@@ -611,7 +668,8 @@ const SVGRenderer = {
         stroke: isHighlighted ? '#ffffff' : State.colorLife,
         'stroke-width': isHighlighted ? 3 : State.strokeFlower,
         opacity: '0.65',
-        class: `circle-node ${isHighlighted ? 'highlighted-circle' : ''}`,
+        class: `circle-node aura-circle actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+        'pointer-events': 'none',
         'data-circle-id': pt.id,
         'data-pattern': 'life',
         'data-default-stroke': State.colorLife
@@ -620,16 +678,11 @@ const SVGRenderer = {
     folGroup.appendChild(folFrag);
     mainGroup.appendChild(folGroup);
 
-    // Flower of Kryst Layer (Electric Cyan)
+    // Flower of Kryst Layer - Aura circles over body circle centers at 2x size (R = 2r)
     const fokGroup = this.createSvgElement('g', { class: 'group-fok-overlay' });
     const fokFrag = document.createDocumentFragment();
-    const renderedFok = [];
-    const dedupTol = Math.max(0.5, 0.02 * r);
 
-    fokPoints.forEach(pt => {
-      if (renderedFok.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
-      renderedFok.push(pt);
-
+    renderedFok.forEach(pt => {
       const isHighlighted = State.highlightedIds.has(pt.id);
       fokFrag.appendChild(this.createSvgElement('circle', {
         cx: pt.x,
@@ -637,9 +690,10 @@ const SVGRenderer = {
         r: R,
         fill: 'none',
         stroke: isHighlighted ? '#ffffff' : State.colorKryst,
-        'stroke-width': isHighlighted ? 3 : State.strokeFlower,
+        'stroke-width': isHighlighted ? 3 : (State.strokeAura || State.strokeFlower),
         opacity: '0.75',
-        class: `circle-node ${isHighlighted ? 'highlighted-circle' : ''}`,
+        class: `circle-node aura-circle actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+        'pointer-events': 'none',
         'data-circle-id': pt.id,
         'data-pattern': 'kryst',
         'data-default-stroke': State.colorKryst
@@ -647,26 +701,6 @@ const SVGRenderer = {
     });
     fokGroup.appendChild(fokFrag);
     mainGroup.appendChild(fokGroup);
-
-    // Eyes of Kryst
-    if (State.showEyesOfKryst || State.activePreset === 'eyes_of_kryst') {
-      const eyesGroup = this.createSvgElement('g', { class: 'group-eyes-of-kryst' });
-      const eyesFrag = document.createDocumentFragment();
-      const eyes = SacredMath.getEyesOfKryst(r);
-      eyes.forEach(eye => {
-        eyesFrag.appendChild(this.createSvgElement('path', {
-          d: eye.pathD,
-          fill: '#ff00ff',
-          'fill-opacity': '0.7',
-          stroke: '#ff00ff',
-          'stroke-width': '2.2',
-          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
-          class: 'eye-of-kryst'
-        }));
-      });
-      eyesGroup.appendChild(eyesFrag);
-      mainGroup.appendChild(eyesGroup);
-    }
 
     // Divergence Connecting Vectors (Phase Delta between FoL midpoints and FoK circular centers)
     if (N >= 2) {
@@ -733,6 +767,37 @@ const SVGRenderer = {
         stroke: State.colorOuter,
         'stroke-width': '2'
       }));
+    }
+
+    // Intersection Nodes in Superimposed mode
+    if (State.showIntersections) {
+      const interGroup = this.createSvgElement('g', { class: 'group-intersections' });
+      const interFrag = document.createDocumentFragment();
+
+      const folGuides = SacredMath.getFlowerOfLifeGeometry(N, r).guides;
+      const fokGuides = SacredMath.getKrystGeometry(N, r).guides;
+      const combinedGuides = [...folGuides, ...fokGuides];
+      const combinedPoints = [...folPoints, ...fokPoints];
+
+      const intersectionPoints = SacredMath.computeIntersectionNodes(combinedGuides, combinedPoints, r, R);
+      const interColor = State.colorIntersection || '#ec4899';
+
+      intersectionPoints.forEach((ipt, idx) => {
+        interFrag.appendChild(this.createSvgElement('circle', {
+          cx: ipt.x,
+          cy: ipt.y,
+          r: '3.5',
+          fill: interColor,
+          stroke: '#ffffff',
+          'stroke-width': '1.2',
+          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
+          class: 'intersection-node',
+          id: `inter_node_super_${idx}`
+        }));
+      });
+
+      interGroup.appendChild(interFrag);
+      mainGroup.appendChild(interGroup);
     }
 
     svg.appendChild(mainGroup);
@@ -833,6 +898,26 @@ const SVGRenderer = {
         hlGroup.appendChild(hlFrag);
       }
     }
+
+    // 3. Update section highlights
+    this.updateSectionHighlights(svgId);
+  },
+
+  /**
+   * Lightweight Section Highlight Updater:
+   * Toggles .highlighted-section class on existing <path class="flower-section"> elements.
+   *
+   * @param {string} svgId - ID of SVG canvas to update.
+   */
+  updateSectionHighlights(svgId) {
+    const svg = document.getElementById(svgId);
+    if (!svg) return;
+
+    svg.querySelectorAll('.flower-section').forEach(el => {
+      const secId = el.dataset.sectionId;
+      const isHl = State.highlightedSectionIds && State.highlightedSectionIds.has(secId);
+      el.classList.toggle('highlighted-section', Boolean(isHl));
+    });
   },
 
   /**

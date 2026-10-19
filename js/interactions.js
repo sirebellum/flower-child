@@ -31,6 +31,7 @@ class PanZoomController {
     this.wrapper.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return; // Left click only
       this.isDragging = true;
+      this.hasMoved = false;
       this.startX = e.clientX;
       this.startY = e.clientY;
       try {
@@ -42,6 +43,9 @@ class PanZoomController {
       if (!this.isDragging) return;
       const dx = e.clientX - this.startX;
       const dy = e.clientY - this.startY;
+      if (Math.hypot(dx, dy) > 4) {
+        this.hasMoved = true;
+      }
       this.startX = e.clientX;
       this.startY = e.clientY;
 
@@ -71,6 +75,15 @@ class PanZoomController {
 
     this.wrapper.addEventListener('pointerup', stopDrag);
     this.wrapper.addEventListener('pointercancel', stopDrag);
+
+    // Suppress click on drag end
+    this.wrapper.addEventListener('click', (e) => {
+      if (this.hasMoved) {
+        e.stopPropagation();
+        e.preventDefault();
+        this.hasMoved = false;
+      }
+    }, true);
 
     // Mouse Wheel for Zoom
     this.wrapper.addEventListener('wheel', (e) => {
@@ -119,6 +132,7 @@ const UI = {
 
   init() {
     PresetsManager.init();
+    this.setDimension(State.dimension || '2d');
     this.bindAccordions();
     this.bindDimensionTabs();
     this.bindViewTabs();
@@ -159,6 +173,23 @@ const UI = {
 
       // Delegated click-to-highlight with lightweight DOM updates
       svg.addEventListener('click', (e) => {
+        // 1. Check if clicking on an individual section (open space bound by circle intersections)
+        const secTarget = e.target.closest('.flower-section');
+        if (secTarget) {
+          e.stopPropagation();
+          const secId = secTarget.dataset.sectionId;
+          if (State.highlightedSectionIds.has(secId)) {
+            State.highlightedSectionIds.delete(secId);
+          } else {
+            State.highlightedSectionIds.add(secId);
+          }
+          SVGRenderer.updateSectionHighlights('svgLife');
+          SVGRenderer.updateSectionHighlights('svgKryst');
+          this.updateSidebarStats();
+          return;
+        }
+
+        // 2. Fallback check for circle / dot nodes
         const target = e.target.closest('[data-circle-id]');
         if (target) {
           e.stopPropagation();
@@ -170,12 +201,21 @@ const UI = {
             } else {
               State.highlightedIds.add(circleId);
             }
-            // Lightweight highlight update - no geometry re-render!
             SVGRenderer.updateHighlights('svgLife');
             SVGRenderer.updateHighlights('svgKryst');
             this.updateInspector(pt);
             this.updateSidebarStats();
           }
+          return;
+        }
+
+        // 3. Click on empty background: clear all highlighted sections and nodes
+        if (State.highlightedSectionIds.size > 0 || State.highlightedIds.size > 0) {
+          State.highlightedSectionIds.clear();
+          State.highlightedIds.clear();
+          SVGRenderer.updateHighlights('svgLife');
+          SVGRenderer.updateHighlights('svgKryst');
+          this.updateSidebarStats();
         }
       });
     });
@@ -234,6 +274,8 @@ const UI = {
 
   setDimension(dim) {
     State.dimension = dim;
+    document.body.dataset.dimension = dim;
+
     document.querySelectorAll('#dimensionSwitcher .dim-tab').forEach(tab => {
       const isActive = tab.dataset.dim === dim;
       tab.classList.toggle('active', isActive);
@@ -245,13 +287,20 @@ const UI = {
     const webglLife = document.getElementById('webglWrapperLife');
     const webglKryst = document.getElementById('webglWrapperKryst');
     const section3d = document.getElementById('section3dControls');
+    const section2d = document.getElementById('section2dLayers');
 
     if (dim === '3d') {
       if (svgLife) svgLife.style.display = 'none';
       if (svgKryst) svgKryst.style.display = 'none';
       if (webglLife) webglLife.style.display = 'flex';
       if (webglKryst) webglKryst.style.display = 'flex';
-      if (section3d) section3d.classList.add('open');
+      if (section3d) {
+        section3d.style.display = '';
+        section3d.classList.add('open');
+      }
+      if (section2d) {
+        section2d.style.display = 'none';
+      }
 
       if (window.Renderer3D) {
         window.Renderer3D.renderAll();
@@ -263,6 +312,12 @@ const UI = {
       if (svgKryst) svgKryst.style.display = '';
       if (webglLife) webglLife.style.display = 'none';
       if (webglKryst) webglKryst.style.display = 'none';
+      if (section3d) {
+        section3d.style.display = 'none';
+      }
+      if (section2d) {
+        section2d.style.display = '';
+      }
 
       App.renderAll();
       this.showToast('2D SVG Engine Active');
@@ -344,22 +399,22 @@ const UI = {
       });
     }
 
-    const strokeFlowerSlider = document.getElementById('strokeFlowerSlider');
-    const strokeFlowerBadge = document.getElementById('strokeFlowerBadge');
-    if (strokeFlowerSlider && strokeFlowerBadge) {
-      strokeFlowerSlider.addEventListener('input', (e) => {
-        State.strokeFlower = clampNumber(e.target.value, 0.25, 8.0, 1.5);
-        strokeFlowerBadge.textContent = `${State.strokeFlower}px`;
+    const strokeAuraSlider = document.getElementById('strokeAuraSlider') || document.getElementById('strokeFlowerSlider');
+    const strokeAuraBadge = document.getElementById('strokeAuraBadge') || document.getElementById('strokeFlowerBadge');
+    if (strokeAuraSlider && strokeAuraBadge) {
+      strokeAuraSlider.addEventListener('input', (e) => {
+        State.strokeAura = clampNumber(e.target.value, 0.25, 8.0, 1.5);
+        strokeAuraBadge.textContent = `${State.strokeAura}px`;
         App.renderAll();
       });
     }
 
-    const strokeBaseSlider = document.getElementById('strokeBaseSlider');
-    const strokeBaseBadge = document.getElementById('strokeBaseBadge');
-    if (strokeBaseSlider && strokeBaseBadge) {
-      strokeBaseSlider.addEventListener('input', (e) => {
-        State.strokeBase = clampNumber(e.target.value, 0.25, 6.0, 1.0);
-        strokeBaseBadge.textContent = `${State.strokeBase}px`;
+    const strokeBodySlider = document.getElementById('strokeBodySlider') || document.getElementById('strokeBaseSlider');
+    const strokeBodyBadge = document.getElementById('strokeBodyBadge') || document.getElementById('strokeBaseBadge');
+    if (strokeBodySlider && strokeBodyBadge) {
+      strokeBodySlider.addEventListener('input', (e) => {
+        State.strokeBody = clampNumber(e.target.value, 0.25, 6.0, 1.0);
+        strokeBodyBadge.textContent = `${State.strokeBody}px`;
         App.renderAll();
       });
     }
@@ -388,8 +443,10 @@ const UI = {
 
   bindToggles() {
     const toggleMap = [
-      { id: 'toggleActualFlower', prop: 'showActualFlower' },
-      { id: 'toggleBaseCircles', prop: 'showBaseCircles' },
+      { id: 'toggleAuraFlower', prop: 'showAuraFlower' },
+      { id: 'toggleActualFlower', prop: 'showAuraFlower' },
+      { id: 'toggleBodyCircles', prop: 'showBodyCircles' },
+      { id: 'toggleBaseCircles', prop: 'showBodyCircles' },
       { id: 'toggleGuides', prop: 'showGuides' },
       { id: 'toggleOuterRing', prop: 'showOuterRing' },
       { id: 'toggleBoundaryPetals', prop: 'showBoundaryPetals' },
@@ -397,7 +454,6 @@ const UI = {
       { id: 'toggleIntersections', prop: 'showIntersections' },
       { id: 'toggleRadialAxes', prop: 'showRadialAxes' },
       { id: 'toggleMetatronLines', prop: 'showMetatronLines' },
-      { id: 'toggleEyesOfKryst', prop: 'showEyesOfKryst' },
       { id: 'toggleColorByLayer', prop: 'colorByLayer' },
       { id: 'toggleGlow', prop: 'enableGlow' },
       { id: 'togglePulse', prop: 'enablePulse' }
@@ -583,7 +639,8 @@ const UI = {
     const colorInputs = [
       { id: 'colorLife', prop: 'colorLife' },
       { id: 'colorKryst', prop: 'colorKryst' },
-      { id: 'colorBase', prop: 'colorBase' },
+      { id: 'colorBody', prop: 'colorBody' },
+      { id: 'colorBase', prop: 'colorBody' },
       { id: 'colorTriangle', prop: 'colorTriangle' },
       { id: 'colorGuide', prop: 'colorGuide' },
       { id: 'colorOuter', prop: 'colorOuter' },
@@ -722,8 +779,10 @@ const UI = {
     if (cfg.viewportMode !== undefined) State.viewportMode = cfg.viewportMode;
     if (cfg.viewStyle !== undefined) State.viewStyle = cfg.viewStyle;
     if (cfg.platonicFilter !== undefined) State.platonicFilter = cfg.platonicFilter;
-    if (cfg.showActualFlower !== undefined) State.showActualFlower = Boolean(cfg.showActualFlower);
-    if (cfg.showBaseCircles !== undefined) State.showBaseCircles = Boolean(cfg.showBaseCircles);
+    if (cfg.showAuraFlower !== undefined) State.showAuraFlower = Boolean(cfg.showAuraFlower);
+    if (cfg.showActualFlower !== undefined) State.showAuraFlower = Boolean(cfg.showActualFlower);
+    if (cfg.showBodyCircles !== undefined) State.showBodyCircles = Boolean(cfg.showBodyCircles);
+    if (cfg.showBaseCircles !== undefined) State.showBodyCircles = Boolean(cfg.showBaseCircles);
     if (cfg.showGuides !== undefined) State.showGuides = Boolean(cfg.showGuides);
     if (cfg.showOuterRing !== undefined) State.showOuterRing = Boolean(cfg.showOuterRing);
     if (cfg.showBoundaryPetals !== undefined) State.showBoundaryPetals = Boolean(cfg.showBoundaryPetals);
@@ -736,13 +795,16 @@ const UI = {
     if (cfg.fillOpacity !== undefined) State.fillOpacity = clampNumber(cfg.fillOpacity, 0, 1.0, 0.04);
     if (cfg.colorLife !== undefined) State.colorLife = cfg.colorLife;
     if (cfg.colorKryst !== undefined) State.colorKryst = cfg.colorKryst;
-    if (cfg.colorBase !== undefined) State.colorBase = cfg.colorBase;
+    if (cfg.colorBody !== undefined) State.colorBody = cfg.colorBody;
+    if (cfg.colorBase !== undefined) State.colorBody = cfg.colorBase;
     if (cfg.colorTriangle !== undefined) State.colorTriangle = cfg.colorTriangle;
     if (cfg.colorGuide !== undefined) State.colorGuide = cfg.colorGuide;
     if (cfg.colorOuter !== undefined) State.colorOuter = cfg.colorOuter;
     if (cfg.colorAxes !== undefined) State.colorAxes = cfg.colorAxes;
-    if (cfg.strokeFlower !== undefined) State.strokeFlower = clampNumber(cfg.strokeFlower, 0.25, 8.0, 1.5);
-    if (cfg.strokeBase !== undefined) State.strokeBase = clampNumber(cfg.strokeBase, 0.25, 6.0, 1.0);
+    if (cfg.strokeAura !== undefined) State.strokeAura = clampNumber(cfg.strokeAura, 0.25, 8.0, 1.5);
+    if (cfg.strokeFlower !== undefined) State.strokeAura = clampNumber(cfg.strokeFlower, 0.25, 8.0, 1.5);
+    if (cfg.strokeBody !== undefined) State.strokeBody = clampNumber(cfg.strokeBody, 0.25, 6.0, 1.0);
+    if (cfg.strokeBase !== undefined) State.strokeBody = clampNumber(cfg.strokeBase, 0.25, 6.0, 1.0);
     if (cfg.strokeGuide !== undefined) State.strokeGuide = clampNumber(cfg.strokeGuide, 0.25, 8.0, 2.0);
     if (cfg.colorByLayer !== undefined) State.colorByLayer = Boolean(cfg.colorByLayer);
     if (cfg.enableGlow !== undefined) State.enableGlow = Boolean(cfg.enableGlow);
@@ -815,15 +877,17 @@ const UI = {
     this.updateLayerBadge();
 
     const boolInputs = [
-      { id: 'toggleActualFlower', val: State.showActualFlower },
-      { id: 'toggleBaseCircles', val: State.showBaseCircles },
+      { id: 'toggleAuraFlower', val: State.showAuraFlower },
+      { id: 'toggleActualFlower', val: State.showAuraFlower },
+      { id: 'toggleBodyCircles', val: State.showBodyCircles },
+      { id: 'toggleBaseCircles', val: State.showBodyCircles },
       { id: 'toggleGuides', val: State.showGuides },
       { id: 'toggleOuterRing', val: State.showOuterRing },
       { id: 'toggleBoundaryPetals', val: State.showBoundaryPetals },
       { id: 'toggleCenterDots', val: State.showCenterDots },
+      { id: 'toggleIntersections', val: State.showIntersections },
       { id: 'toggleRadialAxes', val: State.showRadialAxes },
       { id: 'toggleMetatronLines', val: State.showMetatronLines },
-      { id: 'toggleEyesOfKryst', val: State.showEyesOfKryst },
       { id: 'toggle3DSpheres', val: State.show3DSpheres },
       { id: 'toggle3DTorus', val: State.show3DTorus },
       { id: 'toggle3DShells', val: State.show3DShells },
@@ -835,6 +899,16 @@ const UI = {
     boolInputs.forEach(item => {
       const el = document.getElementById(item.id);
       if (el) el.checked = Boolean(item.val);
+    });
+
+    document.querySelectorAll('.quick-mode-btn').forEach(b => {
+      const vs = b.dataset.viewstyle;
+      const isActive = (vs === State.viewStyle) ||
+        (vs === 'aura' && State.viewStyle === 'actual') ||
+        (vs === 'actual' && State.viewStyle === 'aura') ||
+        (vs === 'body' && State.viewStyle === 'base') ||
+        (vs === 'base' && State.viewStyle === 'body');
+      b.classList.toggle('active', isActive);
     });
 
     const expSelect = document.getElementById('select3DExpansionMode');
@@ -899,8 +973,7 @@ const UI = {
     const boundEl = document.getElementById('sidebarBoundRad');
     if (boundEl) {
       const krystStr = `${Math.round(R_bound_kryst)}px (${(R_bound_kryst / State.r).toFixed(2)}r)`;
-      const lifeLayers = SacredMath.getEffectiveLifeLayers(State.N, State.r);
-      const lifeStr = `${Math.round(R_bound_life)}px (${2 * lifeLayers + 2}r)`;
+      const lifeStr = `${Math.round(R_bound_life)}px (${(R_bound_life / State.r).toFixed(2)}r)`;
       if (State.viewportMode === 'single-kryst') {
         boundEl.textContent = krystStr;
       } else if (State.viewportMode === 'single-life') {
@@ -911,7 +984,8 @@ const UI = {
     }
     const hlEl = document.getElementById('sidebarHighlightCount');
     if (hlEl) {
-      hlEl.textContent = String(State.highlightedIds.size);
+      const totalHl = (State.highlightedSectionIds ? State.highlightedSectionIds.size : 0) + State.highlightedIds.size;
+      hlEl.textContent = String(totalHl);
     }
   },
 

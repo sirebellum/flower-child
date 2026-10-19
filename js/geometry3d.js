@@ -23,9 +23,9 @@ export const FCC_POCKET_R = (2 * SQRT3 / 3);
 
 // 2D Kryst Stamp Constants
 export const DIST_TRI_INNER = 2 + SQRT3;     // (2 + √3) ≈ 3.7320508
-export const DIST_TRI_APEX  = 2 + 2 * SQRT3; // (2 + 2√3) ≈ 5.4641016
-export const STAMP_STEP     = 4 + 2 * SQRT3; // (4 + 2√3) ≈ 7.4641016
-export const EPSILON        = 1e-3;
+export const DIST_TRI_APEX = 2 + 2 * SQRT3; // (2 + 2√3) ≈ 5.4641016
+export const STAMP_STEP = 4 + 2 * SQRT3; // (4 + 2√3) ≈ 7.4641016
+export const EPSILON = 1e-3;
 
 /* =========================================================================
    2. FCC LATTICE HELPERS & 12 BASIS VECTORS
@@ -108,9 +108,9 @@ export function getKrystStampVectors(r, mode = 'volumetric') {
   const S = STAMP_STEP * r;
   const vectors = [];
 
-  // 6 In-Plane Stamp Vectors (Δz = 0) along 30° + m * 60°
+  // 6 In-Plane Stamp Vectors (Δz = 0) along m * 60°
   for (let m = 0; m < 6; m++) {
-    const phi = m * (Math.PI / 3) + (Math.PI / 6);
+    const phi = m * (Math.PI / 3);
     vectors.push({
       x: S * Math.cos(phi),
       y: S * Math.sin(phi),
@@ -376,7 +376,7 @@ export function createKrystStamp3D(cx, cy, cz, r) {
 
   // B. 6 Infill Triangles (18 spheres)
   for (let m = 0; m < 6; m++) {
-    const theta = m * (Math.PI / 3);
+    const theta = m * (Math.PI / 3) + (Math.PI / 6);
     const ux = Math.cos(theta);
     const uy = Math.sin(theta);
     const tx = -Math.sin(theta);
@@ -413,9 +413,9 @@ export function createKrystStamp3D(cx, cy, cz, r) {
     addEdge(Tm3, Tm1, 'triangle');
   }
 
-  // C. 6 Outer Hexagons (Centers along 30° + m * 60° at distance (4 + 2√3)r)
+  // C. 6 Outer Hexagons (Centers along m * 60° at distance (4 + 2√3)r: two hexagons flat on top and bottom)
   for (let m = 0; m < 6; m++) {
-    const phi = m * (Math.PI / 3) + (Math.PI / 6);
+    const phi = m * (Math.PI / 3);
     const hx = cx + STAMP_STEP * r * Math.cos(phi);
     const hy = cy + STAMP_STEP * r * Math.sin(phi);
     const hexCenterPt = { x: hx, y: hy, z: cz };
@@ -442,7 +442,7 @@ export function createKrystStamp3D(cx, cy, cz, r) {
 
   // D. 6 Outward Bridge Triangles (18 spheres)
   for (let m = 0; m < 6; m++) {
-    const theta = m * (Math.PI / 3);
+    const theta = m * (Math.PI / 3) + (Math.PI / 6);
     const ux = Math.cos(theta);
     const uy = Math.sin(theta);
     const tx = -Math.sin(theta);

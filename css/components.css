@@ -1083,6 +1083,51 @@
       opacity: 1 !important;
       filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
     }
+    .actual-circle,
+    .aura-circle {
+      pointer-events: none;
+    }
+    .intersection-node {
+      cursor: pointer;
+      transition: transform 0.15s ease, fill 0.15s ease, filter 0.15s ease;
+    }
+    .intersection-node:hover {
+      transform: scale(1.6);
+      filter: drop-shadow(0 0 8px #ffffff) drop-shadow(0 0 12px var(--accent-magenta, #ec4899)) !important;
+    }
+    .flower-section {
+      fill: transparent;
+      stroke: transparent;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: fill 0.15s ease, stroke 0.15s ease, filter 0.15s ease;
+    }
+    .flower-section:hover {
+      fill: rgba(255, 255, 255, 0.22) !important;
+      stroke: rgba(255, 255, 255, 0.65) !important;
+      stroke-width: 1.2px !important;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7)) !important;
+    }
+    .flower-section.highlighted-section {
+      fill: rgba(255, 255, 255, 0.45) !important;
+      stroke: #ffffff !important;
+      stroke-width: 2px !important;
+      filter: drop-shadow(0 0 8px #ffffff) drop-shadow(0 0 16px rgba(255, 255, 255, 0.8)) !important;
+    }
+    .fol-theme .flower-section.highlighted-section,
+    [data-pattern="life"].flower-section.highlighted-section {
+      fill: rgba(239, 68, 68, 0.48) !important;
+      stroke: #ffffff !important;
+      stroke-width: 2px !important;
+      filter: drop-shadow(0 0 8px #ef4444) drop-shadow(0 0 16px rgba(239, 68, 68, 0.8)) !important;
+    }
+    .fok-theme .flower-section.highlighted-section,
+    [data-pattern="kryst"].flower-section.highlighted-section {
+      fill: rgba(16, 185, 129, 0.48) !important;
+      stroke: #ffffff !important;
+      stroke-width: 2px !important;
+      filter: drop-shadow(0 0 8px #10b981) drop-shadow(0 0 16px rgba(16, 185, 129, 0.8)) !important;
+    }
     .center-dot {
       cursor: pointer;
       transition: transform 0.15s, fill 0.15s;

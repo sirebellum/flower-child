@@ -112,7 +112,7 @@ function createKrystStamp(cx, cy, r) {
     circles.push({ x: cx, y: cy, role: 'hexagon-center' });
   }
 
-  // 2. 6 Hexagon Ring Circles
+  // 2. 6 Hexagon Ring Circles (Flat sides top and bottom: angles along m * 60°)
   const innerHexVertices = [];
   for (let m = 0; m < 6; m++) {
     const theta = m * (Math.PI / 3);
@@ -133,7 +133,7 @@ function createKrystStamp(cx, cy, r) {
   // B. Filling Triangles Around the Inner Hexagon (6 Triangles x 3 Circles = 18 Circles)
   // -----------------------------------------------------------------------
   for (let m = 0; m < 6; m++) {
-    const theta = m * (Math.PI / 3);
+    const theta = m * (Math.PI / 3) + (Math.PI / 6);
     const ux = Math.cos(theta);
     const uy = Math.sin(theta);
     const tx = -Math.sin(theta);
@@ -169,9 +169,10 @@ function createKrystStamp(cx, cy, r) {
 
   // -----------------------------------------------------------------------
   // C. Outer Ring of 6 Hexagons (Plus Gap-Filling Bridge Triangles Between Them)
+  // Consecutive layers outside center hexagon rotated 30°: two hexagons flat on top and bottom
   // -----------------------------------------------------------------------
   for (let m = 0; m < 6; m++) {
-    const phi = m * (Math.PI / 3) + (Math.PI / 6);
+    const phi = m * (Math.PI / 3);
     const hx = cx + STAMP_STEP * r * Math.cos(phi);
     const hy = cy + STAMP_STEP * r * Math.sin(phi);
     outerHexagonCenters.push({ x: hx, y: hy });
@@ -181,7 +182,7 @@ function createKrystStamp(cx, cy, r) {
       circles.push({ x: hx, y: hy, role: 'hexagon-center' });
     }
 
-    // 2. Outer Hexagon 6 Ring Circles (Flower of Kryst concentric hexagons are unrotated)
+    // 2. Outer Hexagon 6 Ring Circles (Flat sides top and bottom: matching innermost hexagon)
     const outerHexVertices = [];
     for (let j = 0; j < 6; j++) {
       const theta = j * (Math.PI / 3);
@@ -201,7 +202,7 @@ function createKrystStamp(cx, cy, r) {
 
   // 3. Gap-Filling Bridge Triangles Between Adjacent Outer Hexagons
   for (let m = 0; m < 6; m++) {
-    const theta = m * (Math.PI / 3);
+    const theta = m * (Math.PI / 3) + (Math.PI / 6);
     const ux = Math.cos(theta);
     const uy = Math.sin(theta);
     const tx = -Math.sin(theta);
@@ -238,18 +239,152 @@ function createKrystStamp(cx, cy, r) {
 }
 
 /* =========================================================================
-   3. ITERATIVE RESTAMPING OUTWARD (getKrystGeometry)
+   3. LAYER-BASED CONCENTRIC EXPANSION (getKrystGeometry)
    ========================================================================= */
 
 /**
- * Iterative Restamping Outward Engine:
- * Restamps outward from (0, 0) across hexagon centers using layer count N >= 1.
- *
- * @param {number} N - Layer count (N >= 1).
- * @param {number} r - Base circle radius.
- * @returns {{points: Array<{x: number, y: number, role: string, layer?: number}>, circles: Array<{x: number, y: number, role: string, layer?: number}>, guides: Array<{type: string, cx: number, cy: number, radius?: number, vertices?: Array<{x: number, y: number}>}>, boundingRadius: number, activeStampCenters: Array<{x: number, y: number}>}}
+ * Unit Kryst Lattice Cache (r = 1.0)
+ * Precomputed on-demand up to layer 42 (and dynamically expands if N > 42).
  */
-function getKrystGeometry(N, r) {
+let _krystLatticeUnitCache = null;
+
+function getKrystUnitLattice(maxLayer = 42) {
+  if (_krystLatticeUnitCache && _krystLatticeUnitCache.maxLayer >= maxLayer) {
+    return _krystLatticeUnitCache;
+  }
+
+  const targetMaxLayer = Math.max(42, maxLayer);
+  const maxRadius = 2 * targetMaxLayer;
+  const stampRadius = 6 + 2 * SQRT3; // ~ 9.4641
+  const neededDistance = maxRadius + stampRadius;
+  const maxStampRings = Math.ceil(neededDistance / STAMP_STEP);
+
+  const stampCenters = [];
+  for (let q = -maxStampRings; q <= maxStampRings; q++) {
+    for (let s = Math.max(-maxStampRings, -q - maxStampRings); s <= Math.min(maxStampRings, -q + maxStampRings); s++) {
+      const cx = STAMP_STEP * (q + 0.5 * s);
+      const cy = STAMP_STEP * (s * SQRT3 / 2);
+      if (Math.hypot(cx, cy) <= neededDistance) {
+        stampCenters.push({ x: cx, y: cy });
+      }
+    }
+  }
+
+  const cellSize = 2.0;
+  const grid = new Map();
+  const allCircles = [];
+  const tolSq = EPSILON * EPSILON;
+
+  for (let i = 0; i < stampCenters.length; i++) {
+    const sc = stampCenters[i];
+    const stamp = createKrystStamp(sc.x, sc.y, 1.0);
+    for (let j = 0; j < stamp.circles.length; j++) {
+      const c = stamp.circles[j];
+      const d = Math.hypot(c.x, c.y);
+      if (d < EPSILON) continue;
+      if (d > maxRadius + EPSILON) continue;
+
+      const gx = Math.floor(c.x / cellSize);
+      const gy = Math.floor(c.y / cellSize);
+      let found = null;
+
+      for (let dx = -1; dx <= 1 && !found; dx++) {
+        for (let dy = -1; dy <= 1 && !found; dy++) {
+          const cell = grid.get(`${gx + dx},${gy + dy}`);
+          if (cell) {
+            for (let k = 0; k < cell.length; k++) {
+              const other = cell[k];
+              if ((other.x - c.x) ** 2 + (other.y - c.y) ** 2 < tolSq) {
+                found = other;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (found) {
+        if ((c.role === 'hexagon' || c.role === 'hexagon-center') && found.role === 'triangle') {
+          found.role = c.role;
+        }
+      } else {
+        const layer = Math.max(1, Math.ceil((d - EPSILON) / 2));
+        const circleObj = { x: c.x, y: c.y, role: c.role, dist: d, layer };
+        allCircles.push(circleObj);
+        const key = `${gx},${gy}`;
+        let b = grid.get(key);
+        if (!b) { b = []; grid.set(key, b); }
+        b.push(circleObj);
+      }
+    }
+  }
+
+  allCircles.sort((a, b) => a.dist - b.dist);
+
+  const allGuides = [];
+  const guideGrid = new Map();
+
+  for (let i = 0; i < stampCenters.length; i++) {
+    const sc = stampCenters[i];
+    const stamp = createKrystStamp(sc.x, sc.y, 1.0);
+    for (let j = 0; j < stamp.guides.length; j++) {
+      const g = stamp.guides[j];
+      const gDist = Math.hypot(g.cx, g.cy);
+      if (gDist > maxRadius + stampRadius) continue;
+
+      const gx = Math.floor(g.cx / cellSize);
+      const gy = Math.floor(g.cy / cellSize);
+      let found = false;
+
+      for (let dx = -1; dx <= 1 && !found; dx++) {
+        for (let dy = -1; dy <= 1 && !found; dy++) {
+          const cell = guideGrid.get(`${gx + dx},${gy + dy}`);
+          if (cell) {
+            for (let k = 0; k < cell.length; k++) {
+              const other = cell[k];
+              if (other.type === g.type && (other.cx - g.cx) ** 2 + (other.cy - g.cy) ** 2 < tolSq) {
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (!found) {
+        const maxVertDist = Math.max(...g.vertices.map(v => Math.hypot(v.x, v.y)));
+        const guideLayer = Math.max(1, Math.ceil((maxVertDist - EPSILON) / 2));
+        const guideObj = { ...g, maxVertDist, centerDist: gDist, layer: guideLayer };
+        allGuides.push(guideObj);
+        const key = `${gx},${gy}`;
+        let b = guideGrid.get(key);
+        if (!b) { b = []; guideGrid.set(key, b); }
+        b.push(guideObj);
+      }
+    }
+  }
+
+  _krystLatticeUnitCache = {
+    maxLayer: targetMaxLayer,
+    circles: allCircles,
+    guides: allGuides,
+    stampCenters
+  };
+
+  return _krystLatticeUnitCache;
+}
+
+/**
+ * Layer-Based Concentric Engine for Flower of Kryst:
+ * A circle projected onto the pattern growing at 2r starting with the first hexagon (Layer 1: R=2r)
+ * increments and adds body/aura circles and guide shapes out to N layers (up to 42).
+ *
+ * @param {number} N - Layer count (N >= 1, slider goes to 42).
+ * @param {number} r - Base circle radius.
+ * @param {Object} [options={}] - Options (e.g. { mode: 'stamp' } for raw stamp expansion).
+ * @returns {{points: Array<{x: number, y: number, role: string, layer: number}>, circles: Array<{x: number, y: number, role: string, layer: number}>, guides: Array<{type: string, cx: number, cy: number, radius?: number, layer: number, vertices: Array<{x: number, y: number}>}>, boundingRadius: number, activeStampCenters: Array<{x: number, y: number}>}}
+ */
+function getKrystGeometry(N, r, options = {}) {
   if (N <= 0) {
     return {
       points: [],
@@ -260,7 +395,58 @@ function getKrystGeometry(N, r) {
     };
   }
 
-  // 1. Breadth-First Stamp Expansion Across Hexagon Centers
+  // Stamp mode fallback if explicitly requested
+  if (options && options.mode === 'stamp') {
+    return getKrystStampGeometry(N, r);
+  }
+
+  const lattice = getKrystUnitLattice(Math.max(42, N));
+  const maxD = 2 * N + EPSILON;
+  const R_layer = 2 * N * r;
+
+  // Filter circles within projected radius
+  const circles = [];
+  for (let i = 0; i < lattice.circles.length; i++) {
+    const c = lattice.circles[i];
+    if (c.dist > maxD) break; // circles are pre-sorted by dist
+    circles.push({
+      x: c.x * r,
+      y: c.y * r,
+      role: c.role,
+      layer: c.layer,
+      dist: c.dist * r
+    });
+  }
+
+  // Filter guides whose vertices are within projected radius
+  const guides = [];
+  for (let i = 0; i < lattice.guides.length; i++) {
+    const g = lattice.guides[i];
+    if (g.maxVertDist <= maxD) {
+      guides.push({
+        type: g.type,
+        cx: g.cx * r,
+        cy: g.cy * r,
+        radius: g.radius ? g.radius * r : undefined,
+        layer: g.layer,
+        vertices: g.vertices.map(v => ({ x: v.x * r, y: v.y * r }))
+      });
+    }
+  }
+
+  return {
+    points: circles,
+    circles,
+    guides,
+    boundingRadius: R_layer,
+    activeStampCenters: lattice.stampCenters.map(sc => ({ x: sc.x * r, y: sc.y * r }))
+  };
+}
+
+/**
+ * Raw stamp expansion fallback generator (mode: 'stamp').
+ */
+function getKrystStampGeometry(N, r) {
   const activeStampCenters = [{ x: 0, y: 0, ring: 0 }];
   const visitedStampCenters = [{ x: 0, y: 0 }];
   let frontier = [{ x: 0, y: 0 }];
@@ -274,7 +460,7 @@ function getKrystGeometry(N, r) {
     const nextFrontier = [];
     for (const c of frontier) {
       for (let m = 0; m < 6; m++) {
-        const phi = m * (Math.PI / 3) + (Math.PI / 6);
+        const phi = m * (Math.PI / 3);
         const hx = c.x + STAMP_STEP * r * Math.cos(phi);
         const hy = c.y + STAMP_STEP * r * Math.sin(phi);
         const cand = { x: hx, y: hy, ring: step - 1 };
@@ -288,7 +474,6 @@ function getKrystGeometry(N, r) {
     frontier = nextFrontier;
   }
 
-  // 2. Stamp, Deduplicate & Enforce Global Origin Rule
   const rawCircles = [];
   const rawGuides = [];
   for (const c of activeStampCenters) {
@@ -304,14 +489,12 @@ function getKrystGeometry(N, r) {
     rawGuides.push(...stamp.guides);
   }
 
-  // Deduplicate circles using spatial hash grid
   const cellSize = 2 * r;
   const grid = new Map();
   const dedupedCircles = [];
   const tolSq = (EPSILON * r) * (EPSILON * r);
 
   for (const pt of rawCircles) {
-    // Global Origin Safeguard: Filter out any circle whose coordinates satisfy hypot(x, y) < EPSILON * r
     if (Math.hypot(pt.x, pt.y) < EPSILON * r) continue;
 
     const gx = Math.floor(pt.x / cellSize);
@@ -337,7 +520,6 @@ function getKrystGeometry(N, r) {
     }
 
     if (found) {
-      // Preserve hexagon / hexagon-center priority
       if ((pt.role === 'hexagon' || pt.role === 'hexagon-center') && found.role === 'triangle') {
         found.role = pt.role;
       }
@@ -347,15 +529,11 @@ function getKrystGeometry(N, r) {
       dedupedCircles.push(newPt);
       const key = `${gx},${gy}`;
       let cell = grid.get(key);
-      if (!cell) {
-        cell = [];
-        grid.set(key, cell);
-      }
+      if (!cell) { cell = []; grid.set(key, cell); }
       cell.push(newPt);
     }
   }
 
-  // Deduplicate guides by centroid (cx, cy) and type
   const guideGrid = new Map();
   const dedupedGuides = [];
   for (const g of rawGuides) {
@@ -387,15 +565,11 @@ function getKrystGeometry(N, r) {
       dedupedGuides.push(g);
       const key = `${gx},${gy}`;
       let cell = guideGrid.get(key);
-      if (!cell) {
-        cell = [];
-        guideGrid.set(key, cell);
-      }
+      if (!cell) { cell = []; guideGrid.set(key, cell); }
       cell.push(g);
     }
   }
 
-  // Dynamic Outer Bounding Circle Radius: max_i sqrt(x_i^2 + y_i^2) + 2r
   let maxDist = 0;
   for (const pt of dedupedCircles) {
     const d = Math.hypot(pt.x, pt.y);
@@ -415,16 +589,14 @@ function getKrystGeometry(N, r) {
 /**
  * Computes the rotation angle in degrees for concentric hexagonal layer k in Flower of Life.
  * Layer 1 (Genesis core / center ring): 0°
- * Layer 2 (First outer ring): +30°
- * Layer 3 (Third ring): -30° (or 330°)
- * Alternating valley nesting: k % 2 === 0 ? 30 : -30 for k >= 2.
+ * Starting from the 3rd circle out (Layer 2 / 3rd layer out and onwards): 30°
  *
  * @param {number} k - Concentric layer index (k >= 1)
  * @returns {number} Rotation angle in degrees
  */
 function getFlowerOfLifeLayerRotation(k) {
   if (k <= 1) return 0;
-  return (k % 2 === 0) ? 30 : -30;
+  return 30;
 }
 
 /**
@@ -437,9 +609,7 @@ function getFlowerOfLifeLayerRotation(k) {
  */
 function getEffectiveLifeLayers(N, r = 50) {
   if (N <= 0) return 0;
-  const fokGeom = getKrystGeometry(N, r);
-  const fokBound = fokGeom.boundingRadius || (2 * r);
-  return Math.max(1, Math.round((fokBound - 2 * r) / (2 * r)));
+  return Math.max(1, N);
 }
 
 /**
@@ -630,7 +800,7 @@ const SacredMath = {
    */
   getFoLBoundingRadius(N, r = 50) {
     const K = this.getEffectiveLifeLayers(N, r);
-    return (2 * K + 2) * r;
+    return 2 * K * r;
   },
 
   /**
@@ -774,9 +944,124 @@ const SacredMath = {
   },
 
   /**
-   * Computes intersection points of circles for rendering analytical intersection nodes.
+   * Computes intersection nodes occurring when the hexagons or triangle patterns (guides) cross a body circle (radius r).
+   *
+   * @param {Array<any>} guides - Array of guide polygons (hexagons, triangles).
+   * @param {Array<{x: number, y: number}>} bodyCircles - Center coordinates of body circles.
+   * @param {number} r - Radius of body circles.
+   * @param {number} [R] - Optional radius of aura circles (default: 2r).
+   * @returns {Array<{x: number, y: number}>} Array of unique intersection coordinates.
    */
-  computeIntersectionNodes(points, R) {
+  computeIntersectionNodes(guides, bodyCircles, r, R = null) {
+    // If called with old signature: computeIntersectionNodes(points, R)
+    if (Array.isArray(guides) && (!bodyCircles || typeof bodyCircles === 'number')) {
+      const points = guides;
+      const effectiveR = (typeof bodyCircles === 'number') ? bodyCircles : (r || 100);
+      return this._computeCircleCircleIntersections(points, effectiveR);
+    }
+
+    if (!guides || guides.length === 0 || !bodyCircles || bodyCircles.length === 0) {
+      return [];
+    }
+
+    const radius = Number(r) || 50;
+    const tol = Math.max(0.2, 0.005 * radius);
+    const tolSq = tol * tol;
+
+    // 1. Extract all line segments from guide polygons
+    const segments = [];
+    guides.forEach(g => {
+      if (g.vertices && g.vertices.length >= 3) {
+        const K = g.vertices.length;
+        for (let k = 0; k < K; k++) {
+          segments.push({ p1: g.vertices[k], p2: g.vertices[(k + 1) % K] });
+        }
+      } else if (g.type === 'hexagon' && g.radius) {
+        const verts = [];
+        for (let m = 0; m < 6; m++) {
+          const a = m * (Math.PI / 3);
+          verts.push({ x: g.cx + g.radius * Math.cos(a), y: g.cy + g.radius * Math.sin(a) });
+        }
+        for (let k = 0; k < 6; k++) {
+          segments.push({ p1: verts[k], p2: verts[(k + 1) % 6] });
+        }
+      }
+    });
+
+    if (segments.length === 0) {
+      return [];
+    }
+
+    // 2. Compute intersections between line segments and body circles of radius r
+    const rawNodes = [];
+    segments.forEach(seg => {
+      const dx = seg.p2.x - seg.p1.x;
+      const dy = seg.p2.y - seg.p1.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq < 1e-4) return;
+
+      const minX = Math.min(seg.p1.x, seg.p2.x) - radius;
+      const maxX = Math.max(seg.p1.x, seg.p2.x) + radius;
+      const minY = Math.min(seg.p1.y, seg.p2.y) - radius;
+      const maxY = Math.max(seg.p1.y, seg.p2.y) + radius;
+
+      bodyCircles.forEach(bc => {
+        if (bc.x < minX || bc.x > maxX || bc.y < minY || bc.y > maxY) return;
+
+        const fx = seg.p1.x - bc.x;
+        const fy = seg.p1.y - bc.y;
+        const a = lenSq;
+        const b = 2 * (fx * dx + fy * dy);
+        const c = fx * fx + fy * fy - radius * radius;
+        const disc = b * b - 4 * a * c;
+        if (disc < 0) return;
+
+        const sqrtDisc = Math.sqrt(Math.max(0, disc));
+        const t1 = (-b - sqrtDisc) / (2 * a);
+        const t2 = (-b + sqrtDisc) / (2 * a);
+
+        if (t1 >= -1e-4 && t1 <= 1 + 1e-4) {
+          rawNodes.push({ x: seg.p1.x + t1 * dx, y: seg.p1.y + t1 * dy });
+        }
+        if (t2 >= -1e-4 && t2 <= 1 + 1e-4 && Math.abs(t2 - t1) > 1e-4) {
+          rawNodes.push({ x: seg.p1.x + t2 * dx, y: seg.p1.y + t2 * dy });
+        }
+      });
+    });
+
+    // 3. Deduplicate spatially
+    const uniqueNodes = [];
+    rawNodes.forEach(pt => {
+      if (!uniqueNodes.some(u => (u.x - pt.x) ** 2 + (u.y - pt.y) ** 2 < tolSq)) {
+        uniqueNodes.push({
+          x: Math.abs(pt.x) < 1e-4 ? 0 : Number(pt.x.toFixed(3)),
+          y: Math.abs(pt.y) < 1e-4 ? 0 : Number(pt.y.toFixed(3))
+        });
+      }
+    });
+
+    return uniqueNodes;
+  },
+
+  /**
+   * Generates aura circle center points for the given pattern up to layer N.
+   * Aura circles are centered strictly over the center of body circles at 2x size (R = 2r).
+   *
+   * @param {'life'|'kryst'} patternType - 'life' or 'kryst'
+   * @param {number} N - Layer progression depth
+   * @param {number} r - Base body circle radius
+   * @param {number} [R] - Aura circle radius (defaults to 2r)
+   * @returns {Array<{x: number, y: number, id?: string, layer?: number}>}
+   */
+  getAuraPoints(patternType, N, r, R = null) {
+    if (patternType === 'life') {
+      return this.generateFlowerOfLifePoints(N, r);
+    } else {
+      return this.generateFlowerOfKrystPoints(N, r);
+    }
+  },
+
+  _computeCircleCircleIntersections(points, R) {
     const nodes = [];
     const thresholdSq = 1.0;
     const maxNodes = 450;
@@ -857,10 +1142,287 @@ const SacredMath = {
       });
     }
     return centers;
+  },
+
+  /**
+   * Computes all individual planar sections (open spaces between intersections of actual circles).
+   * Generates exact SVG path definitions for each bounded region using planar arrangement.
+   *
+   * @param {Array<{x: number, y: number}>} circles - Circle centers.
+   * @param {number} R - Circle radius (2r).
+   * @returns {Array<{id: string, d: string, cx: number, cy: number, area: number}>}
+   */
+  computeCircleSections(circles, R) {
+    if (!circles || circles.length === 0) return [];
+
+    const fmt = (n) => {
+      const s = n.toFixed(3);
+      return s === '-0.000' ? '0.000' : s;
+    };
+
+    if (circles.length === 1) {
+      const c = circles[0];
+      return [{
+        id: 'sec_0',
+        d: `M ${fmt(c.x - R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x + R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x - R)} ${fmt(c.y)} Z`,
+        cx: Math.abs(c.x) < 1e-4 ? 0 : Number(c.x.toFixed(3)),
+        cy: Math.abs(c.y) < 1e-4 ? 0 : Number(c.y.toFixed(3)),
+        area: Math.PI * R * R
+      }];
+    }
+
+    const tol = Math.max(0.25, 0.005 * R);
+    const tolSq = tol * tol;
+
+    // 1. Find all pairwise intersection points
+    const rawIntersections = [];
+    const M = circles.length;
+    for (let i = 0; i < M; i++) {
+      const c1 = circles[i];
+      for (let j = i + 1; j < M; j++) {
+        const c2 = circles[j];
+        const dx = c2.x - c1.x;
+        const dy = c2.y - c1.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 1e-4 || d > 2 * R - 1e-4) continue;
+        const a = d / 2;
+        const h = Math.sqrt(Math.max(0, R * R - a * a));
+        const mx = (c1.x + c2.x) / 2;
+        const my = (c1.y + c2.y) / 2;
+        const ux = dx / d;
+        const uy = dy / d;
+        rawIntersections.push({ x: mx - h * uy, y: my + h * ux });
+        rawIntersections.push({ x: mx + h * uy, y: my - h * ux });
+      }
+    }
+
+    if (rawIntersections.length === 0) {
+      return circles.map((c, idx) => ({
+        id: `sec_${idx}`,
+        d: `M ${fmt(c.x - R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x + R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x - R)} ${fmt(c.y)} Z`,
+        cx: Math.abs(c.x) < 1e-4 ? 0 : Number(c.x.toFixed(3)),
+        cy: Math.abs(c.y) < 1e-4 ? 0 : Number(c.y.toFixed(3)),
+        area: Math.PI * R * R
+      }));
+    }
+
+    // 2. Spatial grid deduplication of vertices
+    const cellSize = tol * 2.5;
+    const grid = new Map();
+    const vertices = [];
+
+    for (let pIdx = 0; pIdx < rawIntersections.length; pIdx++) {
+      const pt = rawIntersections[pIdx];
+      const gx = Math.floor(pt.x / cellSize);
+      const gy = Math.floor(pt.y / cellSize);
+      let found = null;
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const bucket = grid.get(`${gx + dx},${gy + dy}`);
+          if (bucket) {
+            for (let b = 0; b < bucket.length; b++) {
+              const v = bucket[b];
+              if ((v.x - pt.x) ** 2 + (v.y - pt.y) ** 2 < tolSq) {
+                found = v;
+                break;
+              }
+            }
+          }
+          if (found) break;
+        }
+        if (found) break;
+      }
+      if (!found) {
+        const newV = { id: vertices.length, x: pt.x, y: pt.y };
+        vertices.push(newV);
+        const key = `${gx},${gy}`;
+        let b = grid.get(key);
+        if (!b) { b = []; grid.set(key, b); }
+        b.push(newV);
+      }
+    }
+
+    // 3. Circle boundary arc half-edges
+    const halfEdges = [];
+    const vertexOutgoing = new Map();
+    for (let v = 0; v < vertices.length; v++) vertexOutgoing.set(vertices[v].id, []);
+
+    for (let cIdx = 0; cIdx < M; cIdx++) {
+      const c = circles[cIdx];
+      const circleVerts = [];
+      for (let v = 0; v < vertices.length; v++) {
+        const vert = vertices[v];
+        const dist = Math.hypot(vert.x - c.x, vert.y - c.y);
+        if (Math.abs(dist - R) < tol) {
+          circleVerts.push({ vId: vert.id, angle: Math.atan2(vert.y - c.y, vert.x - c.x) });
+        }
+      }
+      if (circleVerts.length < 2) continue;
+
+      circleVerts.sort((a, b) => a.angle - b.angle);
+      const K = circleVerts.length;
+      for (let k = 0; k < K; k++) {
+        const cv1 = circleVerts[k];
+        const cv2 = circleVerts[(k + 1) % K];
+        const v1 = vertices[cv1.vId];
+        const v2 = vertices[cv2.vId];
+
+        // CCW Arc: cv1 -> cv2
+        let dThetaCCW = cv2.angle - cv1.angle;
+        if (dThetaCCW <= 0) dThetaCCW += 2 * Math.PI;
+
+        const deltaCCW = Math.min(0.05 * dThetaCCW, 0.02);
+        const aOutCCW = cv1.angle + deltaCCW;
+        const pOutCCW = { x: c.x + R * Math.cos(aOutCCW), y: c.y + R * Math.sin(aOutCCW) };
+        const secantOutCCW = Math.atan2(pOutCCW.y - v1.y, pOutCCW.x - v1.x);
+
+        const aInCCW = cv2.angle - deltaCCW;
+        const pInCCW = { x: c.x + R * Math.cos(aInCCW), y: c.y + R * Math.sin(aInCCW) };
+        const secantInCCW = Math.atan2(v2.y - pInCCW.y, v2.x - pInCCW.x);
+
+        const heCCW = {
+          id: halfEdges.length,
+          fromV: cv1.vId,
+          toV: cv2.vId,
+          dTheta: dThetaCCW,
+          isCCW: true,
+          secantOut: secantOutCCW,
+          secantIn: secantInCCW,
+          used: false
+        };
+        halfEdges.push(heCCW);
+        vertexOutgoing.get(cv1.vId).push(heCCW);
+
+        // CW Arc: cv2 -> cv1
+        let dThetaCW = cv1.angle - cv2.angle;
+        if (dThetaCW <= 0) dThetaCW += 2 * Math.PI;
+
+        const deltaCW = Math.min(0.05 * dThetaCW, 0.02);
+        const aOutCW = cv2.angle - deltaCW;
+        const pOutCW = { x: c.x + R * Math.cos(aOutCW), y: c.y + R * Math.sin(aOutCW) };
+        const secantOutCW = Math.atan2(pOutCW.y - v2.y, pOutCW.x - v2.x);
+
+        const aInCW = cv1.angle + deltaCW;
+        const pInCW = { x: c.x + R * Math.cos(aInCW), y: c.y + R * Math.sin(aInCW) };
+        const secantInCW = Math.atan2(v1.y - pInCW.y, v1.x - pInCW.x);
+
+        const heCW = {
+          id: halfEdges.length,
+          fromV: cv2.vId,
+          toV: cv1.vId,
+          dTheta: dThetaCW,
+          isCCW: false,
+          secantOut: secantOutCW,
+          secantIn: secantInCW,
+          used: false
+        };
+        halfEdges.push(heCW);
+        vertexOutgoing.get(cv2.vId).push(heCW);
+
+        heCCW.twin = heCW;
+        heCW.twin = heCCW;
+      }
+    }
+
+    // Sort outgoing half-edges around each vertex in CCW order by secant angle
+    for (const [vId, edges] of vertexOutgoing) {
+      edges.sort((a, b) => a.secantOut - b.secantOut);
+    }
+
+    // 4. Trace faces (planar DCEL face extraction)
+    const sections = [];
+    for (let eIdx = 0; eIdx < halfEdges.length; eIdx++) {
+      const he = halfEdges[eIdx];
+      if (he.used) continue;
+
+      const faceEdges = [];
+      let curr = he;
+      let valid = true;
+
+      while (!curr.used) {
+        curr.used = true;
+        faceEdges.push(curr);
+        const targetV = curr.toV;
+        const outgoing = vertexOutgoing.get(targetV);
+        if (!outgoing || outgoing.length === 0) {
+          valid = false;
+          break;
+        }
+
+        // Find incoming reverse secant angle
+        let inRev = curr.secantIn + Math.PI;
+        while (inRev > Math.PI) inRev -= 2 * Math.PI;
+        while (inRev <= -Math.PI) inRev += 2 * Math.PI;
+
+        // Choose next edge that makes the most acute/closest CCW turn
+        let bestNext = null;
+        let minDiff = Infinity;
+        for (let n = 0; n < outgoing.length; n++) {
+          const nextHe = outgoing[n];
+          let diff = nextHe.secantOut - inRev;
+          while (diff < 0) diff += 2 * Math.PI;
+          while (diff >= 2 * Math.PI) diff -= 2 * Math.PI;
+          if (diff < 1e-6) diff = 2 * Math.PI;
+          if (diff < minDiff) {
+            minDiff = diff;
+            bestNext = nextHe;
+          }
+        }
+
+        if (!bestNext) {
+          valid = false;
+          break;
+        }
+        curr = bestNext;
+        if (curr === he) break;
+        if (faceEdges.length > 500) {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid && curr === he && faceEdges.length >= 2) {
+        let polyArea = 0;
+        let cx = 0;
+        let cy = 0;
+        for (let i = 0; i < faceEdges.length; i++) {
+          const v1 = vertices[faceEdges[i].fromV];
+          const v2 = vertices[faceEdges[i].toV];
+          polyArea += (v1.x * v2.y - v2.x * v1.y);
+          cx += v1.x;
+          cy += v1.y;
+        }
+        polyArea /= 2;
+
+        // Internal faces have negative polygon area (clockwise orientation in screen coordinates)
+        if (polyArea < -0.1) {
+          cx /= faceEdges.length;
+          cy /= faceEdges.length;
+
+          let d = `M ${fmt(vertices[faceEdges[0].fromV].x)} ${fmt(vertices[faceEdges[0].fromV].y)}`;
+          for (let i = 0; i < faceEdges.length; i++) {
+            const e = faceEdges[i];
+            const vTo = vertices[e.toV];
+            const largeArc = e.dTheta > Math.PI ? 1 : 0;
+            const sweep = e.isCCW ? 1 : 0;
+            d += ` A ${R} ${R} 0 ${largeArc} ${sweep} ${fmt(vTo.x)} ${fmt(vTo.y)}`;
+          }
+          d += ' Z';
+
+          sections.push({
+            id: `sec_${sections.length}`,
+            d,
+            cx: Math.abs(cx) < 1e-4 ? 0 : Number(cx.toFixed(3)),
+            cy: Math.abs(cy) < 1e-4 ? 0 : Number(cy.toFixed(3)),
+            area: Math.abs(polyArea)
+          });
+        }
+      }
+    }
+
+    return sections;
   }
 };
-
-
 
   /* =========================================================================
      2. 3D FCC MATHEMATICAL GEOMETRY ENGINE (js/geometry3d.js)
@@ -876,7 +1438,7 @@ const SacredMath = {
 /* =========================================================================
    1. CORE 3D FCC CONSTANTS
    ========================================================================= */
-
+// SQRT3 declared in geometry.js
 const SQRT6 = Math.sqrt(6);
 
 // Vertical spacing between adjacent close-packed FCC (111) planes (A -> B -> C):
@@ -888,9 +1450,10 @@ const FCC_DZ = (2 * SQRT6 / 3);
 const FCC_POCKET_R = (2 * SQRT3 / 3);
 
 // 2D Kryst Stamp Constants
-
-
-
+// DIST_TRI_INNER declared in geometry.js     // (2 + √3) ≈ 3.7320508
+// DIST_TRI_APEX declared in geometry.js // (2 + 2√3) ≈ 5.4641016
+// STAMP_STEP declared in geometry.js // (4 + 2√3) ≈ 7.4641016
+// EPSILON declared in geometry.js
 
 /* =========================================================================
    2. FCC LATTICE HELPERS & 12 BASIS VECTORS
@@ -973,9 +1536,9 @@ function getKrystStampVectors(r, mode = 'volumetric') {
   const S = STAMP_STEP * r;
   const vectors = [];
 
-  // 6 In-Plane Stamp Vectors (Δz = 0) along 30° + m * 60°
+  // 6 In-Plane Stamp Vectors (Δz = 0) along m * 60°
   for (let m = 0; m < 6; m++) {
-    const phi = m * (Math.PI / 3) + (Math.PI / 6);
+    const phi = m * (Math.PI / 3);
     vectors.push({
       x: S * Math.cos(phi),
       y: S * Math.sin(phi),
@@ -1241,7 +1804,7 @@ function createKrystStamp3D(cx, cy, cz, r) {
 
   // B. 6 Infill Triangles (18 spheres)
   for (let m = 0; m < 6; m++) {
-    const theta = m * (Math.PI / 3);
+    const theta = m * (Math.PI / 3) + (Math.PI / 6);
     const ux = Math.cos(theta);
     const uy = Math.sin(theta);
     const tx = -Math.sin(theta);
@@ -1278,9 +1841,9 @@ function createKrystStamp3D(cx, cy, cz, r) {
     addEdge(Tm3, Tm1, 'triangle');
   }
 
-  // C. 6 Outer Hexagons (Centers along 30° + m * 60° at distance (4 + 2√3)r)
+  // C. 6 Outer Hexagons (Centers along m * 60° at distance (4 + 2√3)r: two hexagons flat on top and bottom)
   for (let m = 0; m < 6; m++) {
-    const phi = m * (Math.PI / 3) + (Math.PI / 6);
+    const phi = m * (Math.PI / 3);
     const hx = cx + STAMP_STEP * r * Math.cos(phi);
     const hy = cy + STAMP_STEP * r * Math.sin(phi);
     const hexCenterPt = { x: hx, y: hy, z: cz };
@@ -1307,7 +1870,7 @@ function createKrystStamp3D(cx, cy, cz, r) {
 
   // D. 6 Outward Bridge Triangles (18 spheres)
   for (let m = 0; m < 6; m++) {
-    const theta = m * (Math.PI / 3);
+    const theta = m * (Math.PI / 3) + (Math.PI / 6);
     const ux = Math.cos(theta);
     const uy = Math.sin(theta);
     const tx = -Math.sin(theta);
@@ -1808,8 +2371,6 @@ const SacredMath3D = {
   getTriAxialGeometry
 };
 
-
-
   /* =========================================================================
      3. GLOBAL APPLICATION STATE (js/state.js)
      ========================================================================= */
@@ -1843,7 +2404,14 @@ function clampNumber(val, min, max, defaultVal) {
 const State = {
   viewportMode: 'comparison', // 'comparison' | 'superimposed' | 'single-life' | 'single-kryst'
   activePreset: 'krystonial_comparison',
-  viewStyle: 'actual', // 'actual' | 'base' | 'combined'
+  // View style: 'aura' | 'body' | 'combined' (aliases 'actual' -> 'aura', 'base' -> 'body')
+  _viewStyle: 'aura',
+  get viewStyle() { return this._viewStyle; },
+  set viewStyle(v) {
+    if (v === 'actual') this._viewStyle = 'aura';
+    else if (v === 'base') this._viewStyle = 'body';
+    else this._viewStyle = v;
+  },
   platonicFilter: 'all', // 'all' | 'tetra' | 'cube' | 'octa' | 'dodeca'
 
   // Lattice Geometry (guarded with safe limits)
@@ -1851,13 +2419,19 @@ const State = {
   r: 50,
   syncPanZoom: true,
 
-  // Layers visibility
-  showActualFlower: true,
-  showBaseCircles: false,
-  showGuides: true,
-  showOuterRing: true,
-  showBoundaryPetals: true,
-  showCenterDots: true,
+  // Layers visibility (Nomenclature: aura = actual flowers, body = base pattern)
+  showAuraFlower: true,
+  get showActualFlower() { return this.showAuraFlower; },
+  set showActualFlower(v) { this.showAuraFlower = Boolean(v); },
+
+  showBodyCircles: false,
+  get showBaseCircles() { return this.showBodyCircles; },
+  set showBaseCircles(v) { this.showBodyCircles = Boolean(v); },
+
+  showGuides: false,
+  showOuterRing: false,
+  showBoundaryPetals: false,
+  showCenterDots: false,
   showIntersections: false,
   showRadialAxes: false,
   showMetatronLines: false,
@@ -1871,22 +2445,30 @@ const State = {
 
   // Curated Colors
   colorLife: '#ef4444',
-  colorKryst: '#06b6d4',
-  colorBase: '#3b82f6',
+  colorKryst: '#10b981',
+  colorBody: '#3b82f6',
+  get colorBase() { return this.colorBody; },
+  set colorBase(v) { this.colorBody = v; },
   colorTriangle: '#eab308',
   colorGuide: '#ea580c',
   colorOuter: '#f59e0b',
   colorAxes: '#64748b',
+  colorIntersection: '#ec4899',
   colorBg: '#07090e',
 
   // Strokes & Opacities
-  strokeFlower: 1.5,
-  strokeBase: 1.0,
+  strokeAura: 1.5,
+  get strokeFlower() { return this.strokeAura; },
+  set strokeFlower(v) { this.strokeAura = Number(v); },
+  strokeBody: 1.0,
+  get strokeBase() { return this.strokeBody; },
+  set strokeBase(v) { this.strokeBody = Number(v); },
   strokeGuide: 2.0,
   fillOpacity: 0.04,
 
   // Selections & Highlights
   highlightedIds: new Set(),
+  highlightedSectionIds: new Set(),
   hoveredItem: null,
 
   // Pan & Zoom Transform States
@@ -1924,7 +2506,7 @@ const State = {
    * @param {number} n
    */
   setN(n) {
-    this.N = clampNumber(n, 1, 24, 2);
+    this.N = clampNumber(n, 1, 42, 2);
   },
 
   /**
@@ -1970,19 +2552,20 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'comparison',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
-        showGuides: true,
-        showOuterRing: true,
-        showBoundaryPetals: true,
-        showCenterDots: true,
+        showGuides: false,
+        showOuterRing: false,
+        showBoundaryPetals: false,
+        showCenterDots: false,
         showIntersections: false,
         showRadialAxes: false,
         showMetatronLines: false,
         sphericalShading: false,
         showEyesOfKryst: false,
+        colorKryst: '#10b981',
         fillOpacity: 0.04
       }
     },
@@ -1995,7 +2578,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'superimposed',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2020,7 +2603,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2045,7 +2628,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: true,
@@ -2070,7 +2653,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: false,
         showBaseCircles: true,
@@ -2095,7 +2678,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: false,
         showBaseCircles: true,
@@ -2120,7 +2703,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2145,7 +2728,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2170,7 +2753,7 @@ const PresetsManager = {
         N: 3,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2183,33 +2766,7 @@ const PresetsManager = {
         showMetatronLines: false,
         sphericalShading: false,
         showEyesOfKryst: false,
-        colorKryst: '#16a34a',
-        fillOpacity: 0.05
-      }
-    },
-    {
-      id: 'eyes_of_kryst',
-      title: 'Eyes of Kryst',
-      subtitle: '3 Pairs of Eyes in Magenta Vesica',
-      isBuiltin: true,
-      config: {
-        N: 3,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'actual',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: false,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: true,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: true,
-        colorKryst: '#16a34a',
+        colorKryst: '#10b981',
         fillOpacity: 0.05
       }
     },
@@ -2222,7 +2779,7 @@ const PresetsManager = {
         N: 4,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2248,7 +2805,7 @@ const PresetsManager = {
         N: 5,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2274,7 +2831,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: true,
@@ -2299,7 +2856,7 @@ const PresetsManager = {
         N: 3,
         r: 50,
         viewportMode: 'comparison',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -2507,8 +3064,10 @@ const PresetsManager = {
       viewportMode: State.viewportMode,
       viewStyle: State.viewStyle,
       platonicFilter: State.platonicFilter,
-      showActualFlower: State.showActualFlower,
-      showBaseCircles: State.showBaseCircles,
+      showAuraFlower: State.showAuraFlower,
+      showActualFlower: State.showAuraFlower,
+      showBodyCircles: State.showBodyCircles,
+      showBaseCircles: State.showBodyCircles,
       showGuides: State.showGuides,
       showOuterRing: State.showOuterRing,
       showBoundaryPetals: State.showBoundaryPetals,
@@ -2516,18 +3075,22 @@ const PresetsManager = {
       showIntersections: State.showIntersections,
       showRadialAxes: State.showRadialAxes,
       showMetatronLines: State.showMetatronLines,
-      showEyesOfKryst: State.showEyesOfKryst,
+      showEyesOfKryst: false,
       sphericalShading: State.sphericalShading,
       fillOpacity: State.fillOpacity,
       colorLife: State.colorLife,
       colorKryst: State.colorKryst,
-      colorBase: State.colorBase,
+      colorBody: State.colorBody,
+      colorBase: State.colorBody,
       colorTriangle: State.colorTriangle || '#eab308',
       colorGuide: State.colorGuide,
       colorOuter: State.colorOuter,
       colorAxes: State.colorAxes,
-      strokeFlower: State.strokeFlower,
-      strokeBase: State.strokeBase,
+      colorIntersection: State.colorIntersection || '#ec4899',
+      strokeAura: State.strokeAura,
+      strokeFlower: State.strokeAura,
+      strokeBody: State.strokeBody,
+      strokeBase: State.strokeBody,
       strokeGuide: State.strokeGuide,
       colorByLayer: State.colorByLayer,
       enableGlow: State.enableGlow,
@@ -2755,7 +3318,7 @@ const PresetDialog = {
   },
 
   populateFormFromConfig(cfg) {
-    const N = clampNumber(cfg.N, 1, 24, State.N);
+    const N = clampNumber(cfg.N, 1, 42, State.N);
     const r = clampNumber(cfg.r, 15, 200, State.r);
 
     const elN = document.getElementById('presetFormN');
@@ -2770,11 +3333,21 @@ const PresetDialog = {
     if (elR) elR.value = r;
     if (elRBadge) elRBadge.textContent = `r = ${r}px`;
     if (elViewport) elViewport.value = cfg.viewportMode || State.viewportMode || 'comparison';
-    if (elViewStyle) elViewStyle.value = cfg.viewStyle || State.viewStyle || 'actual';
+    if (elViewStyle) {
+      let vs = cfg.viewStyle || State.viewStyle || 'aura';
+      if (vs === 'actual') vs = 'aura';
+      if (vs === 'base') vs = 'body';
+      elViewStyle.value = vs;
+    }
+
+    const showAura = cfg.showAuraFlower ?? cfg.showActualFlower ?? State.showAuraFlower;
+    const showBody = cfg.showBodyCircles ?? cfg.showBaseCircles ?? State.showBodyCircles;
 
     const checkMap = [
-      { id: 'presetFormShowActual', val: cfg.showActualFlower ?? State.showActualFlower },
-      { id: 'presetFormShowBase', val: cfg.showBaseCircles ?? State.showBaseCircles },
+      { id: 'presetFormShowAura', val: showAura },
+      { id: 'presetFormShowActual', val: showAura },
+      { id: 'presetFormShowBody', val: showBody },
+      { id: 'presetFormShowBase', val: showBody },
       { id: 'presetFormShowGuides', val: cfg.showGuides ?? State.showGuides },
       { id: 'presetFormShowOuterRing', val: cfg.showOuterRing ?? State.showOuterRing },
       { id: 'presetFormShowBoundaryPetals', val: cfg.showBoundaryPetals ?? State.showBoundaryPetals },
@@ -2782,7 +3355,6 @@ const PresetDialog = {
       { id: 'presetFormShowIntersections', val: cfg.showIntersections ?? State.showIntersections },
       { id: 'presetFormShowRadialAxes', val: cfg.showRadialAxes ?? State.showRadialAxes },
       { id: 'presetFormShowMetatron', val: cfg.showMetatronLines ?? State.showMetatronLines },
-      { id: 'presetFormShowEyes', val: cfg.showEyesOfKryst ?? State.showEyesOfKryst },
       { id: 'presetFormShading', val: cfg.sphericalShading ?? State.sphericalShading }
     ];
 
@@ -2796,17 +3368,24 @@ const PresetDialog = {
   },
 
   readConfigFromForm() {
-    const showEyesEl = document.getElementById('presetFormShowEyes');
     const elN = document.getElementById('presetFormN');
     const elR = document.getElementById('presetFormR');
 
+    const formViewStyle = document.getElementById('presetFormViewStyle')?.value || 'aura';
+    const effectiveViewStyle = formViewStyle === 'actual' ? 'aura' : (formViewStyle === 'base' ? 'body' : formViewStyle);
+
+    const isAuraChecked = Boolean(document.getElementById('presetFormShowAura')?.checked || document.getElementById('presetFormShowActual')?.checked);
+    const isBodyChecked = Boolean(document.getElementById('presetFormShowBody')?.checked || document.getElementById('presetFormShowBase')?.checked);
+
     return {
-      N: clampNumber(elN?.value, 1, 24, 2),
+      N: clampNumber(elN?.value, 1, 42, 2),
       r: clampNumber(elR?.value, 15, 200, 50),
       viewportMode: document.getElementById('presetFormViewport')?.value || 'comparison',
-      viewStyle: document.getElementById('presetFormViewStyle')?.value || 'actual',
-      showActualFlower: Boolean(document.getElementById('presetFormShowActual')?.checked),
-      showBaseCircles: Boolean(document.getElementById('presetFormShowBase')?.checked),
+      viewStyle: effectiveViewStyle,
+      showAuraFlower: isAuraChecked,
+      showActualFlower: isAuraChecked,
+      showBodyCircles: isBodyChecked,
+      showBaseCircles: isBodyChecked,
       showGuides: Boolean(document.getElementById('presetFormShowGuides')?.checked),
       showOuterRing: Boolean(document.getElementById('presetFormShowOuterRing')?.checked),
       showBoundaryPetals: Boolean(document.getElementById('presetFormShowBoundaryPetals')?.checked),
@@ -2814,19 +3393,23 @@ const PresetDialog = {
       showIntersections: Boolean(document.getElementById('presetFormShowIntersections')?.checked),
       showRadialAxes: Boolean(document.getElementById('presetFormShowRadialAxes')?.checked),
       showMetatronLines: Boolean(document.getElementById('presetFormShowMetatron')?.checked),
-      showEyesOfKryst: showEyesEl ? Boolean(showEyesEl.checked) : State.showEyesOfKryst,
+      showEyesOfKryst: false,
       platonicFilter: document.getElementById('presetFormPlatonic')?.value || 'all',
       sphericalShading: Boolean(document.getElementById('presetFormShading')?.checked),
       fillOpacity: State.fillOpacity,
       colorLife: State.colorLife,
       colorKryst: State.colorKryst,
-      colorBase: State.colorBase,
+      colorBody: State.colorBody,
+      colorBase: State.colorBody,
       colorTriangle: State.colorTriangle || '#eab308',
       colorGuide: State.colorGuide,
       colorOuter: State.colorOuter,
       colorAxes: State.colorAxes,
-      strokeFlower: State.strokeFlower,
-      strokeBase: State.strokeBase,
+      colorIntersection: State.colorIntersection || '#ec4899',
+      strokeAura: State.strokeAura,
+      strokeFlower: State.strokeAura,
+      strokeBody: State.strokeBody,
+      strokeBase: State.strokeBody,
       strokeGuide: State.strokeGuide
     };
   },
@@ -2867,8 +3450,6 @@ const PresetDialog = {
     if (window.UI?.showToast) window.UI.showToast(`Studio settings saved to "${name}".`);
   }
 };
-
-
 
   /* =========================================================================
      4. SVG RENDERING ENGINE (js/renderer.js)
@@ -3102,9 +3683,10 @@ const SVGRenderer = {
     // Cache points in pointsMap for O(1) lookup
     points.forEach(pt => this.pointsMap.set(pt.id, pt));
 
-    // 3. Base Pattern Circles (Radius r)
-    if (State.showBaseCircles || State.viewStyle === 'base' || State.viewStyle === 'combined' || State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube') {
-      const baseGroup = this.createSvgElement('g', { class: 'group-base-circles' });
+    // 3. Body Pattern Circles (Radius r)
+    const isBodyActive = State.showBodyCircles || State.showBaseCircles || State.viewStyle === 'body' || State.viewStyle === 'base' || State.viewStyle === 'combined' || State.activePreset === 'fruit_of_life' || State.activePreset === 'metatrons_cube';
+    if (isBodyActive) {
+      const baseGroup = this.createSvgElement('g', { class: 'group-body-circles group-base-circles' });
       const baseFrag = document.createDocumentFragment();
       const renderedBase = [];
       const dedupTol = Math.max(0.5, 0.02 * r);
@@ -3114,12 +3696,12 @@ const SVGRenderer = {
         renderedBase.push(pt);
 
         const isHighlighted = State.highlightedIds.has(pt.id);
-        let baseStroke = State.colorBase;
+        let baseStroke = State.colorBody || State.colorBase;
         if (patternType === 'kryst') {
           if (pt.role === 'triangle') {
             baseStroke = State.colorTriangle || '#eab308';
           } else {
-            baseStroke = State.colorBase || '#3b82f6';
+            baseStroke = State.colorBody || State.colorBase || '#3b82f6';
           }
         }
 
@@ -3129,9 +3711,9 @@ const SVGRenderer = {
           r: r,
           fill: State.sphericalShading ? `url(#${idPrefix}-sphere-grad)` : (isHighlighted ? 'rgba(255,255,255,0.1)' : 'none'),
           stroke: isHighlighted ? '#ffffff' : baseStroke,
-          'stroke-width': isHighlighted ? 2.8 : State.strokeBase,
+          'stroke-width': isHighlighted ? 2.8 : (State.strokeBody || State.strokeBase),
           opacity: isHighlighted ? '1.0' : '0.8',
-          class: `circle-node base-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+          class: `circle-node body-circle base-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'data-circle-id': pt.id,
           'data-pattern': pt.pattern || patternType,
           'data-default-stroke': baseStroke
@@ -3143,7 +3725,8 @@ const SVGRenderer = {
     }
 
     // 4. Completed Boundary Petals (Clipped Mode for Flower of Life)
-    if (patternType === 'life' && State.showBoundaryPetals && (State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube') {
+    const isBoundaryPetalsActive = patternType === 'life' && State.showBoundaryPetals && (State.viewStyle === 'aura' || State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube';
+    if (isBoundaryPetalsActive) {
       const clippedPetalsGroup = this.createSvgElement('g', {
         class: 'group-boundary-petals',
         'clip-path': `url(#${idPrefix}-bound-clip)`
@@ -3158,7 +3741,7 @@ const SVGRenderer = {
           fill: State.colorLife,
           'fill-opacity': State.fillOpacity,
           stroke: State.colorLife,
-          'stroke-width': State.strokeFlower,
+          'stroke-width': State.strokeAura || State.strokeFlower,
           opacity: '0.55'
         }));
       });
@@ -3166,23 +3749,51 @@ const SVGRenderer = {
       mainGroup.appendChild(clippedPetalsGroup);
     }
 
-    // 5. Actual Flower Overlapping Circles (Radius R = 2r)
-    if (State.showActualFlower && (State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube') {
-      const actualGroup = this.createSvgElement('g', { class: 'group-actual-flower' });
+    // 5. Aura Overlapping Circles & Individual Clickable Sections (Radius R = 2r over center of body circles)
+    const isAuraActive = (State.showAuraFlower || State.showActualFlower) && (State.viewStyle === 'aura' || State.viewStyle === 'actual' || State.viewStyle === 'combined') && State.activePreset !== 'fruit_of_life' && State.activePreset !== 'metatrons_cube';
+    if (isAuraActive) {
+      const renderedAura = [];
+      const dedupTol = Math.max(0.5, 0.02 * r);
+      points.forEach(pt => {
+        if (renderedAura.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
+        renderedAura.push(pt);
+      });
+
+      // 5a. Clickable Individual Sections (spaces bound by circle intersections)
+      const sectionsGroup = this.createSvgElement('g', { class: 'group-flower-sections' });
+      const sectionsFrag = document.createDocumentFragment();
+      const cacheKey = `${patternType}_${N}_${r}_${renderedAura.length}`;
+      if (!this.sectionsCache) this.sectionsCache = new Map();
+      let sections = this.sectionsCache.get(cacheKey);
+      if (!sections) {
+        sections = (renderedAura.length <= 150) ? SacredMath.computeCircleSections(renderedAura, R) : [];
+        this.sectionsCache.set(cacheKey, sections);
+      }
+
+      sections.forEach(sec => {
+        const isSecHighlighted = State.highlightedSectionIds.has(sec.id);
+        const secPath = this.createSvgElement('path', {
+          d: sec.d,
+          class: `flower-section ${isSecHighlighted ? 'highlighted-section' : ''}`,
+          'data-section-id': sec.id,
+          'data-pattern': patternType
+        });
+        sectionsFrag.appendChild(secPath);
+      });
+      sectionsGroup.appendChild(sectionsFrag);
+      mainGroup.appendChild(sectionsGroup);
+
+      // 5b. Aura Overlapping Circles (pointer-events: none so clicks hit sections)
+      const actualGroup = this.createSvgElement('g', { class: 'group-aura-flower group-actual-flower' });
       const actualFrag = document.createDocumentFragment();
       const flowerColor = (patternType === 'life') ? State.colorLife : State.colorKryst;
-      const renderedActual = [];
-      const dedupTol = Math.max(0.5, 0.02 * r);
 
-      points.forEach(pt => {
-        if (renderedActual.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
-        renderedActual.push(pt);
-
+      renderedAura.forEach((pt, idx) => {
         const isHighlighted = State.highlightedIds.has(pt.id);
         let strokeColor = flowerColor;
 
         if (State.colorByLayer) {
-          strokeColor = LayerColors[pt.layer % LayerColors.length];
+          strokeColor = LayerColors[(pt.layer || idx) % LayerColors.length];
         }
         if (isHighlighted) {
           strokeColor = '#ffffff';
@@ -3192,42 +3803,23 @@ const SVGRenderer = {
           cx: pt.x,
           cy: pt.y,
           r: R,
-          fill: isHighlighted ? 'rgba(255, 255, 255, 0.15)' : strokeColor,
-          'fill-opacity': isHighlighted ? '0.2' : State.fillOpacity,
+          fill: 'none',
+          'fill-opacity': '0',
           stroke: strokeColor,
-          'stroke-width': isHighlighted ? 3.0 : State.strokeFlower,
+          'stroke-width': isHighlighted ? 3.0 : (State.strokeAura || State.strokeFlower),
           opacity: isHighlighted ? '1.0' : '0.9',
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
-          class: `circle-node actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+          class: `circle-node aura-circle actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+          'pointer-events': 'none',
           'data-circle-id': pt.id,
           'data-pattern': pt.pattern || patternType,
-          'data-default-stroke': (State.colorByLayer ? LayerColors[pt.layer % LayerColors.length] : flowerColor)
+          'data-default-stroke': (State.colorByLayer ? LayerColors[(pt.layer || idx) % LayerColors.length] : flowerColor)
         });
 
         actualFrag.appendChild(circle);
       });
       actualGroup.appendChild(actualFrag);
       mainGroup.appendChild(actualGroup);
-    }
-
-    // 5b. Eyes of Kryst (3 Pairs = 6 Vesica Piscis Lenses in Magenta)
-    if (patternType === 'kryst' && (State.showEyesOfKryst || State.activePreset === 'eyes_of_kryst')) {
-      const eyesGroup = this.createSvgElement('g', { class: 'group-eyes-of-kryst' });
-      const eyesFrag = document.createDocumentFragment();
-      const eyes = SacredMath.getEyesOfKryst(r);
-      eyes.forEach(eye => {
-        eyesFrag.appendChild(this.createSvgElement('path', {
-          d: eye.pathD,
-          fill: '#ff00ff',
-          'fill-opacity': '0.7',
-          stroke: '#ff00ff',
-          'stroke-width': '2.2',
-          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
-          class: 'eye-of-kryst'
-        }));
-      });
-      eyesGroup.appendChild(eyesFrag);
-      mainGroup.appendChild(eyesGroup);
     }
 
     // 6. Metatron Chords / Platonic Solid Lines
@@ -3323,19 +3915,33 @@ const SVGRenderer = {
       mainGroup.appendChild(ringGroup);
     }
 
-    // 8. Intersection Nodes (Lattice Dots)
+    // 8. Intersection Nodes (Lattice Dots where guide hexagons/triangles cross body circles)
     if (State.showIntersections) {
       const interGroup = this.createSvgElement('g', { class: 'group-intersections' });
       const interFrag = document.createDocumentFragment();
-      const intersectionPoints = SacredMath.computeIntersectionNodes(points, R);
-      intersectionPoints.forEach(ipt => {
+
+      let currentGuides = [];
+      if (patternType === 'life') {
+        currentGuides = SacredMath.getFlowerOfLifeGeometry(N, r).guides;
+      } else {
+        currentGuides = SacredMath.getKrystGeometry(N, r).guides;
+      }
+
+      const intersectionPoints = SacredMath.computeIntersectionNodes(currentGuides, points, r, R);
+      const interColor = State.colorIntersection || '#ec4899';
+
+      // Draw the intersection node marker at each guide crossing
+      intersectionPoints.forEach((ipt, idx) => {
         interFrag.appendChild(this.createSvgElement('circle', {
           cx: ipt.x,
           cy: ipt.y,
-          r: '2.5',
-          fill: '#ffffff',
-          opacity: '0.7',
-          class: 'intersection-node'
+          r: '3.5',
+          fill: interColor,
+          stroke: '#ffffff',
+          'stroke-width': '1.2',
+          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
+          class: 'intersection-node',
+          id: `inter_node_${patternType}_${idx}`
         }));
       });
       interGroup.appendChild(interFrag);
@@ -3472,7 +4078,39 @@ const SVGRenderer = {
     folPoints.forEach(pt => this.pointsMap.set(pt.id, pt));
     fokPoints.forEach(pt => this.pointsMap.set(pt.id, pt));
 
-    // Flower of Life Layer (Red)
+    // Deduplicate Flower of Kryst body circle points for aura circles
+    const renderedFok = [];
+    const dedupTol = Math.max(0.5, 0.02 * r);
+    fokPoints.forEach(pt => {
+      if (renderedFok.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
+      renderedFok.push(pt);
+    });
+
+    // Superimposed Sections & Aura Circles over body circle centers
+    const allSuperCircles = [...folPoints, ...renderedFok];
+    const sectionsGroup = this.createSvgElement('g', { class: 'group-flower-sections' });
+    const sectionsFrag = document.createDocumentFragment();
+    const cacheKey = `super_${N}_${r}_${allSuperCircles.length}`;
+    if (!this.sectionsCache) this.sectionsCache = new Map();
+    let sections = this.sectionsCache.get(cacheKey);
+    if (!sections) {
+      sections = SacredMath.computeCircleSections(allSuperCircles, R);
+      this.sectionsCache.set(cacheKey, sections);
+    }
+    sections.forEach(sec => {
+      const isSecHighlighted = State.highlightedSectionIds.has(sec.id);
+      const secPath = this.createSvgElement('path', {
+        d: sec.d,
+        class: `flower-section ${isSecHighlighted ? 'highlighted-section' : ''}`,
+        'data-section-id': sec.id,
+        'data-pattern': 'superimposed'
+      });
+      sectionsFrag.appendChild(secPath);
+    });
+    sectionsGroup.appendChild(sectionsFrag);
+    mainGroup.appendChild(sectionsGroup);
+
+    // Flower of Life Layer (Red) - Aura circles over body circle centers at 2x size (R = 2r)
     const folGroup = this.createSvgElement('g', { class: 'group-fol-overlay' });
     const folFrag = document.createDocumentFragment();
     folPoints.forEach(pt => {
@@ -3485,7 +4123,8 @@ const SVGRenderer = {
         stroke: isHighlighted ? '#ffffff' : State.colorLife,
         'stroke-width': isHighlighted ? 3 : State.strokeFlower,
         opacity: '0.65',
-        class: `circle-node ${isHighlighted ? 'highlighted-circle' : ''}`,
+        class: `circle-node aura-circle actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+        'pointer-events': 'none',
         'data-circle-id': pt.id,
         'data-pattern': 'life',
         'data-default-stroke': State.colorLife
@@ -3494,16 +4133,11 @@ const SVGRenderer = {
     folGroup.appendChild(folFrag);
     mainGroup.appendChild(folGroup);
 
-    // Flower of Kryst Layer (Electric Cyan)
+    // Flower of Kryst Layer - Aura circles over body circle centers at 2x size (R = 2r)
     const fokGroup = this.createSvgElement('g', { class: 'group-fok-overlay' });
     const fokFrag = document.createDocumentFragment();
-    const renderedFok = [];
-    const dedupTol = Math.max(0.5, 0.02 * r);
 
-    fokPoints.forEach(pt => {
-      if (renderedFok.some(rc => Math.hypot(rc.x - pt.x, rc.y - pt.y) < dedupTol)) return;
-      renderedFok.push(pt);
-
+    renderedFok.forEach(pt => {
       const isHighlighted = State.highlightedIds.has(pt.id);
       fokFrag.appendChild(this.createSvgElement('circle', {
         cx: pt.x,
@@ -3511,9 +4145,10 @@ const SVGRenderer = {
         r: R,
         fill: 'none',
         stroke: isHighlighted ? '#ffffff' : State.colorKryst,
-        'stroke-width': isHighlighted ? 3 : State.strokeFlower,
+        'stroke-width': isHighlighted ? 3 : (State.strokeAura || State.strokeFlower),
         opacity: '0.75',
-        class: `circle-node ${isHighlighted ? 'highlighted-circle' : ''}`,
+        class: `circle-node aura-circle actual-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
+        'pointer-events': 'none',
         'data-circle-id': pt.id,
         'data-pattern': 'kryst',
         'data-default-stroke': State.colorKryst
@@ -3521,26 +4156,6 @@ const SVGRenderer = {
     });
     fokGroup.appendChild(fokFrag);
     mainGroup.appendChild(fokGroup);
-
-    // Eyes of Kryst
-    if (State.showEyesOfKryst || State.activePreset === 'eyes_of_kryst') {
-      const eyesGroup = this.createSvgElement('g', { class: 'group-eyes-of-kryst' });
-      const eyesFrag = document.createDocumentFragment();
-      const eyes = SacredMath.getEyesOfKryst(r);
-      eyes.forEach(eye => {
-        eyesFrag.appendChild(this.createSvgElement('path', {
-          d: eye.pathD,
-          fill: '#ff00ff',
-          'fill-opacity': '0.7',
-          stroke: '#ff00ff',
-          'stroke-width': '2.2',
-          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
-          class: 'eye-of-kryst'
-        }));
-      });
-      eyesGroup.appendChild(eyesFrag);
-      mainGroup.appendChild(eyesGroup);
-    }
 
     // Divergence Connecting Vectors (Phase Delta between FoL midpoints and FoK circular centers)
     if (N >= 2) {
@@ -3607,6 +4222,37 @@ const SVGRenderer = {
         stroke: State.colorOuter,
         'stroke-width': '2'
       }));
+    }
+
+    // Intersection Nodes in Superimposed mode
+    if (State.showIntersections) {
+      const interGroup = this.createSvgElement('g', { class: 'group-intersections' });
+      const interFrag = document.createDocumentFragment();
+
+      const folGuides = SacredMath.getFlowerOfLifeGeometry(N, r).guides;
+      const fokGuides = SacredMath.getKrystGeometry(N, r).guides;
+      const combinedGuides = [...folGuides, ...fokGuides];
+      const combinedPoints = [...folPoints, ...fokPoints];
+
+      const intersectionPoints = SacredMath.computeIntersectionNodes(combinedGuides, combinedPoints, r, R);
+      const interColor = State.colorIntersection || '#ec4899';
+
+      intersectionPoints.forEach((ipt, idx) => {
+        interFrag.appendChild(this.createSvgElement('circle', {
+          cx: ipt.x,
+          cy: ipt.y,
+          r: '3.5',
+          fill: interColor,
+          stroke: '#ffffff',
+          'stroke-width': '1.2',
+          filter: State.enableGlow ? `url(#${idPrefix}-glow)` : 'none',
+          class: 'intersection-node',
+          id: `inter_node_super_${idx}`
+        }));
+      });
+
+      interGroup.appendChild(interFrag);
+      mainGroup.appendChild(interGroup);
     }
 
     svg.appendChild(mainGroup);
@@ -3707,6 +4353,26 @@ const SVGRenderer = {
         hlGroup.appendChild(hlFrag);
       }
     }
+
+    // 3. Update section highlights
+    this.updateSectionHighlights(svgId);
+  },
+
+  /**
+   * Lightweight Section Highlight Updater:
+   * Toggles .highlighted-section class on existing <path class="flower-section"> elements.
+   *
+   * @param {string} svgId - ID of SVG canvas to update.
+   */
+  updateSectionHighlights(svgId) {
+    const svg = document.getElementById(svgId);
+    if (!svg) return;
+
+    svg.querySelectorAll('.flower-section').forEach(el => {
+      const secId = el.dataset.sectionId;
+      const isHl = State.highlightedSectionIds && State.highlightedSectionIds.has(secId);
+      el.classList.toggle('highlighted-section', Boolean(isHl));
+    });
   },
 
   /**
@@ -3732,12 +4398,9 @@ const SVGRenderer = {
   }
 };
 
-
-
   /* =========================================================================
      5. 3D WEBGL RENDERING ENGINE (js/renderer3d.js)
      ========================================================================= */
-
 let THREE = window.THREE;
 let OrbitControls = window.OrbitControls;
 
@@ -4019,19 +4682,19 @@ class Viewport3D {
       }
     } else {
       // Superimposed mode: render both FoL and FoK in FCC mode
+      const effective3DN = Math.max(1, Math.min(State.N, 6));
       if (State.viewportMode === 'superimposed') {
-        const lifeGeom = SacredMath3D.getLife3DGeometry(SacredMath3D.getEffectiveLifeLayers ? SacredMath3D.getEffectiveLifeLayers(State.N, r) : State.N, r);
-        const krystGeom = SacredMath3D.getKryst3DGeometry(State.N, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
+        const lifeGeom = SacredMath3D.getLife3DGeometry(effective3DN, r);
+        const krystGeom = SacredMath3D.getKryst3DGeometry(effective3DN, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
         this.currentGeometry = {
           spheres: [...lifeGeom.spheres.map(s => ({ ...s, pattern: 'life' })), ...krystGeom.spheres.map(s => ({ ...s, pattern: 'kryst' }))],
           guides: [...lifeGeom.guides, ...krystGeom.guides],
           boundingRadius: Math.max(lifeGeom.boundingRadius, krystGeom.boundingRadius)
         };
       } else if (this.patternKey === 'life') {
-        const effectiveLayers = Math.max(1, Math.min(State.N, 6));
-        this.currentGeometry = SacredMath3D.getLife3DGeometry(effectiveLayers, r);
+        this.currentGeometry = SacredMath3D.getLife3DGeometry(effective3DN, r);
       } else {
-        this.currentGeometry = SacredMath3D.getKryst3DGeometry(State.N, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
+        this.currentGeometry = SacredMath3D.getKryst3DGeometry(effective3DN, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
       }
     }
 
@@ -4120,7 +4783,7 @@ class Viewport3D {
     if (State.show3DShells && spheres.length > 0) {
       const shellGeo = new THREE.SphereGeometry(2 * r, 22, 16);
       const shellMat = new THREE.MeshPhysicalMaterial({
-        color: this.patternKey === 'life' ? (State.colorLife || '#ef4444') : (State.colorKryst || '#06b6d4'),
+        color: this.patternKey === 'life' ? (State.colorLife || '#ef4444') : (State.colorKryst || '#10b981'),
         transparent: true,
         opacity: 0.14,
         depthWrite: false,
@@ -4391,9 +5054,8 @@ const Renderer3D = {
   _isSyncingControls: false,
   isInitialized: false,
 
-  async init() {
+  init() {
     if (this.isInitialized) return;
-    await ensureThree();
 
     this.viewports.life = new Viewport3D('canvasLife3D', 'life');
     this.viewports.kryst = new Viewport3D('canvasKryst3D', 'kryst');
@@ -4494,8 +5156,8 @@ const Renderer3D = {
   /**
    * Refreshes all 3D geometries, materials, and clipping planes.
    */
-  async renderAll() {
-    if (!this.isInitialized) await this.init();
+  renderAll() {
+    if (!this.isInitialized) this.init();
 
     this.resizeAll();
 
@@ -4602,8 +5264,6 @@ const Renderer3D = {
   }
 };
 
-
-
   /* =========================================================================
      6. USER INTERFACES & PAN-ZOOM ENGINE (js/interactions.js)
      ========================================================================= */
@@ -4639,6 +5299,7 @@ class PanZoomController {
     this.wrapper.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return; // Left click only
       this.isDragging = true;
+      this.hasMoved = false;
       this.startX = e.clientX;
       this.startY = e.clientY;
       try {
@@ -4650,6 +5311,9 @@ class PanZoomController {
       if (!this.isDragging) return;
       const dx = e.clientX - this.startX;
       const dy = e.clientY - this.startY;
+      if (Math.hypot(dx, dy) > 4) {
+        this.hasMoved = true;
+      }
       this.startX = e.clientX;
       this.startY = e.clientY;
 
@@ -4679,6 +5343,15 @@ class PanZoomController {
 
     this.wrapper.addEventListener('pointerup', stopDrag);
     this.wrapper.addEventListener('pointercancel', stopDrag);
+
+    // Suppress click on drag end
+    this.wrapper.addEventListener('click', (e) => {
+      if (this.hasMoved) {
+        e.stopPropagation();
+        e.preventDefault();
+        this.hasMoved = false;
+      }
+    }, true);
 
     // Mouse Wheel for Zoom
     this.wrapper.addEventListener('wheel', (e) => {
@@ -4727,6 +5400,7 @@ const UI = {
 
   init() {
     PresetsManager.init();
+    this.setDimension(State.dimension || '2d');
     this.bindAccordions();
     this.bindDimensionTabs();
     this.bindViewTabs();
@@ -4767,6 +5441,23 @@ const UI = {
 
       // Delegated click-to-highlight with lightweight DOM updates
       svg.addEventListener('click', (e) => {
+        // 1. Check if clicking on an individual section (open space bound by circle intersections)
+        const secTarget = e.target.closest('.flower-section');
+        if (secTarget) {
+          e.stopPropagation();
+          const secId = secTarget.dataset.sectionId;
+          if (State.highlightedSectionIds.has(secId)) {
+            State.highlightedSectionIds.delete(secId);
+          } else {
+            State.highlightedSectionIds.add(secId);
+          }
+          SVGRenderer.updateSectionHighlights('svgLife');
+          SVGRenderer.updateSectionHighlights('svgKryst');
+          this.updateSidebarStats();
+          return;
+        }
+
+        // 2. Fallback check for circle / dot nodes
         const target = e.target.closest('[data-circle-id]');
         if (target) {
           e.stopPropagation();
@@ -4778,12 +5469,21 @@ const UI = {
             } else {
               State.highlightedIds.add(circleId);
             }
-            // Lightweight highlight update - no geometry re-render!
             SVGRenderer.updateHighlights('svgLife');
             SVGRenderer.updateHighlights('svgKryst');
             this.updateInspector(pt);
             this.updateSidebarStats();
           }
+          return;
+        }
+
+        // 3. Click on empty background: clear all highlighted sections and nodes
+        if (State.highlightedSectionIds.size > 0 || State.highlightedIds.size > 0) {
+          State.highlightedSectionIds.clear();
+          State.highlightedIds.clear();
+          SVGRenderer.updateHighlights('svgLife');
+          SVGRenderer.updateHighlights('svgKryst');
+          this.updateSidebarStats();
         }
       });
     });
@@ -4842,6 +5542,8 @@ const UI = {
 
   setDimension(dim) {
     State.dimension = dim;
+    document.body.dataset.dimension = dim;
+
     document.querySelectorAll('#dimensionSwitcher .dim-tab').forEach(tab => {
       const isActive = tab.dataset.dim === dim;
       tab.classList.toggle('active', isActive);
@@ -4853,13 +5555,20 @@ const UI = {
     const webglLife = document.getElementById('webglWrapperLife');
     const webglKryst = document.getElementById('webglWrapperKryst');
     const section3d = document.getElementById('section3dControls');
+    const section2d = document.getElementById('section2dLayers');
 
     if (dim === '3d') {
       if (svgLife) svgLife.style.display = 'none';
       if (svgKryst) svgKryst.style.display = 'none';
       if (webglLife) webglLife.style.display = 'flex';
       if (webglKryst) webglKryst.style.display = 'flex';
-      if (section3d) section3d.classList.add('open');
+      if (section3d) {
+        section3d.style.display = '';
+        section3d.classList.add('open');
+      }
+      if (section2d) {
+        section2d.style.display = 'none';
+      }
 
       if (window.Renderer3D) {
         window.Renderer3D.renderAll();
@@ -4871,6 +5580,12 @@ const UI = {
       if (svgKryst) svgKryst.style.display = '';
       if (webglLife) webglLife.style.display = 'none';
       if (webglKryst) webglKryst.style.display = 'none';
+      if (section3d) {
+        section3d.style.display = 'none';
+      }
+      if (section2d) {
+        section2d.style.display = '';
+      }
 
       App.renderAll();
       this.showToast('2D SVG Engine Active');
@@ -4952,22 +5667,22 @@ const UI = {
       });
     }
 
-    const strokeFlowerSlider = document.getElementById('strokeFlowerSlider');
-    const strokeFlowerBadge = document.getElementById('strokeFlowerBadge');
-    if (strokeFlowerSlider && strokeFlowerBadge) {
-      strokeFlowerSlider.addEventListener('input', (e) => {
-        State.strokeFlower = clampNumber(e.target.value, 0.25, 8.0, 1.5);
-        strokeFlowerBadge.textContent = `${State.strokeFlower}px`;
+    const strokeAuraSlider = document.getElementById('strokeAuraSlider') || document.getElementById('strokeFlowerSlider');
+    const strokeAuraBadge = document.getElementById('strokeAuraBadge') || document.getElementById('strokeFlowerBadge');
+    if (strokeAuraSlider && strokeAuraBadge) {
+      strokeAuraSlider.addEventListener('input', (e) => {
+        State.strokeAura = clampNumber(e.target.value, 0.25, 8.0, 1.5);
+        strokeAuraBadge.textContent = `${State.strokeAura}px`;
         App.renderAll();
       });
     }
 
-    const strokeBaseSlider = document.getElementById('strokeBaseSlider');
-    const strokeBaseBadge = document.getElementById('strokeBaseBadge');
-    if (strokeBaseSlider && strokeBaseBadge) {
-      strokeBaseSlider.addEventListener('input', (e) => {
-        State.strokeBase = clampNumber(e.target.value, 0.25, 6.0, 1.0);
-        strokeBaseBadge.textContent = `${State.strokeBase}px`;
+    const strokeBodySlider = document.getElementById('strokeBodySlider') || document.getElementById('strokeBaseSlider');
+    const strokeBodyBadge = document.getElementById('strokeBodyBadge') || document.getElementById('strokeBaseBadge');
+    if (strokeBodySlider && strokeBodyBadge) {
+      strokeBodySlider.addEventListener('input', (e) => {
+        State.strokeBody = clampNumber(e.target.value, 0.25, 6.0, 1.0);
+        strokeBodyBadge.textContent = `${State.strokeBody}px`;
         App.renderAll();
       });
     }
@@ -4996,8 +5711,10 @@ const UI = {
 
   bindToggles() {
     const toggleMap = [
-      { id: 'toggleActualFlower', prop: 'showActualFlower' },
-      { id: 'toggleBaseCircles', prop: 'showBaseCircles' },
+      { id: 'toggleAuraFlower', prop: 'showAuraFlower' },
+      { id: 'toggleActualFlower', prop: 'showAuraFlower' },
+      { id: 'toggleBodyCircles', prop: 'showBodyCircles' },
+      { id: 'toggleBaseCircles', prop: 'showBodyCircles' },
       { id: 'toggleGuides', prop: 'showGuides' },
       { id: 'toggleOuterRing', prop: 'showOuterRing' },
       { id: 'toggleBoundaryPetals', prop: 'showBoundaryPetals' },
@@ -5005,7 +5722,6 @@ const UI = {
       { id: 'toggleIntersections', prop: 'showIntersections' },
       { id: 'toggleRadialAxes', prop: 'showRadialAxes' },
       { id: 'toggleMetatronLines', prop: 'showMetatronLines' },
-      { id: 'toggleEyesOfKryst', prop: 'showEyesOfKryst' },
       { id: 'toggleColorByLayer', prop: 'colorByLayer' },
       { id: 'toggleGlow', prop: 'enableGlow' },
       { id: 'togglePulse', prop: 'enablePulse' }
@@ -5191,7 +5907,8 @@ const UI = {
     const colorInputs = [
       { id: 'colorLife', prop: 'colorLife' },
       { id: 'colorKryst', prop: 'colorKryst' },
-      { id: 'colorBase', prop: 'colorBase' },
+      { id: 'colorBody', prop: 'colorBody' },
+      { id: 'colorBase', prop: 'colorBody' },
       { id: 'colorTriangle', prop: 'colorTriangle' },
       { id: 'colorGuide', prop: 'colorGuide' },
       { id: 'colorOuter', prop: 'colorOuter' },
@@ -5330,8 +6047,10 @@ const UI = {
     if (cfg.viewportMode !== undefined) State.viewportMode = cfg.viewportMode;
     if (cfg.viewStyle !== undefined) State.viewStyle = cfg.viewStyle;
     if (cfg.platonicFilter !== undefined) State.platonicFilter = cfg.platonicFilter;
-    if (cfg.showActualFlower !== undefined) State.showActualFlower = Boolean(cfg.showActualFlower);
-    if (cfg.showBaseCircles !== undefined) State.showBaseCircles = Boolean(cfg.showBaseCircles);
+    if (cfg.showAuraFlower !== undefined) State.showAuraFlower = Boolean(cfg.showAuraFlower);
+    if (cfg.showActualFlower !== undefined) State.showAuraFlower = Boolean(cfg.showActualFlower);
+    if (cfg.showBodyCircles !== undefined) State.showBodyCircles = Boolean(cfg.showBodyCircles);
+    if (cfg.showBaseCircles !== undefined) State.showBodyCircles = Boolean(cfg.showBaseCircles);
     if (cfg.showGuides !== undefined) State.showGuides = Boolean(cfg.showGuides);
     if (cfg.showOuterRing !== undefined) State.showOuterRing = Boolean(cfg.showOuterRing);
     if (cfg.showBoundaryPetals !== undefined) State.showBoundaryPetals = Boolean(cfg.showBoundaryPetals);
@@ -5344,13 +6063,16 @@ const UI = {
     if (cfg.fillOpacity !== undefined) State.fillOpacity = clampNumber(cfg.fillOpacity, 0, 1.0, 0.04);
     if (cfg.colorLife !== undefined) State.colorLife = cfg.colorLife;
     if (cfg.colorKryst !== undefined) State.colorKryst = cfg.colorKryst;
-    if (cfg.colorBase !== undefined) State.colorBase = cfg.colorBase;
+    if (cfg.colorBody !== undefined) State.colorBody = cfg.colorBody;
+    if (cfg.colorBase !== undefined) State.colorBody = cfg.colorBase;
     if (cfg.colorTriangle !== undefined) State.colorTriangle = cfg.colorTriangle;
     if (cfg.colorGuide !== undefined) State.colorGuide = cfg.colorGuide;
     if (cfg.colorOuter !== undefined) State.colorOuter = cfg.colorOuter;
     if (cfg.colorAxes !== undefined) State.colorAxes = cfg.colorAxes;
-    if (cfg.strokeFlower !== undefined) State.strokeFlower = clampNumber(cfg.strokeFlower, 0.25, 8.0, 1.5);
-    if (cfg.strokeBase !== undefined) State.strokeBase = clampNumber(cfg.strokeBase, 0.25, 6.0, 1.0);
+    if (cfg.strokeAura !== undefined) State.strokeAura = clampNumber(cfg.strokeAura, 0.25, 8.0, 1.5);
+    if (cfg.strokeFlower !== undefined) State.strokeAura = clampNumber(cfg.strokeFlower, 0.25, 8.0, 1.5);
+    if (cfg.strokeBody !== undefined) State.strokeBody = clampNumber(cfg.strokeBody, 0.25, 6.0, 1.0);
+    if (cfg.strokeBase !== undefined) State.strokeBody = clampNumber(cfg.strokeBase, 0.25, 6.0, 1.0);
     if (cfg.strokeGuide !== undefined) State.strokeGuide = clampNumber(cfg.strokeGuide, 0.25, 8.0, 2.0);
     if (cfg.colorByLayer !== undefined) State.colorByLayer = Boolean(cfg.colorByLayer);
     if (cfg.enableGlow !== undefined) State.enableGlow = Boolean(cfg.enableGlow);
@@ -5423,15 +6145,17 @@ const UI = {
     this.updateLayerBadge();
 
     const boolInputs = [
-      { id: 'toggleActualFlower', val: State.showActualFlower },
-      { id: 'toggleBaseCircles', val: State.showBaseCircles },
+      { id: 'toggleAuraFlower', val: State.showAuraFlower },
+      { id: 'toggleActualFlower', val: State.showAuraFlower },
+      { id: 'toggleBodyCircles', val: State.showBodyCircles },
+      { id: 'toggleBaseCircles', val: State.showBodyCircles },
       { id: 'toggleGuides', val: State.showGuides },
       { id: 'toggleOuterRing', val: State.showOuterRing },
       { id: 'toggleBoundaryPetals', val: State.showBoundaryPetals },
       { id: 'toggleCenterDots', val: State.showCenterDots },
+      { id: 'toggleIntersections', val: State.showIntersections },
       { id: 'toggleRadialAxes', val: State.showRadialAxes },
       { id: 'toggleMetatronLines', val: State.showMetatronLines },
-      { id: 'toggleEyesOfKryst', val: State.showEyesOfKryst },
       { id: 'toggle3DSpheres', val: State.show3DSpheres },
       { id: 'toggle3DTorus', val: State.show3DTorus },
       { id: 'toggle3DShells', val: State.show3DShells },
@@ -5443,6 +6167,16 @@ const UI = {
     boolInputs.forEach(item => {
       const el = document.getElementById(item.id);
       if (el) el.checked = Boolean(item.val);
+    });
+
+    document.querySelectorAll('.quick-mode-btn').forEach(b => {
+      const vs = b.dataset.viewstyle;
+      const isActive = (vs === State.viewStyle) ||
+        (vs === 'aura' && State.viewStyle === 'actual') ||
+        (vs === 'actual' && State.viewStyle === 'aura') ||
+        (vs === 'body' && State.viewStyle === 'base') ||
+        (vs === 'base' && State.viewStyle === 'body');
+      b.classList.toggle('active', isActive);
     });
 
     const expSelect = document.getElementById('select3DExpansionMode');
@@ -5507,8 +6241,7 @@ const UI = {
     const boundEl = document.getElementById('sidebarBoundRad');
     if (boundEl) {
       const krystStr = `${Math.round(R_bound_kryst)}px (${(R_bound_kryst / State.r).toFixed(2)}r)`;
-      const lifeLayers = SacredMath.getEffectiveLifeLayers(State.N, State.r);
-      const lifeStr = `${Math.round(R_bound_life)}px (${2 * lifeLayers + 2}r)`;
+      const lifeStr = `${Math.round(R_bound_life)}px (${(R_bound_life / State.r).toFixed(2)}r)`;
       if (State.viewportMode === 'single-kryst') {
         boundEl.textContent = krystStr;
       } else if (State.viewportMode === 'single-life') {
@@ -5519,7 +6252,8 @@ const UI = {
     }
     const hlEl = document.getElementById('sidebarHighlightCount');
     if (hlEl) {
-      hlEl.textContent = String(State.highlightedIds.size);
+      const totalHl = (State.highlightedSectionIds ? State.highlightedSectionIds.size : 0) + State.highlightedIds.size;
+      hlEl.textContent = String(totalHl);
     }
   },
 
@@ -5706,8 +6440,6 @@ const UI = {
 
 window.UI = UI;
 
-
-
   /* =========================================================================
      7. HIGH-RESOLUTION EXPORTER (js/export.js)
      ========================================================================= */
@@ -5768,10 +6500,12 @@ const Exporter = {
     const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     styleEl.textContent = `
       .circle-node { transition: stroke 0.15s, stroke-width 0.15s, opacity 0.15s; }
-      .center-dot { cursor: pointer; }
+      .actual-circle, .aura-circle { pointer-events: none; }
+      .center-dot, .intersection-node { cursor: pointer; }
+      .flower-section { fill: transparent; stroke: transparent; }
+      .flower-section.highlighted-section { fill: rgba(255, 255, 255, 0.45); stroke: #ffffff; stroke-width: 1.5px; }
       .highlighted-circle { stroke: #ffffff !important; stroke-width: 3.5px !important; }
       .highlighted-dot { fill: #ffffff !important; r: 6px !important; }
-      .eye-of-kryst { fill: #ff00ff; fill-opacity: 0.7; stroke: #ff00ff; stroke-width: 2.2px; }
       .sacred-pulse { transform-origin: center; animation: sacredBreath 6s ease-in-out infinite; }
       @keyframes sacredBreath {
         0%, 100% { transform: scale(1); opacity: 0.95; }
@@ -5944,8 +6678,6 @@ const Exporter = {
   }
 };
 
-
-
   /* =========================================================================
      8. APP INITIALIZATION (js/main.js)
      ========================================================================= */
@@ -6026,8 +6758,6 @@ if (document.readyState === 'loading') {
   setTimeout(() => App.init(), 0);
 }
 
-
-
   window.SacredGeometry = {
     Geometry: SacredMath,
     SacredMath,
@@ -6043,5 +6773,8 @@ if (document.readyState === 'loading') {
   window.App = App;
   window.Renderer3D = Renderer3D;
   window.SacredMath3D = SacredMath3D;
+  window.SacredMath = SacredMath;
+  window.State = State;
+  window.SVGRenderer = SVGRenderer;
 
 })(window, document);

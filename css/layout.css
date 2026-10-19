@@ -220,7 +220,7 @@
       color: var(--accent-gold);
     }
     .fol-theme .pane-badge-title { color: #fca5a5; }
-    .fok-theme .pane-badge-title { color: #67e8f9; }
+    .fok-theme .pane-badge-title { color: #6ee7b7; }
 
     .pane-svg-wrapper {
       flex: 1;
@@ -262,4 +262,14 @@
       .quick-mode-bar {
         max-width: calc(100vw - 120px);
       }
+    }
+
+    /* Dimension-specific panel visibility (2D vs 3D) */
+    body[data-dimension="2d"] .dim-3d-only,
+    body:not([data-dimension="3d"]) .dim-3d-only {
+      display: none !important;
+    }
+
+    body[data-dimension="3d"] .dim-2d-only {
+      display: none !important;
     }

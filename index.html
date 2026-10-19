@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Sacred Geometry Studio — Flower of Life & Flower of Kryst</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -263,17 +266,17 @@
                 <label for="layerSlider" class="control-label">Layer Depth (N)</label>
                 <span class="control-val-badge" id="layerCountBadge">N = 2</span>
               </div>
-              <input type="range" class="range-slider" id="layerSlider" min="1" max="24" value="2" step="1"
-                aria-label="Layer Depth N" aria-valuemin="1" aria-valuemax="24" aria-valuenow="2">
+              <input type="range" class="range-slider" id="layerSlider" min="1" max="42" value="2" step="1"
+                aria-label="Layer Depth N" aria-valuemin="1" aria-valuemax="42" aria-valuenow="2">
             </div>
 
             <div class="slider-container">
               <div class="control-row">
-                <label for="radiusSlider" class="control-label">Base Radius (r)</label>
+                <label for="radiusSlider" class="control-label">Body Radius (r)</label>
                 <span class="control-val-badge" id="radiusBadge">r = 50px</span>
               </div>
               <input type="range" class="range-slider" id="radiusSlider" min="25" max="90" value="50" step="1"
-                aria-label="Base Radius in pixels" aria-valuemin="25" aria-valuemax="90" aria-valuenow="50">
+                aria-label="Body Radius in pixels" aria-valuemin="25" aria-valuemax="90" aria-valuenow="50">
             </div>
 
             <!-- Total Circles Counter -->
@@ -295,7 +298,7 @@
         </div>
 
         <!-- 3D Matrix & Translucency Controls -->
-        <div class="panel-section open" id="section3dControls">
+        <div class="panel-section open dim-3d-only" id="section3dControls" style="display: none;">
           <div class="section-header" role="button" tabindex="0" aria-expanded="true"
             aria-label="Toggle 3D Matrix and Translucency Controls">
             <span class="section-title">
@@ -364,7 +367,7 @@
               <label class="toggle-row" style="margin-top:4px;">
                 <div class="toggle-info">
                   <span class="toggle-title" style="color:#38bdf8;">XY Plane (0° Original)</span>
-                  <span class="toggle-desc">Horizontal base sacred geometry</span>
+                  <span class="toggle-desc">Horizontal body sacred geometry</span>
                 </div>
                 <div class="switch">
                   <input type="checkbox" id="togglePlaneXY" checked>
@@ -535,7 +538,7 @@
         </div>
 
         <!-- Visual Elements Toggles -->
-        <div class="panel-section open">
+        <div class="panel-section open dim-2d-only" id="section2dLayers">
           <div class="section-header">
             <span class="section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -551,22 +554,22 @@
           <div class="section-body">
             <label class="toggle-row">
               <div class="toggle-info">
-                <span class="toggle-title">Actual Flower Circles</span>
+                <span class="toggle-title">Aura Circles</span>
                 <span class="toggle-desc">Expanded overlapping circles (Radius R = 2r)</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleActualFlower" checked>
+                <input type="checkbox" id="toggleAuraFlower" checked>
                 <span class="slider-switch"></span>
               </div>
             </label>
 
             <label class="toggle-row">
               <div class="toggle-info">
-                <span class="toggle-title">Base Pattern Circles</span>
-                <span class="toggle-desc">Blue tangent circles of base radius r</span>
+                <span class="toggle-title">Body Circles</span>
+                <span class="toggle-desc">Blue tangent circles of body radius r</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleBaseCircles">
+                <input type="checkbox" id="toggleBodyCircles">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -577,7 +580,7 @@
                 <span class="toggle-desc">Lattice guide lines: Hex for FoL, Hex+Circle for FoK</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleGuides" checked>
+                <input type="checkbox" id="toggleGuides">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -588,7 +591,7 @@
                 <span class="toggle-desc">Circumscribing boundary ring at R = (2N+2)r</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleOuterRing" checked>
+                <input type="checkbox" id="toggleOuterRing">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -599,7 +602,7 @@
                 <span class="toggle-desc">Complete outer petals clipped inside boundary</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleBoundaryPetals" checked>
+                <input type="checkbox" id="toggleBoundaryPetals">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -610,7 +613,7 @@
                 <span class="toggle-desc">Node points at every circle center (x, y)</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleCenterDots" checked>
+                <input type="checkbox" id="toggleCenterDots">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -618,7 +621,7 @@
             <label class="toggle-row">
               <div class="toggle-info">
                 <span class="toggle-title">Intersection Nodes</span>
-                <span class="toggle-desc">Points where petals intersect in the matrix</span>
+                <span class="toggle-desc">Points where guide hexagons and triangles cross body circles</span>
               </div>
               <div class="switch">
                 <input type="checkbox" id="toggleIntersections">
@@ -647,18 +650,6 @@
                 <span class="slider-switch"></span>
               </div>
             </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title" style="color: #ec4899; font-weight: 600;">Eyes of Kryst (3 Pairs)</span>
-                <span class="toggle-desc">Highlights 6 vesica piscis lens intersections along primary axes in
-                  magenta</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleEyesOfKryst">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
           </div>
         </div>
 
@@ -677,7 +668,7 @@
             </svg>
           </div>
           <div class="section-body">
-            <label class="toggle-row">
+            <label class="toggle-row dim-2d-only">
               <div class="toggle-info">
                 <span class="toggle-title">Harmonic Color by Layer</span>
                 <span class="toggle-desc">Assign distinct spectrum colors to layers 0..N</span>
@@ -688,7 +679,7 @@
               </div>
             </label>
 
-            <label class="toggle-row">
+            <label class="toggle-row dim-2d-only">
               <div class="toggle-info">
                 <span class="toggle-title">Neon Luminescence Glow</span>
                 <span class="toggle-desc">Ethereal SVG Gaussian blur glow filter</span>
@@ -699,7 +690,7 @@
               </div>
             </label>
 
-            <label class="toggle-row">
+            <label class="toggle-row dim-2d-only">
               <div class="toggle-info">
                 <span class="toggle-title">Sacred Pulse (Breathing)</span>
                 <span class="toggle-desc">Gentle sinusoidal kinetic respiration</span>
@@ -713,55 +704,59 @@
             <div class="color-grid">
               <div class="color-picker-item">
                 <input type="color" id="colorLife" value="#ef4444" aria-label="Flower of Life Accent Color">
-                <label for="colorLife" class="color-picker-label">Life Flower</label>
+                <label for="colorLife" class="color-picker-label">Life Aura</label>
               </div>
               <div class="color-picker-item">
-                <input type="color" id="colorKryst" value="#06b6d4" aria-label="Flower of Kryst Accent Color">
-                <label for="colorKryst" class="color-picker-label">Kryst Flower</label>
+                <input type="color" id="colorKryst" value="#10b981" aria-label="Flower of Kryst Accent Color">
+                <label for="colorKryst" class="color-picker-label">Kryst Aura</label>
               </div>
-              <div class="color-picker-item">
-                <input type="color" id="colorBase" value="#3b82f6" aria-label="Base Hexagons Color">
-                <label for="colorBase" class="color-picker-label">Base Hexagons</label>
+              <div class="color-picker-item dim-2d-only">
+                <input type="color" id="colorBody" value="#3b82f6" aria-label="Body Hexagons Color">
+                <label for="colorBody" class="color-picker-label">Body Hexagons</label>
               </div>
-              <div class="color-picker-item">
-                <input type="color" id="colorTriangle" value="#eab308" aria-label="Base Triangles Color">
-                <label for="colorTriangle" class="color-picker-label">Base Triangles</label>
+              <div class="color-picker-item dim-2d-only">
+                <input type="color" id="colorTriangle" value="#eab308" aria-label="Body Triangles Color">
+                <label for="colorTriangle" class="color-picker-label">Body Triangles</label>
               </div>
-              <div class="color-picker-item">
+              <div class="color-picker-item dim-2d-only">
                 <input type="color" id="colorGuide" value="#ea580c" aria-label="Shape Guides Color">
                 <label for="colorGuide" class="color-picker-label">Shape Guides</label>
               </div>
-              <div class="color-picker-item">
+              <div class="color-picker-item dim-2d-only">
+                <input type="color" id="colorIntersection" value="#ec4899" aria-label="Intersection Nodes Color">
+                <label for="colorIntersection" class="color-picker-label">Intersection Nodes</label>
+              </div>
+              <div class="color-picker-item dim-2d-only">
                 <input type="color" id="colorOuter" value="#f59e0b" aria-label="Outer Bounding Ring Color">
                 <label for="colorOuter" class="color-picker-label">Outer Ring</label>
               </div>
-              <div class="color-picker-item">
+              <div class="color-picker-item dim-2d-only">
                 <input type="color" id="colorAxes" value="#64748b" aria-label="Radial Symmetry Axes Color">
                 <label for="colorAxes" class="color-picker-label">Radial Axes</label>
               </div>
             </div>
 
             <!-- Stroke Width Sliders -->
-            <div class="slider-container">
+            <div class="slider-container dim-2d-only">
               <div class="control-row">
-                <label for="strokeFlowerSlider" class="control-label">Actual Circles Stroke</label>
-                <span class="control-val-badge" id="strokeFlowerBadge">1.0px</span>
+                <label for="strokeAuraSlider" class="control-label">Aura Circles Stroke</label>
+                <span class="control-val-badge" id="strokeAuraBadge">1.0px</span>
               </div>
-              <input type="range" class="range-slider" id="strokeFlowerSlider" min="1.0" max="8.0" value="1.0"
-                step="1.0" aria-label="Actual Circles Stroke Width" aria-valuemin="1.0" aria-valuemax="8.0"
+              <input type="range" class="range-slider" id="strokeAuraSlider" min="1.0" max="8.0" value="1.0"
+                step="1.0" aria-label="Aura Circles Stroke Width" aria-valuemin="1.0" aria-valuemax="8.0"
                 aria-valuenow="1.0">
             </div>
 
-            <div class="slider-container">
+            <div class="slider-container dim-2d-only">
               <div class="control-row">
-                <label for="strokeBaseSlider" class="control-label">Base Circles Stroke</label>
-                <span class="control-val-badge" id="strokeBaseBadge">1.0px</span>
+                <label for="strokeBodySlider" class="control-label">Body Circles Stroke</label>
+                <span class="control-val-badge" id="strokeBodyBadge">1.0px</span>
               </div>
-              <input type="range" class="range-slider" id="strokeBaseSlider" min="0.5" max="3.5" value="1.0" step="0.25"
-                aria-label="Base Circles Stroke Width" aria-valuemin="0.5" aria-valuemax="3.5" aria-valuenow="1.0">
+              <input type="range" class="range-slider" id="strokeBodySlider" min="0.5" max="3.5" value="1.0" step="0.25"
+                aria-label="Body Circles Stroke Width" aria-valuemin="0.5" aria-valuemax="3.5" aria-valuenow="1.0">
             </div>
 
-            <div class="slider-container">
+            <div class="slider-container dim-2d-only">
               <div class="control-row">
                 <label for="strokeGuideSlider" class="control-label">Shape Guides Stroke</label>
                 <span class="control-val-badge" id="strokeGuideBadge">2.0px</span>
@@ -771,7 +766,7 @@
                 aria-valuenow="2.0">
             </div>
 
-            <div class="slider-container">
+            <div class="slider-container dim-2d-only">
               <div class="control-row">
                 <label for="fillOpacitySlider" class="control-label">Petal Fill Opacity</label>
                 <span class="control-val-badge" id="fillOpacityBadge">4%</span>
@@ -882,14 +877,14 @@
         </div>
       </div>
 
-      <!-- Floating Controls: Quick Mode Switch (Base / Actual / Combined) -->
-      <div class="quick-mode-bar" role="toolbar" aria-label="Quick Pattern View Style Modes">
-        <button class="quick-mode-btn active" data-viewstyle="actual"
-          aria-label="Show Actual Overlapping Flower Circles">Actual Flowers</button>
-        <button class="quick-mode-btn" data-viewstyle="base"
-          aria-label="Show Base Pattern Tangent Circles and Guides">Base Pattern</button>
+      <!-- Floating Controls: Quick Mode Switch (Body / Aura / Combined) -->
+      <div class="quick-mode-bar dim-2d-only" role="toolbar" aria-label="Quick Pattern View Style Modes">
+        <button class="quick-mode-btn active" data-viewstyle="aura"
+          aria-label="Show Aura Overlapping Circles">Aura</button>
+        <button class="quick-mode-btn" data-viewstyle="body"
+          aria-label="Show Body Pattern Tangent Circles and Guides">Body</button>
         <button class="quick-mode-btn" data-viewstyle="combined"
-          aria-label="Show Combined Actual and Base Matrix">Combined</button>
+          aria-label="Show Combined Aura and Body Matrix">Combined</button>
       </div>
 
       <!-- Floating Tool Buttons (Zoom / Pan / Fit) -->
@@ -1000,7 +995,7 @@
       <div class="modal-body">
         <h3>1. The Core Geometric Distinction: Hexagon vs. Circle</h3>
         <p>
-          Both geometries share the foundational base circle radius <code>r</code> and expanded petal radius
+          Both geometries share the foundational body circle radius <code>r</code> and expanded aura petal radius
           <code>R = 2r</code>, with layer vertex distance <code>d_k = 2kr</code>. The profound mathematical divergence
           arises in how intermediary circle centers are generated across layers:
         </p>
@@ -1048,7 +1043,7 @@
                 <td><strong>Tangency &amp; Alignment</strong></td>
                 <td>Overlapping 2r radius circles</td>
                 <td><strong>Strict Tangency (Distance = 2r):</strong> Zero overlaps and zero gaps between all adjacent
-                  base circles</td>
+                  body circles</td>
               </tr>
             </tbody>
           </table>
@@ -1238,17 +1233,17 @@
                 <label for="presetFormN">Layer Depth (N)</label>
                 <span class="control-val-badge" id="presetFormNBadge">N = 2</span>
               </div>
-              <input type="range" class="range-slider" id="presetFormN" min="1" max="24" value="2" step="1"
-                aria-label="Preset Layer Depth N" aria-valuemin="1" aria-valuemax="24" aria-valuenow="2">
+              <input type="range" class="range-slider" id="presetFormN" min="1" max="42" value="2" step="1"
+                aria-label="Preset Layer Depth N" aria-valuemin="1" aria-valuemax="42" aria-valuenow="2">
             </div>
 
             <div class="form-group">
               <div class="form-label">
-                <label for="presetFormR">Base Radius (r)</label>
+                <label for="presetFormR">Body Radius (r)</label>
                 <span class="control-val-badge" id="presetFormRBadge">r = 50px</span>
               </div>
               <input type="range" class="range-slider" id="presetFormR" min="25" max="90" value="50" step="1"
-                aria-label="Preset Base Radius in pixels" aria-valuemin="25" aria-valuemax="90" aria-valuenow="50">
+                aria-label="Preset Body Radius in pixels" aria-valuemin="25" aria-valuemax="90" aria-valuenow="50">
             </div>
           </div>
 
@@ -1264,10 +1259,10 @@
             </div>
 
             <div class="form-group">
-              <label for="presetFormViewStyle" class="form-label">Base Style Filter</label>
-              <select class="custom-select" id="presetFormViewStyle" aria-label="Base Style Filter">
-                <option value="actual">Actual Flower Petals (R = 2r)</option>
-                <option value="base">Base Circles (r) &amp; Guides</option>
+              <label for="presetFormViewStyle" class="form-label">Style Filter</label>
+              <select class="custom-select" id="presetFormViewStyle" aria-label="Style Filter">
+                <option value="aura">Aura Circles (R = 2r)</option>
+                <option value="body">Body Circles (r) &amp; Guides</option>
                 <option value="combined">Combined Studio Matrix</option>
               </select>
             </div>
@@ -1292,12 +1287,12 @@
             Layers &amp; Overlays</span>
           <div class="form-toggles-grid">
             <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowActual" checked>
-              <span>Actual Flower Circles</span>
+              <input type="checkbox" id="presetFormShowAura" checked>
+              <span>Aura Circles</span>
             </label>
             <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowBase">
-              <span>Base Pattern Circles (r)</span>
+              <input type="checkbox" id="presetFormShowBody">
+              <span>Body Pattern Circles (r)</span>
             </label>
             <label class="form-checkbox-label">
               <input type="checkbox" id="presetFormShowGuides" checked>
@@ -1326,10 +1321,6 @@
             <label class="form-checkbox-label">
               <input type="checkbox" id="presetFormShowMetatron">
               <span>Metatron Chords (78 Chords)</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowEyes">
-              <span>Eyes of Kryst (3 Pairs)</span>
             </label>
             <label class="form-checkbox-label">
               <input type="checkbox" id="presetFormShading">
@@ -1425,17 +1416,12 @@
 
 
 
-  <!-- Universal JavaScript Loader: Native ES6 modules over HTTP/HTTPS, Standalone bundle on file:// -->
+  <!-- Universal JavaScript Loader: Standalone bundle with cache-busting timestamp on all protocols -->
   <script>
     (function () {
       const script = document.createElement('script');
       const v = Date.now();
-      if (window.location.protocol === 'file:') {
-        script.src = './js/bundle.js?v=' + v;
-      } else {
-        script.type = 'module';
-        script.src = './js/main.js?v=' + v;
-      }
+      script.src = './js/bundle.js?v=' + v;
       document.body.appendChild(script);
     })();
   </script>

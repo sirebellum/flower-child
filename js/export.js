@@ -56,10 +56,12 @@ const Exporter = {
     const styleEl = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     styleEl.textContent = `
       .circle-node { transition: stroke 0.15s, stroke-width 0.15s, opacity 0.15s; }
-      .center-dot { cursor: pointer; }
+      .actual-circle, .aura-circle { pointer-events: none; }
+      .center-dot, .intersection-node { cursor: pointer; }
+      .flower-section { fill: transparent; stroke: transparent; }
+      .flower-section.highlighted-section { fill: rgba(255, 255, 255, 0.45); stroke: #ffffff; stroke-width: 1.5px; }
       .highlighted-circle { stroke: #ffffff !important; stroke-width: 3.5px !important; }
       .highlighted-dot { fill: #ffffff !important; r: 6px !important; }
-      .eye-of-kryst { fill: #ff00ff; fill-opacity: 0.7; stroke: #ff00ff; stroke-width: 2.2px; }
       .sacred-pulse { transform-origin: center; animation: sacredBreath 6s ease-in-out infinite; }
       @keyframes sacredBreath {
         0%, 100% { transform: scale(1); opacity: 0.95; }

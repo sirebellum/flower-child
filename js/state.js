@@ -28,7 +28,14 @@ function clampNumber(val, min, max, defaultVal) {
 const State = {
   viewportMode: 'comparison', // 'comparison' | 'superimposed' | 'single-life' | 'single-kryst'
   activePreset: 'krystonial_comparison',
-  viewStyle: 'actual', // 'actual' | 'base' | 'combined'
+  // View style: 'aura' | 'body' | 'combined' (aliases 'actual' -> 'aura', 'base' -> 'body')
+  _viewStyle: 'aura',
+  get viewStyle() { return this._viewStyle; },
+  set viewStyle(v) {
+    if (v === 'actual') this._viewStyle = 'aura';
+    else if (v === 'base') this._viewStyle = 'body';
+    else this._viewStyle = v;
+  },
   platonicFilter: 'all', // 'all' | 'tetra' | 'cube' | 'octa' | 'dodeca'
 
   // Lattice Geometry (guarded with safe limits)
@@ -36,13 +43,19 @@ const State = {
   r: 50,
   syncPanZoom: true,
 
-  // Layers visibility
-  showActualFlower: true,
-  showBaseCircles: false,
-  showGuides: true,
-  showOuterRing: true,
-  showBoundaryPetals: true,
-  showCenterDots: true,
+  // Layers visibility (Nomenclature: aura = actual flowers, body = base pattern)
+  showAuraFlower: true,
+  get showActualFlower() { return this.showAuraFlower; },
+  set showActualFlower(v) { this.showAuraFlower = Boolean(v); },
+
+  showBodyCircles: false,
+  get showBaseCircles() { return this.showBodyCircles; },
+  set showBaseCircles(v) { this.showBodyCircles = Boolean(v); },
+
+  showGuides: false,
+  showOuterRing: false,
+  showBoundaryPetals: false,
+  showCenterDots: false,
   showIntersections: false,
   showRadialAxes: false,
   showMetatronLines: false,
@@ -56,22 +69,30 @@ const State = {
 
   // Curated Colors
   colorLife: '#ef4444',
-  colorKryst: '#06b6d4',
-  colorBase: '#3b82f6',
+  colorKryst: '#10b981',
+  colorBody: '#3b82f6',
+  get colorBase() { return this.colorBody; },
+  set colorBase(v) { this.colorBody = v; },
   colorTriangle: '#eab308',
   colorGuide: '#ea580c',
   colorOuter: '#f59e0b',
   colorAxes: '#64748b',
+  colorIntersection: '#ec4899',
   colorBg: '#07090e',
 
   // Strokes & Opacities
-  strokeFlower: 1.5,
-  strokeBase: 1.0,
+  strokeAura: 1.5,
+  get strokeFlower() { return this.strokeAura; },
+  set strokeFlower(v) { this.strokeAura = Number(v); },
+  strokeBody: 1.0,
+  get strokeBase() { return this.strokeBody; },
+  set strokeBase(v) { this.strokeBody = Number(v); },
   strokeGuide: 2.0,
   fillOpacity: 0.04,
 
   // Selections & Highlights
   highlightedIds: new Set(),
+  highlightedSectionIds: new Set(),
   hoveredItem: null,
 
   // Pan & Zoom Transform States
@@ -109,7 +130,7 @@ const State = {
    * @param {number} n
    */
   setN(n) {
-    this.N = clampNumber(n, 1, 24, 2);
+    this.N = clampNumber(n, 1, 42, 2);
   },
 
   /**
@@ -155,19 +176,20 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'comparison',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
-        showGuides: true,
-        showOuterRing: true,
-        showBoundaryPetals: true,
-        showCenterDots: true,
+        showGuides: false,
+        showOuterRing: false,
+        showBoundaryPetals: false,
+        showCenterDots: false,
         showIntersections: false,
         showRadialAxes: false,
         showMetatronLines: false,
         sphericalShading: false,
         showEyesOfKryst: false,
+        colorKryst: '#10b981',
         fillOpacity: 0.04
       }
     },
@@ -180,7 +202,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'superimposed',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -205,7 +227,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -230,7 +252,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: true,
@@ -255,7 +277,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: false,
         showBaseCircles: true,
@@ -280,7 +302,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: false,
         showBaseCircles: true,
@@ -305,7 +327,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -330,7 +352,7 @@ const PresetsManager = {
         N: 2,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -355,7 +377,7 @@ const PresetsManager = {
         N: 3,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -368,33 +390,7 @@ const PresetsManager = {
         showMetatronLines: false,
         sphericalShading: false,
         showEyesOfKryst: false,
-        colorKryst: '#16a34a',
-        fillOpacity: 0.05
-      }
-    },
-    {
-      id: 'eyes_of_kryst',
-      title: 'Eyes of Kryst',
-      subtitle: '3 Pairs of Eyes in Magenta Vesica',
-      isBuiltin: true,
-      config: {
-        N: 3,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'actual',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: false,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: true,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: true,
-        colorKryst: '#16a34a',
+        colorKryst: '#10b981',
         fillOpacity: 0.05
       }
     },
@@ -407,7 +403,7 @@ const PresetsManager = {
         N: 4,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -433,7 +429,7 @@ const PresetsManager = {
         N: 5,
         r: 50,
         viewportMode: 'single-kryst',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -459,7 +455,7 @@ const PresetsManager = {
         N: 1,
         r: 50,
         viewportMode: 'single-life',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: true,
@@ -484,7 +480,7 @@ const PresetsManager = {
         N: 3,
         r: 50,
         viewportMode: 'comparison',
-        viewStyle: 'actual',
+        viewStyle: 'aura',
         platonicFilter: 'all',
         showActualFlower: true,
         showBaseCircles: false,
@@ -692,8 +688,10 @@ const PresetsManager = {
       viewportMode: State.viewportMode,
       viewStyle: State.viewStyle,
       platonicFilter: State.platonicFilter,
-      showActualFlower: State.showActualFlower,
-      showBaseCircles: State.showBaseCircles,
+      showAuraFlower: State.showAuraFlower,
+      showActualFlower: State.showAuraFlower,
+      showBodyCircles: State.showBodyCircles,
+      showBaseCircles: State.showBodyCircles,
       showGuides: State.showGuides,
       showOuterRing: State.showOuterRing,
       showBoundaryPetals: State.showBoundaryPetals,
@@ -701,18 +699,22 @@ const PresetsManager = {
       showIntersections: State.showIntersections,
       showRadialAxes: State.showRadialAxes,
       showMetatronLines: State.showMetatronLines,
-      showEyesOfKryst: State.showEyesOfKryst,
+      showEyesOfKryst: false,
       sphericalShading: State.sphericalShading,
       fillOpacity: State.fillOpacity,
       colorLife: State.colorLife,
       colorKryst: State.colorKryst,
-      colorBase: State.colorBase,
+      colorBody: State.colorBody,
+      colorBase: State.colorBody,
       colorTriangle: State.colorTriangle || '#eab308',
       colorGuide: State.colorGuide,
       colorOuter: State.colorOuter,
       colorAxes: State.colorAxes,
-      strokeFlower: State.strokeFlower,
-      strokeBase: State.strokeBase,
+      colorIntersection: State.colorIntersection || '#ec4899',
+      strokeAura: State.strokeAura,
+      strokeFlower: State.strokeAura,
+      strokeBody: State.strokeBody,
+      strokeBase: State.strokeBody,
       strokeGuide: State.strokeGuide,
       colorByLayer: State.colorByLayer,
       enableGlow: State.enableGlow,
@@ -940,7 +942,7 @@ const PresetDialog = {
   },
 
   populateFormFromConfig(cfg) {
-    const N = clampNumber(cfg.N, 1, 24, State.N);
+    const N = clampNumber(cfg.N, 1, 42, State.N);
     const r = clampNumber(cfg.r, 15, 200, State.r);
 
     const elN = document.getElementById('presetFormN');
@@ -955,11 +957,21 @@ const PresetDialog = {
     if (elR) elR.value = r;
     if (elRBadge) elRBadge.textContent = `r = ${r}px`;
     if (elViewport) elViewport.value = cfg.viewportMode || State.viewportMode || 'comparison';
-    if (elViewStyle) elViewStyle.value = cfg.viewStyle || State.viewStyle || 'actual';
+    if (elViewStyle) {
+      let vs = cfg.viewStyle || State.viewStyle || 'aura';
+      if (vs === 'actual') vs = 'aura';
+      if (vs === 'base') vs = 'body';
+      elViewStyle.value = vs;
+    }
+
+    const showAura = cfg.showAuraFlower ?? cfg.showActualFlower ?? State.showAuraFlower;
+    const showBody = cfg.showBodyCircles ?? cfg.showBaseCircles ?? State.showBodyCircles;
 
     const checkMap = [
-      { id: 'presetFormShowActual', val: cfg.showActualFlower ?? State.showActualFlower },
-      { id: 'presetFormShowBase', val: cfg.showBaseCircles ?? State.showBaseCircles },
+      { id: 'presetFormShowAura', val: showAura },
+      { id: 'presetFormShowActual', val: showAura },
+      { id: 'presetFormShowBody', val: showBody },
+      { id: 'presetFormShowBase', val: showBody },
       { id: 'presetFormShowGuides', val: cfg.showGuides ?? State.showGuides },
       { id: 'presetFormShowOuterRing', val: cfg.showOuterRing ?? State.showOuterRing },
       { id: 'presetFormShowBoundaryPetals', val: cfg.showBoundaryPetals ?? State.showBoundaryPetals },
@@ -967,7 +979,6 @@ const PresetDialog = {
       { id: 'presetFormShowIntersections', val: cfg.showIntersections ?? State.showIntersections },
       { id: 'presetFormShowRadialAxes', val: cfg.showRadialAxes ?? State.showRadialAxes },
       { id: 'presetFormShowMetatron', val: cfg.showMetatronLines ?? State.showMetatronLines },
-      { id: 'presetFormShowEyes', val: cfg.showEyesOfKryst ?? State.showEyesOfKryst },
       { id: 'presetFormShading', val: cfg.sphericalShading ?? State.sphericalShading }
     ];
 
@@ -981,17 +992,24 @@ const PresetDialog = {
   },
 
   readConfigFromForm() {
-    const showEyesEl = document.getElementById('presetFormShowEyes');
     const elN = document.getElementById('presetFormN');
     const elR = document.getElementById('presetFormR');
 
+    const formViewStyle = document.getElementById('presetFormViewStyle')?.value || 'aura';
+    const effectiveViewStyle = formViewStyle === 'actual' ? 'aura' : (formViewStyle === 'base' ? 'body' : formViewStyle);
+
+    const isAuraChecked = Boolean(document.getElementById('presetFormShowAura')?.checked || document.getElementById('presetFormShowActual')?.checked);
+    const isBodyChecked = Boolean(document.getElementById('presetFormShowBody')?.checked || document.getElementById('presetFormShowBase')?.checked);
+
     return {
-      N: clampNumber(elN?.value, 1, 24, 2),
+      N: clampNumber(elN?.value, 1, 42, 2),
       r: clampNumber(elR?.value, 15, 200, 50),
       viewportMode: document.getElementById('presetFormViewport')?.value || 'comparison',
-      viewStyle: document.getElementById('presetFormViewStyle')?.value || 'actual',
-      showActualFlower: Boolean(document.getElementById('presetFormShowActual')?.checked),
-      showBaseCircles: Boolean(document.getElementById('presetFormShowBase')?.checked),
+      viewStyle: effectiveViewStyle,
+      showAuraFlower: isAuraChecked,
+      showActualFlower: isAuraChecked,
+      showBodyCircles: isBodyChecked,
+      showBaseCircles: isBodyChecked,
       showGuides: Boolean(document.getElementById('presetFormShowGuides')?.checked),
       showOuterRing: Boolean(document.getElementById('presetFormShowOuterRing')?.checked),
       showBoundaryPetals: Boolean(document.getElementById('presetFormShowBoundaryPetals')?.checked),
@@ -999,19 +1017,23 @@ const PresetDialog = {
       showIntersections: Boolean(document.getElementById('presetFormShowIntersections')?.checked),
       showRadialAxes: Boolean(document.getElementById('presetFormShowRadialAxes')?.checked),
       showMetatronLines: Boolean(document.getElementById('presetFormShowMetatron')?.checked),
-      showEyesOfKryst: showEyesEl ? Boolean(showEyesEl.checked) : State.showEyesOfKryst,
+      showEyesOfKryst: false,
       platonicFilter: document.getElementById('presetFormPlatonic')?.value || 'all',
       sphericalShading: Boolean(document.getElementById('presetFormShading')?.checked),
       fillOpacity: State.fillOpacity,
       colorLife: State.colorLife,
       colorKryst: State.colorKryst,
-      colorBase: State.colorBase,
+      colorBody: State.colorBody,
+      colorBase: State.colorBody,
       colorTriangle: State.colorTriangle || '#eab308',
       colorGuide: State.colorGuide,
       colorOuter: State.colorOuter,
       colorAxes: State.colorAxes,
-      strokeFlower: State.strokeFlower,
-      strokeBase: State.strokeBase,
+      colorIntersection: State.colorIntersection || '#ec4899',
+      strokeAura: State.strokeAura,
+      strokeFlower: State.strokeAura,
+      strokeBody: State.strokeBody,
+      strokeBase: State.strokeBody,
       strokeGuide: State.strokeGuide
     };
   },

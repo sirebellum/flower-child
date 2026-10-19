@@ -255,19 +255,19 @@ class Viewport3D {
       }
     } else {
       // Superimposed mode: render both FoL and FoK in FCC mode
+      const effective3DN = Math.max(1, Math.min(State.N, 6));
       if (State.viewportMode === 'superimposed') {
-        const lifeGeom = SacredMath3D.getLife3DGeometry(SacredMath3D.getEffectiveLifeLayers ? SacredMath3D.getEffectiveLifeLayers(State.N, r) : State.N, r);
-        const krystGeom = SacredMath3D.getKryst3DGeometry(State.N, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
+        const lifeGeom = SacredMath3D.getLife3DGeometry(effective3DN, r);
+        const krystGeom = SacredMath3D.getKryst3DGeometry(effective3DN, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
         this.currentGeometry = {
           spheres: [...lifeGeom.spheres.map(s => ({ ...s, pattern: 'life' })), ...krystGeom.spheres.map(s => ({ ...s, pattern: 'kryst' }))],
           guides: [...lifeGeom.guides, ...krystGeom.guides],
           boundingRadius: Math.max(lifeGeom.boundingRadius, krystGeom.boundingRadius)
         };
       } else if (this.patternKey === 'life') {
-        const effectiveLayers = Math.max(1, Math.min(State.N, 6));
-        this.currentGeometry = SacredMath3D.getLife3DGeometry(effectiveLayers, r);
+        this.currentGeometry = SacredMath3D.getLife3DGeometry(effective3DN, r);
       } else {
-        this.currentGeometry = SacredMath3D.getKryst3DGeometry(State.N, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
+        this.currentGeometry = SacredMath3D.getKryst3DGeometry(effective3DN, r, { expansionMode: State.fccExpansionMode || 'volumetric' });
       }
     }
 
@@ -356,7 +356,7 @@ class Viewport3D {
     if (State.show3DShells && spheres.length > 0) {
       const shellGeo = new THREE.SphereGeometry(2 * r, 22, 16);
       const shellMat = new THREE.MeshPhysicalMaterial({
-        color: this.patternKey === 'life' ? (State.colorLife || '#ef4444') : (State.colorKryst || '#06b6d4'),
+        color: this.patternKey === 'life' ? (State.colorLife || '#ef4444') : (State.colorKryst || '#10b981'),
         transparent: true,
         opacity: 0.14,
         depthWrite: false,
