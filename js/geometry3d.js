@@ -5,26 +5,30 @@
  * Pure mathematical functions with no DOM or global state access.
  */
 
-import { SacredMath } from './geometry.js';
+import { SacredMath, createKrystStamp, getKrystGeometry, getKrystUnitLattice } from './geometry.js';
 
 /* =========================================================================
-   1. CORE 3D FCC CONSTANTS
+   1. CORE 3D FCC & VOLUMETRIC KRYST CONSTANTS
    ========================================================================= */
 export const SQRT3 = Math.sqrt(3);
 export const SQRT6 = Math.sqrt(6);
 
-// Vertical spacing between adjacent close-packed FCC (111) planes (A -> B -> C):
-// Δz = 2r * √(2/3) = (2√6 / 3) * r ≈ 1.63299316 * r
-export const FCC_DZ = (2 * SQRT6 / 3);
+// Exact vertical height of regular 3D tetrahedron of tangent spheres with edge 2r:
+// h_tet = 2r * √(2/3) = √(8/3) * r ≈ 1.632993161855452 * r
+export const TET_PITCH = Math.sqrt(8 / 3);
+export const FCC_DZ = TET_PITCH;
 
-// XY radial distance from a hexagon center to its 3 upper (B) or 3 lower (C) triangular pocket centers:
-// d_pocket = 2r / √3 = (2√3 / 3) * r ≈ 1.15470054 * r
-export const FCC_POCKET_R = (2 * SQRT3 / 3);
+// XY radial distance from hexagon center to 3 upper/lower triangular dimples:
+// d_pocket = 2r / √3 = (2√3 / 3) * r ≈ 1.1547005383792515 * r
+export const OCTANT_CORNER_DIST = (2 / SQRT3);
+export const FCC_POCKET_R = OCTANT_CORNER_DIST;
 
-// 2D Kryst Stamp Constants
-export const DIST_TRI_INNER = 2 + SQRT3;     // (2 + √3) ≈ 3.7320508
-export const DIST_TRI_APEX = 2 + 2 * SQRT3; // (2 + 2√3) ≈ 5.4641016
-export const STAMP_STEP = 4 + 2 * SQRT3; // (4 + 2√3) ≈ 7.4641016
+// 2D Kryst Stamp Constants extended into 3D
+export const DIST_HEX = 2;                   // 2r
+export const DIST_TRI_INNER = 2 + SQRT3;     // (2 + √3)r ≈ 3.7320508 * r
+export const DIST_TRI_APEX = 2 + 2 * SQRT3; // (2 + 2√3)r ≈ 5.4641016 * r
+export const STAMP_STEP = 4 + 2 * SQRT3;     // (4 + 2√3)r ≈ 7.4641016 * r
+export const DIST_BRIDGE_BASE = 4 + 3 * SQRT3; // (4 + 3√3)r ≈ 9.1961524 * r
 export const EPSILON = 1e-3;
 
 /* =========================================================================
@@ -550,180 +554,455 @@ export function createKrystStamp3D(cx, cy, cz, r) {
 }
 
 /**
- * Generates the full 3D Flower of Kryst geometry restamped out to N layers.
- * Strictly guarantees the Central Zero-Point Void at (0, 0, 0) remains empty.
- * Deduplicates overlapping spheres using 3D spatial hashing, giving priority
- * to 'hexagon-center' and 'hexagon' roles over 'triangle'.
+ * Calculates the 3D interstitial octant ID (1 to 8) or 0 for Cartesian planes (xyz = 0).
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ * @param {number} [tol=1e-2]
+ * @returns {number} 0 if on Cartesian plane (xyz = 0), 1..8 for interstitial octants.
+ */
+export function getOctantId(x, y, z, tol = 1e-2) {
+  if (Math.abs(x) < tol || Math.abs(y) < tol || Math.abs(z) < tol) {
+    return 0; // On one of the Cartesian planes (xyz = 0)
+  }
+  const code = (x > 0 ? 1 : 0) | (y > 0 ? 2 : 0) | (z > 0 ? 4 : 0);
+  return code + 1; // 1 to 8
+}
+
+/**
+ * 3D VOLUMETRIC FLOWER OF KRYST GEOMETRY ENGINE (getKrystGeometry3D)
+ * Extrapolates 2D Flower of Kryst into a space-filling, jammed 3D crystalline lattice:
+ * - Cartesian planes (XY, YZ, ZX) carry exact 2D Flower of Kryst pattern,
+ *   forming Rhombic Dodecahedron / Cuboctahedron cores at stamp centers.
+ * - All 8 three-dimensional octant spaces (±X, ±Y, ±Z) are packed with
+ *   Rhombic Dodecahedra / Cuboctahedra and Regular Tetrahedra / Octahedra.
+ * - Origin Exception Rule: (0, 0, 0) strictly hollow / empty.
+ * - Zero gaps where another sphere of radius r can fit.
  *
- * @param {number} N - Layer count (N >= 1).
- * @param {number} r - Base radius.
- * @param {Object} [options={}] - Options { expansionMode: 'volumetric'|'stratified' }.
+ * @param {number} N - Layer count (N >= 1)
+ * @param {number} r - Base sphere radius
+ * @param {Object} [options={}]
  * @returns {{spheres: Array<Object>, guides: Array<Object>, boundingRadius: number, activeStampCenters: Array<Object>}}
  */
-export function getKryst3DGeometry(N, r, options = {}) {
-  const expansionMode = options.expansionMode || 'volumetric';
-
+export function getKrystGeometry3D(N, r, options = {}) {
   if (N <= 0) {
     return { spheres: [], guides: [], boundingRadius: 2 * r, activeStampCenters: [] };
   }
 
-  const stampVectors = getKrystStampVectors(r, expansionMode);
-  const tol = EPSILON * r;
-  const tolSq = tol * tol;
+  const R_bound = 2 * N * r;
   const cellSize = 2 * r;
+  const tol = EPSILON * r;
+  const identicalTolSq = (0.05 * r) * (0.05 * r);
+  const minContactDistSq = (2 * r - tol) * (2 * r - tol);
 
-  // 1. Breadth-First Stamp Centers Expansion across 3D Lattice
-  const activeStampCenters = [{ x: 0, y: 0, z: 0, ring: 0 }];
-  const visitedStampCenters = [{ x: 0, y: 0, z: 0 }];
-  let frontier = [{ x: 0, y: 0, z: 0 }];
+  const grid = new Map();
+  const spheres = [];
+  const guides = [];
 
-  const isCenterVisited = (cand) => {
-    for (let i = 0; i < visitedStampCenters.length; i++) {
-      const v = visitedStampCenters[i];
-      const dSq = (v.x - cand.x) ** 2 + (v.y - cand.y) ** 2 + (v.z - cand.z) ** 2;
-      if (dSq < tolSq) return true;
-    }
-    return false;
+  const getGridKey = (x, y, z) => {
+    const gx = Math.floor(x / cellSize);
+    const gy = Math.floor(y / cellSize);
+    const gz = Math.floor(z / cellSize);
+    return `${gx},${gy},${gz}`;
   };
 
-  for (let step = 2; step <= N; step++) {
-    const nextFrontier = [];
-    for (let f = 0; f < frontier.length; f++) {
-      const c = frontier[f];
-      for (let v = 0; v < stampVectors.length; v++) {
-        const vec = stampVectors[v];
-        const cand = {
-          x: c.x + vec.x,
-          y: c.y + vec.y,
-          z: c.z + vec.z,
-          ring: step - 1
-        };
-        if (!isCenterVisited(cand)) {
-          visitedStampCenters.push(cand);
-          activeStampCenters.push(cand);
-          nextFrontier.push(cand);
-        }
-      }
-    }
-    frontier = nextFrontier;
-  }
+  const findNearest = (x, y, z) => {
+    const gx = Math.floor(x / cellSize);
+    const gy = Math.floor(y / cellSize);
+    const gz = Math.floor(z / cellSize);
+    let nearest = null;
+    let minDSq = Infinity;
 
-  // 2. Generate and Deduplicate Spheres
-  const rawSpheres = [];
-  const rawGuides = [];
-
-  for (let cIdx = 0; cIdx < activeStampCenters.length; cIdx++) {
-    const c = activeStampCenters[cIdx];
-    const stamp = createKrystStamp3D(c.x, c.y, c.z, r);
-    for (let i = 0; i < stamp.spheres.length; i++) {
-      rawSpheres.push({
-        ...stamp.spheres[i],
-        layer: (c.ring || 0) + 1,
-        stampCenter: c
-      });
-    }
-    for (let g = 0; g < stamp.guides.length; g++) {
-      rawGuides.push(stamp.guides[g]);
-    }
-  }
-
-  // Spatial hash grid for spheres
-  const grid = new Map();
-  const dedupedSpheres = [];
-
-  for (let i = 0; i < rawSpheres.length; i++) {
-    const pt = rawSpheres[i];
-
-    // STRICT GLOBAL ZERO-POINT VOID INVARIANT:
-    // Filter out any sphere whose distance from (0, 0, 0) < tol
-    if (Math.hypot(pt.x, pt.y, pt.z) < tol) {
-      continue;
-    }
-
-    const gx = Math.floor(pt.x / cellSize);
-    const gy = Math.floor(pt.y / cellSize);
-    const gz = Math.floor(pt.z / cellSize);
-    let found = null;
-
-    for (let dx = -1; dx <= 1 && !found; dx++) {
-      for (let dy = -1; dy <= 1 && !found; dy++) {
-        for (let dz = -1; dz <= 1 && !found; dz++) {
-          const key = `${gx + dx},${gy + dy},${gz + dz}`;
-          const cell = grid.get(key);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const cell = grid.get(`${gx + dx},${gy + dy},${gz + dz}`);
           if (cell) {
-            for (let j = 0; j < cell.length; j++) {
-              const o = cell[j];
-              const distSq = (o.x - pt.x) ** 2 + (o.y - pt.y) ** 2 + (o.z - pt.z) ** 2;
-              if (distSq < tolSq) {
-                found = o;
-                break;
+            for (let i = 0; i < cell.length; i++) {
+              const o = cell[i];
+              const dSq = (o.x - x) ** 2 + (o.y - y) ** 2 + (o.z - z) ** 2;
+              if (dSq < minDSq) {
+                minDSq = dSq;
+                nearest = o;
               }
             }
           }
         }
       }
     }
-
-    if (found) {
-      // Prioritize hexagon roles over triangle
-      if ((pt.role === 'hexagon-center' || pt.role === 'hexagon') && found.role === 'triangle') {
-        found.role = pt.role;
-      }
-      found.layer = Math.min(found.layer, pt.layer);
-    } else {
-      const newPt = {
-        id: `fok3d_${dedupedSpheres.length}`,
-        ...pt
-      };
-      dedupedSpheres.push(newPt);
-      const key = `${gx},${gy},${gz}`;
-      let cell = grid.get(key);
-      if (!cell) {
-        cell = [];
-        grid.set(key, cell);
-      }
-      cell.push(newPt);
-    }
-  }
-
-  // 3. Deduplicate Guide Line Segments
-  const guideEdgeMap = new Map();
-  const dedupedGuides = [];
-  const coordTol = Math.max(1, Math.round(tol));
-
-  const quantizePt = (p) => {
-    const qx = Math.round(p.x / coordTol);
-    const qy = Math.round(p.y / coordTol);
-    const qz = Math.round(p.z / coordTol);
-    return `${qx},${qy},${qz}`;
+    return { nearest, minDSq };
   };
 
-  for (let i = 0; i < rawGuides.length; i++) {
-    const g = rawGuides[i];
-    const k1 = quantizePt(g.p1);
-    const k2 = quantizePt(g.p2);
-    if (k1 === k2) continue; // Zero-length segment
+  const addNode = (cand) => {
+    const d = Math.hypot(cand.x, cand.y, cand.z);
+    // Origin Exception Rule: (0,0,0) is strictly hollow / empty
+    if (d < 0.5 * r) return null;
+    if (d > R_bound + tol) return null;
 
-    const edgeKey = (k1 < k2) ? `${k1}:${k2}` : `${k2}:${k1}`;
-    if (!guideEdgeMap.has(edgeKey)) {
-      guideEdgeMap.set(edgeKey, true);
-      dedupedGuides.push(g);
+    const { nearest, minDSq } = findNearest(cand.x, cand.y, cand.z);
+    if (nearest) {
+      if (minDSq <= identicalTolSq) {
+        // Same node: upgrade role priority if higher
+        const rolePriority = { 'center': 5, 'hex_core': 4, 'hex_axis': 3, 'hex_octant': 2, 'tri_axis': 1, 'tri_tet': 0 };
+        if ((rolePriority[cand.role] || 0) > (rolePriority[nearest.role] || 0)) {
+          nearest.role = cand.role;
+          nearest.polyhedronType = cand.polyhedronType;
+        }
+        return nearest;
+      }
+      // If it overlaps within contact threshold (2r - epsilon), reject!
+      if (minDSq < minContactDistSq) {
+        return null;
+      }
+    }
+
+    const k = Math.max(1, Math.ceil((d - tol) / (2 * r)));
+    const octantId = getOctantId(cand.x, cand.y, cand.z, tol);
+    const node = {
+      id: `fok3d_${spheres.length}`,
+      x: Number(cand.x.toFixed(3)),
+      y: Number(cand.y.toFixed(3)),
+      z: Number(cand.z.toFixed(3)),
+      d: Number(d.toFixed(3)),
+      k,
+      role: cand.role,
+      polyhedronType: cand.polyhedronType,
+      octantId,
+      plane: cand.plane || (octantId === 0 ? 'Cartesian' : `Octant-${octantId}`),
+      layer: k
+    };
+
+    spheres.push(node);
+    const key = getGridKey(node.x, node.y, node.z);
+    let cell = grid.get(key);
+    if (!cell) { cell = []; grid.set(key, cell); }
+    cell.push(node);
+    return node;
+  };
+
+  const guideEdgeSet = new Set();
+  const addGuide = (p1, p2, type) => {
+    const k1 = `${Math.round(p1.x)},${Math.round(p1.y)},${Math.round(p1.z)}`;
+    const k2 = `${Math.round(p2.x)},${Math.round(p2.y)},${Math.round(p2.z)}`;
+    if (k1 === k2) return;
+    const edgeKey = k1 < k2 ? `${k1}:${k2}` : `${k2}:${k1}`;
+    if (guideEdgeSet.has(edgeKey)) return;
+    guideEdgeSet.add(edgeKey);
+
+    guides.push({
+      p1: { x: Number(p1.x.toFixed(3)), y: Number(p1.y.toFixed(3)), z: Number(p1.z.toFixed(3)) },
+      p2: { x: Number(p2.x.toFixed(3)), y: Number(p2.y.toFixed(3)), z: Number(p2.z.toFixed(3)) },
+      type
+    });
+  };
+
+  // PASS A — 2D Flower of Kryst on 3 Cartesian Planes (XY, YZ, ZX)
+  const geom2D = getKrystGeometry(N, r);
+  const circles2D = geom2D.circles;
+
+  // Mount 2D circles on XY (primary), YZ, and ZX
+  for (let i = 0; i < circles2D.length; i++) {
+    const c = circles2D[i];
+    let role = (c.role === 'hexagon') ? 'hex_axis' : (c.role === 'hexagon-center' ? 'center' : 'tri_axis');
+    let polyType = (c.role === 'hexagon') ? 'Rhombic Dodecahedron Core' : (c.role === 'hexagon-center' ? 'Stamp Center Node' : 'Regular Tetrahedron (4-Sphere)');
+    addNode({ x: c.x, y: c.y, z: 0, role, polyhedronType: polyType, plane: 'XY' });
+  }
+
+  for (let i = 0; i < circles2D.length; i++) {
+    const c = circles2D[i];
+    let role = (c.role === 'hexagon') ? 'hex_axis' : (c.role === 'hexagon-center' ? 'center' : 'tri_axis');
+    let polyType = (c.role === 'hexagon') ? 'Rhombic Dodecahedron Core' : (c.role === 'hexagon-center' ? 'Stamp Center Node' : 'Regular Tetrahedron (4-Sphere)');
+    addNode({ x: 0, y: c.x, z: c.y, role, polyhedronType: polyType, plane: 'YZ' });
+  }
+
+  for (let i = 0; i < circles2D.length; i++) {
+    const c = circles2D[i];
+    let role = (c.role === 'hexagon') ? 'hex_axis' : (c.role === 'hexagon-center' ? 'center' : 'tri_axis');
+    let polyType = (c.role === 'hexagon') ? 'Rhombic Dodecahedron Core' : (c.role === 'hexagon-center' ? 'Stamp Center Node' : 'Regular Tetrahedron (4-Sphere)');
+    addNode({ x: c.y, y: 0, z: c.x, role, polyhedronType: polyType, plane: 'ZX' });
+  }
+
+  // Stamp centers in 3D within bounding radius
+  const stampCenters3D = [{ x: 0, y: 0, z: 0 }];
+  const sc2D = geom2D.activeStampCenters || [];
+  for (let i = 0; i < sc2D.length; i++) {
+    const sc = sc2D[i];
+    const dist2D = Math.hypot(sc.x, sc.y);
+    if (dist2D > tol && dist2D <= R_bound + 2 * r) {
+      stampCenters3D.push({ x: sc.x, y: sc.y, z: 0 });
+      stampCenters3D.push({ x: 0, y: sc.x, z: sc.y });
+      stampCenters3D.push({ x: sc.y, y: 0, z: sc.x });
     }
   }
 
-  // Bounding radius
-  let maxD = 0;
-  for (let i = 0; i < dedupedSpheres.length; i++) {
-    const d = Math.hypot(dedupedSpheres[i].x, dedupedSpheres[i].y, dedupedSpheres[i].z);
-    if (d > maxD) maxD = d;
+  // PASS B — 3D Rhombic Dodecahedron Cores at Origin & Stamp Centers
+  const delta = (2 / SQRT3) * r;
+  for (let sIdx = 0; sIdx < stampCenters3D.length; sIdx++) {
+    const C = stampCenters3D[sIdx];
+    if (Math.hypot(C.x, C.y, C.z) > tol) {
+      addNode({ x: C.x, y: C.y, z: C.z, role: 'center', polyhedronType: 'Stamp Center Node' });
+    }
+
+    // 6 axial vertices
+    const axialVerts = [
+      { x: C.x + 2 * r, y: C.y, z: C.z },
+      { x: C.x - 2 * r, y: C.y, z: C.z },
+      { x: C.x, y: C.y + 2 * r, z: C.z },
+      { x: C.x, y: C.y - 2 * r, z: C.z },
+      { x: C.x, y: C.y, z: C.z + 2 * r },
+      { x: C.x, y: C.y, z: C.z - 2 * r }
+    ];
+    for (let a = 0; a < axialVerts.length; a++) {
+      addNode({ x: axialVerts[a].x, y: axialVerts[a].y, z: axialVerts[a].z, role: 'hex_core', polyhedronType: 'Rhombic Dodecahedron Core' });
+    }
+
+    // 8 octant corner vertices
+    for (let sx of [-1, 1]) {
+      for (let sy of [-1, 1]) {
+        for (let sz of [-1, 1]) {
+          const octPt = { x: C.x + sx * delta, y: C.y + sy * delta, z: C.z + sz * delta };
+          addNode({ x: octPt.x, y: octPt.y, z: octPt.z, role: 'hex_core', polyhedronType: 'Rhombic Dodecahedron Core' });
+
+          // 12 Rhombic wireframe edges connecting octant corner to 3 adjacent axial vertices
+          addGuide(octPt, { x: C.x + sx * 2 * r, y: C.y, z: C.z }, 'rhombic_core');
+          addGuide(octPt, { x: C.x, y: C.y + sy * 2 * r, z: C.z }, 'rhombic_core');
+          addGuide(octPt, { x: C.x, y: C.y, z: C.z + sz * 2 * r }, 'rhombic_core');
+        }
+      }
+    }
   }
-  const boundingRadius = (dedupedSpheres.length > 0) ? (maxD + 2 * r) : (2 * r);
+
+  // PASS C — Volumetric Inter-Axis Octant Extrapolation
+  const h_tet = TET_PITCH * r;
+  const maxL = Math.ceil(R_bound / h_tet);
+  const guides2D = geom2D.guides || [];
+
+  const planes = [
+    { name: 'XY', n: { x: 0, y: 0, z: 1 }, u: { x: 1, y: 0, z: 0 }, v: { x: 0, y: 1, z: 0 } },
+    { name: 'YZ', n: { x: 1, y: 0, z: 0 }, u: { x: 0, y: 1, z: 0 }, v: { x: 0, y: 0, z: 1 } },
+    { name: 'ZX', n: { x: 0, y: 1, z: 0 }, u: { x: 0, y: 0, z: 1 }, v: { x: 1, y: 0, z: 0 } }
+  ];
+
+  for (let pIdx = 0; pIdx < planes.length; pIdx++) {
+    const pl = planes[pIdx];
+    for (let gIdx = 0; gIdx < guides2D.length; gIdx++) {
+      const g = guides2D[gIdx];
+      if (g.type === 'triangle' && g.vertices && g.vertices.length >= 3) {
+        const v3D = g.vertices.slice(0, 3).map(pt => ({
+          x: pt.x * pl.u.x + pt.y * pl.v.x,
+          y: pt.x * pl.u.y + pt.y * pl.v.y,
+          z: pt.x * pl.u.z + pt.y * pl.v.z
+        }));
+        const centroid = {
+          x: (v3D[0].x + v3D[1].x + v3D[2].x) / 3,
+          y: (v3D[0].y + v3D[1].y + v3D[2].y) / 3,
+          z: (v3D[0].z + v3D[1].z + v3D[2].z) / 3
+        };
+
+        for (let L = 1; L <= maxL; L++) {
+          for (let sign of [-1, 1]) {
+            const zH = sign * L * h_tet;
+            if (L % 2 === 1) {
+              const apex = {
+                x: centroid.x + zH * pl.n.x,
+                y: centroid.y + zH * pl.n.y,
+                z: centroid.z + zH * pl.n.z
+              };
+              const added = addNode({ ...apex, role: 'tri_tet', polyhedronType: 'Regular Tetrahedron (4-Sphere)' });
+              if (added && L === 1) {
+                for (let v = 0; v < 3; v++) addGuide(apex, v3D[v], 'tetrahedron');
+              }
+            } else {
+              for (let v = 0; v < 3; v++) {
+                const dx = v3D[v].x - centroid.x;
+                const dy = v3D[v].y - centroid.y;
+                const dz = v3D[v].z - centroid.z;
+                const pt = {
+                  x: centroid.x - dx + zH * pl.n.x,
+                  y: centroid.y - dy + zH * pl.n.y,
+                  z: centroid.z - dz + zH * pl.n.z
+                };
+                const added = addNode({ ...pt, role: 'tri_tet', polyhedronType: 'Regular Octahedron (6-Sphere)' });
+                if (added && L === 2) {
+                  addGuide(pt, centroid, 'octahedron');
+                }
+              }
+            }
+          }
+        }
+      } else if (g.type === 'hexagon') {
+        const hc3D = {
+          x: g.cx * pl.u.x + g.cy * pl.v.x,
+          y: g.cx * pl.u.y + g.cy * pl.v.y,
+          z: g.cx * pl.u.z + g.cy * pl.v.z
+        };
+        for (let L = 1; L <= maxL; L++) {
+          for (let sign of [-1, 1]) {
+            const zH = sign * L * h_tet;
+            const offsetAngle = (L % 2 === 1) ? (Math.PI / 6) : (Math.PI / 2);
+            for (let j = 0; j < 3; j++) {
+              const alpha = j * (2 * Math.PI / 3) + offsetAngle;
+              const ca = Math.cos(alpha);
+              const sa = Math.sin(alpha);
+              const pt = {
+                x: hc3D.x + delta * (ca * pl.u.x + sa * pl.v.x) + zH * pl.n.x,
+                y: hc3D.y + delta * (ca * pl.u.y + sa * pl.v.y) + zH * pl.n.y,
+                z: hc3D.z + delta * (ca * pl.u.z + sa * pl.v.z) + zH * pl.n.z
+              };
+              addNode({ ...pt, role: 'hex_octant', polyhedronType: 'Cuboctahedron Cap' });
+            }
+          }
+        }
+      }
+    }
+  }
+
+// PASS D — 3D Jamming / Void-Saturation Guarantee
+  // 1. Close-packed 3D candidate lattice across all 3 Cartesian orientations
+  const orientations = [
+    (u, v, w) => ({ x: u, y: v, z: w }),
+    (u, v, w) => ({ x: w, y: u, z: v }),
+    (u, v, w) => ({ x: v, y: w, z: u })
+  ];
+
+  const maxLz = Math.ceil(R_bound / h_tet) + 1;
+  const maxJ = Math.ceil(R_bound / (SQRT3 * r)) + 1;
+  const maxI = Math.ceil(R_bound / (2 * r)) + 1;
+
+  for (let oIdx = 0; oIdx < orientations.length; oIdx++) {
+    const mapCoord = orientations[oIdx];
+    for (let lz = -maxLz; lz <= maxLz; lz++) {
+      const w = lz * h_tet;
+      const m = ((lz % 3) + 3) % 3;
+      const ox = (m === 1) ? r : 0;
+      const oy = (m === 1) ? (r / SQRT3) : (m === 2 ? (2 * r / SQRT3) : 0);
+
+      for (let j = -maxJ; j <= maxJ; j++) {
+        const v = oy + j * SQRT3 * r;
+        const rx = ((Math.abs(j) % 2)) * r;
+        for (let i = -maxI; i <= maxI; i++) {
+          const u = ox + rx + i * 2 * r;
+          const pt = mapCoord(u, v, w);
+          const d = Math.hypot(pt.x, pt.y, pt.z);
+          if (d > R_bound || d < 0.5 * r) continue;
+
+          let minDistToStampCenter = Infinity;
+          for (let sc of stampCenters3D) {
+            const scDist = Math.hypot(sc.x - pt.x, sc.y - pt.y, sc.z - pt.z);
+            if (scDist < minDistToStampCenter) minDistToStampCenter = scDist;
+          }
+          const isCore = minDistToStampCenter <= 2.1 * r;
+          addNode({
+            x: pt.x, y: pt.y, z: pt.z,
+            role: isCore ? 'hex_octant' : 'tri_tet',
+            polyhedronType: isCore ? 'Cuboctahedron Cap' : 'Regular Tetrahedron (4-Sphere)'
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Fine Interstitial Sweep: Guarantee zero voids where radius r sphere can fit
+  const sweepStep = 0.5 * r;
+  for (let x = -R_bound; x <= R_bound; x += sweepStep) {
+    for (let y = -R_bound; y <= R_bound; y += sweepStep) {
+      for (let z = -R_bound; z <= R_bound; z += sweepStep) {
+        const d = Math.hypot(x, y, z);
+        if (d > R_bound || d < 0.5 * r) continue;
+        const { minDSq } = findNearest(x, y, z);
+        if (minDSq >= minContactDistSq) {
+          let minDistToStampCenter = Infinity;
+          for (let sc of stampCenters3D) {
+            const scDist = Math.hypot(sc.x - x, sc.y - y, sc.z - z);
+            if (scDist < minDistToStampCenter) minDistToStampCenter = scDist;
+          }
+          const isCore = minDistToStampCenter <= 2.1 * r;
+          addNode({
+            x, y, z,
+            role: isCore ? 'hex_octant' : 'tri_tet',
+            polyhedronType: isCore ? 'Cuboctahedron Cap' : 'Regular Tetrahedron (4-Sphere)'
+          });
+        }
+      }
+    }
+  }
 
   return {
-    spheres: dedupedSpheres,
-    guides: dedupedGuides,
-    boundingRadius,
-    activeStampCenters
+    spheres,
+    guides,
+    boundingRadius: R_bound,
+    activeStampCenters: stampCenters3D
+  };
+}
+
+/**
+ * Backward compatibility alias for getKrystGeometry3D.
+ */
+export function getKryst3DGeometry(N, r, options = {}) {
+  return getKrystGeometry3D(N, r, options);
+}
+
+/**
+ * Automated Saturation Diagnostic Check:
+ * Verifies:
+ * 1. Origin (0,0,0) is hollow / empty (Origin Exception Rule).
+ * 2. Minimum pairwise distance >= 2r - epsilon (zero illegal overlaps).
+ * 3. Maximum interstitial void radius inside bounding sphere is < r (100% jammed).
+ *
+ * @param {Array<Object>} spheres - 3D spheres list
+ * @param {number} R_bound - Bounding radius
+ * @param {number} r - Sphere radius
+ * @returns {{originPass: boolean, minOriginDist: number, overlapPass: boolean, minPairwise: number, maxVoidRadius: number, voidCheckPass: boolean, totalSpheres: number}}
+ */
+export function checkSaturation(spheres, R_bound, r) {
+  if (!spheres || spheres.length === 0) {
+    return { originPass: false, minOriginDist: 0, overlapPass: false, minPairwise: 0, maxVoidRadius: 0, voidCheckPass: false, totalSpheres: 0 };
+  }
+
+  // 1. Origin Exception Verification
+  const originDists = spheres.map(s => Math.hypot(s.x, s.y, s.z));
+  const minOriginDist = Math.min(...originDists);
+  const originPass = minOriginDist >= 0.5 * r;
+
+  // 2. Minimum Pairwise Distance Verification
+  let minPairwise = Infinity;
+  for (let i = 0; i < spheres.length; i++) {
+    for (let j = i + 1; j < spheres.length; j++) {
+      const d = Math.hypot(spheres[i].x - spheres[j].x, spheres[i].y - spheres[j].y, spheres[i].z - spheres[j].z);
+      if (d < minPairwise) minPairwise = d;
+    }
+  }
+  const overlapPass = minPairwise >= (2 * r - 1e-2 * r);
+
+  // 3. Maximum Interstitial Void Radius inside packed volume
+  const step = 0.5 * r;
+  let maxVoidDist = 0;
+  let illegalVoids = 0;
+  for (let x = -R_bound; x <= R_bound; x += step) {
+    for (let y = -R_bound; y <= R_bound; y += step) {
+      for (let z = -R_bound; z <= R_bound; z += step) {
+        const d = Math.hypot(x, y, z);
+        if (d > R_bound - 2 * r || d < 0.8 * r) continue;
+        let minDist = Infinity;
+        for (let i = 0; i < spheres.length; i++) {
+          const sd = Math.hypot(x - spheres[i].x, y - spheres[i].y, z - spheres[i].z);
+          if (sd < minDist) minDist = sd;
+        }
+        const voidRad = Math.max(0, minDist - r);
+        if (voidRad > maxVoidDist) maxVoidDist = voidRad;
+        if (minDist >= 2 * r) illegalVoids++;
+      }
+    }
+  }
+
+  return {
+    originPass,
+    minOriginDist,
+    overlapPass,
+    minPairwise,
+    maxVoidRadius: maxVoidDist,
+    voidCheckPass: illegalVoids === 0,
+    totalSpheres: spheres.length
   };
 }
 
@@ -928,10 +1207,14 @@ export const SacredMath3D = {
   SQRT3,
   SQRT6,
   FCC_DZ,
+  TET_PITCH,
+  OCTANT_CORNER_DIST,
   FCC_POCKET_R,
+  DIST_HEX,
   DIST_TRI_INNER,
   DIST_TRI_APEX,
   STAMP_STEP,
+  DIST_BRIDGE_BASE,
   EPSILON,
 
   getFCCPlane,
@@ -940,7 +1223,10 @@ export const SacredMath3D = {
   getLife3DGeometry,
   createKrystStamp3D,
   getKryst3DGeometry,
-  getTriAxialGeometry
+  getKrystGeometry3D,
+  getTriAxialGeometry,
+  getOctantId,
+  checkSaturation
 };
 
 export default SacredMath3D;

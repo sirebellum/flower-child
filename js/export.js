@@ -79,9 +79,8 @@ const Exporter = {
    * Guarantees URL revocation in a finally block to prevent memory leaks.
    */
   downloadSVG() {
-    const svg = (State.viewportMode === 'single-kryst')
-      ? document.getElementById('svgKryst')
-      : document.getElementById('svgLife');
+    const svg = document.getElementById('svgMain')
+      || (State.viewportMode === 'single-kryst' ? document.getElementById('svgKryst') : document.getElementById('svgLife'));
 
     if (!svg) {
       if (window.UI?.showToast) window.UI.showToast('Error: SVG canvas not found', 3000);
@@ -97,11 +96,12 @@ const Exporter = {
     try {
       const a = document.createElement('a');
       a.href = url;
-      a.download = `sacred_geometry_${State.activePreset}_N${State.N}.svg`;
+      const patternName = State.activePattern || 'kryst';
+      a.download = `sacred_${patternName}_R${Math.round(State.boundaryRadius || 200)}.svg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      if (window.UI?.showToast) window.UI.showToast('SVG exported successfully');
+      if (window.UI?.showToast) window.UI.showToast('SVG Vector Export Successful!');
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -122,9 +122,8 @@ const Exporter = {
 
     if (window.UI?.showToast) window.UI.showToast(`Rendering high-DPI canvas (${width}×${height})...`);
 
-    const svg = (State.viewportMode === 'single-kryst')
-      ? document.getElementById('svgKryst')
-      : document.getElementById('svgLife');
+    const svg = document.getElementById('svgMain')
+      || (State.viewportMode === 'single-kryst' ? document.getElementById('svgKryst') : document.getElementById('svgLife'));
 
     if (!svg) {
       if (window.UI?.showToast) window.UI.showToast('Error: SVG canvas not found', 3000);

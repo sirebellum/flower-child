@@ -28,10 +28,17 @@ const App = {
 
     UI.init();
 
-    this.panZoomControllers.push(new PanZoomController('svgWrapperLife', 'svgLife', 'life'));
-    this.panZoomControllers.push(new PanZoomController('svgWrapperKryst', 'svgKryst', 'kryst'));
+    if (document.getElementById('svgMain')) {
+      this.panZoomControllers.push(new PanZoomController('svgWrapperMain', 'svgMain', 'kryst'));
+    }
+    if (document.getElementById('svgLife')) {
+      this.panZoomControllers.push(new PanZoomController('svgWrapperLife', 'svgLife', 'life'));
+    }
+    if (document.getElementById('svgKryst')) {
+      this.panZoomControllers.push(new PanZoomController('svgWrapperKryst', 'svgKryst', 'kryst'));
+    }
 
-    // Initialize 3D WebGL renderer lazily or on demand
+    // Initialize 3D WebGL renderer lazily or on demand (Frozen E-02)
     try {
       Renderer3D.init();
     } catch (e) {
@@ -47,10 +54,8 @@ const App = {
       });
     });
 
-    // Default: Apply Krystonial comparison preset
-    UI.applyPreset('krystonial_comparison');
-
-    // Automatically fit initial view to display whole initial flowers
+    // Initial render and fit
+    this.renderAll();
     requestAnimationFrame(() => {
       UI.fitToScreen();
     });
@@ -61,8 +66,9 @@ const App = {
       Renderer3D.renderAll();
       return;
     }
-    if (State.viewportMode === 'superimposed') {
-      SVGRenderer.renderSuperimposed('svgLife', State.transforms.life);
+    if (document.getElementById('svgMain')) {
+      const pattern = State.activePattern || 'kryst';
+      SVGRenderer.render('svgMain', pattern, State.transforms[pattern] || State.transforms.kryst);
     } else {
       SVGRenderer.render('svgLife', 'life', State.transforms.life);
       SVGRenderer.render('svgKryst', 'kryst', State.transforms.kryst);

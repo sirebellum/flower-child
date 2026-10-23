@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Sacred Geometry Studio — Flower of Life & Flower of Kryst</title>
+  <title>Sacred Geometry Studio — Flower of Kryst & Flower of Life</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -24,6 +24,19 @@
       "three/examples/jsm/": "https://esm.sh/three@0.160.0/examples/jsm/"
     }
   }
+  </script>
+  <script type="module">
+    try {
+      const THREE = await import('three');
+      const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+      window.THREE = THREE;
+      window.OrbitControls = OrbitControls;
+      if (window.Renderer3D && !window.Renderer3D.isInitialized) {
+        window.Renderer3D.init();
+      }
+    } catch (e) {
+      console.warn('Three.js importmap module loader:', e);
+    }
   </script>
 </head>
 
@@ -43,15 +56,14 @@
       </div>
       <div>
         <div class="brand-title">Sacred Geometry Studio</div>
-        <div class="brand-subtitle">Flower of Life vs. Flower of Kryst</div>
+        <div class="brand-subtitle">Flower of Kryst &amp; Flower of Life</div>
       </div>
     </div>
 
-    <!-- Dimension Mode Switcher: 2D SVG vs 3D FCC WebGL -->
+    <!-- Dimension Mode Switcher: 2D SVG vs 3D WebGL -->
     <div class="dimension-switcher" id="dimensionSwitcher" role="tablist" aria-label="Dimension Mode Switcher">
       <button class="dim-tab active" data-dim="2d" role="tab" aria-selected="true"
-        title="2D Interactive Vector SVG Mode"
-        onclick="if(window.UI && window.UI.setDimension) window.UI.setDimension('2d');">
+        title="2D Interactive Vector SVG Mode">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
@@ -60,67 +72,68 @@
         <span>2D SVG</span>
       </button>
       <button class="dim-tab" data-dim="3d" role="tab" aria-selected="false"
-        title="3D Face-Centered Cubic (FCC) WebGL Engine"
-        onclick="if(window.UI && window.UI.setDimension) window.UI.setDimension('3d');">
+        title="3D WebGL Engine">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path
             d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
           <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
           <line x1="12" y1="22.08" x2="12" y2="12" />
         </svg>
-        <span>3D FCC WebGL</span>
+        <span>3D WebGL</span>
       </button>
     </div>
 
-    <!-- View Mode Switcher -->
-    <div class="view-switcher" id="viewportSwitcher" role="tablist" aria-label="Viewport Mode Switcher">
-      <button class="view-tab active" data-mode="comparison" role="tab" aria-selected="true"
-        aria-label="Dual Split synchronized side-by-side comparison" title="Side-by-side synchronized comparison">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <rect x="3" y="3" width="8" height="18" rx="2" />
-          <rect x="13" y="3" width="8" height="18" rx="2" />
-        </svg>
-        <span>Dual Split</span>
-      </button>
-      <button class="view-tab" data-mode="superimposed" role="tab" aria-selected="false"
-        aria-label="Superimposed overlay centered on (0,0)" title="Superimposed overlay centered on (0,0)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <circle cx="12" cy="12" r="5" />
-        </svg>
-        <span>Superimposed</span>
-      </button>
-      <button class="view-tab" data-mode="single-life" role="tab" aria-selected="false"
-        aria-label="Flower of Life single focus" title="Flower of Life single focus">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <polygon points="12 2 21 7 21 17 12 22 3 17 3 7" />
-        </svg>
-        <span>Flower of Life</span>
-      </button>
-      <button class="view-tab" data-mode="single-kryst" role="tab" aria-selected="false"
-        aria-label="Flower of Kryst single focus" title="Flower of Kryst single focus">
+    <!-- Pattern Switcher: Flower of Kryst vs Flower of Life -->
+    <div class="view-switcher" id="patternSwitcher" role="tablist" aria-label="Pattern Switcher">
+      <button class="view-tab pattern-tab active" data-pattern-switch="kryst" role="tab" aria-selected="true"
+        title="Flower of Kryst (Zero-Point Origin, Pure Radial Crystallization)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="12" cy="12" r="9" />
           <polygon points="12 5 19 12 12 19 5 12" />
         </svg>
         <span>Flower of Kryst</span>
       </button>
+      <button class="view-tab pattern-tab" data-pattern-switch="life" role="tab" aria-selected="false"
+        title="Flower of Life (Hexagonal Origin Overlap)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polygon points="12 2 21 7 21 17 12 22 3 17 3 7" />
+        </svg>
+        <span>Flower of Life</span>
+      </button>
     </div>
 
-    <!-- Header Actions -->
+    <!-- Header Actions: Story, Notes, Theory, Export -->
     <div class="header-actions">
+      <button class="btn" id="btnStoryOfKryst" aria-label="Open Story of Kryst 12-Stage Journey"
+        title="12 Stages of Spiritual Crystallization">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+        <span>Story of Kryst</span>
+      </button>
+
+      <button class="btn" id="btnRingNotes" aria-label="Open Ring Notes & Solfeggio Harmonics"
+        title="Ring Numerology & Esoteric Significance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+        <span>Ring Notes</span>
+      </button>
+
       <button class="btn" id="openTheoryBtn" aria-label="Open Mathematical Specification & Theory Proof Dialog"
-        title="Mathematical & Esoteric Comparison Guide">
+        title="Mathematical Specification & Geometric Foundations">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="16" x2="12" y2="12" />
           <line x1="12" y1="8" x2="12.01" y2="8" />
         </svg>
-        <span>Theory & Proof</span>
+        <span>Theory &amp; Proof</span>
       </button>
 
       <button class="btn btn-primary" id="exportBtn" aria-label="Open High-Resolution Export Dialog"
-        title="Export High-Resolution Vectors / Canvas">
+        title="Export Vector SVG or Raster PNG">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
           <polyline points="7 10 12 15 17 10" />
@@ -170,90 +183,16 @@
       <!-- Scrollable Sidebar Content -->
       <div class="sidebar-content">
 
-        <!-- Presets Section -->
+        <!-- Section 1: Boundary & Expansion (E-05, R-B1, R-A7) -->
         <div class="panel-section open">
           <div class="section-header" role="button" tabindex="0" aria-expanded="true"
-            aria-label="Toggle Sacred Geometry Presets Section">
-            <span class="section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <polygon
-                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-              Sacred Geometry Presets
-            </span>
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              aria-hidden="true">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-          <div class="section-body">
-            <!-- Preset Management Toolbar -->
-            <div class="preset-toolbar">
-              <button class="btn btn-xs btn-primary" id="btnAddNewPreset"
-                aria-label="Create new custom preset from current studio parameters"
-                title="Create new custom preset from current settings">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="width:12px;height:12px;" aria-hidden="true">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span>+ Add Preset</span>
-              </button>
-              <button class="btn btn-xs" id="btnUpdateCurrentPreset"
-                aria-label="Save current studio state to active preset"
-                title="Save current studio state to active preset">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="width:12px;height:12px;" aria-hidden="true">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                <span>Save Active</span>
-              </button>
-              <button class="btn btn-xs" id="btnManagePresets"
-                aria-label="Open Preset Management, Backup, and JSON Import/Export Dialog"
-                title="Export / Import Presets JSON or Reset Defaults">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="width:12px;height:12px;" aria-hidden="true">
-                  <circle cx="12" cy="12" r="3" />
-                  <path
-                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
-                <span>Backup</span>
-              </button>
-            </div>
-
-            <!-- Dynamic Preset Grid -->
-            <div class="preset-grid" id="presetGrid" role="region" aria-label="Sacred Geometry Preset Selection">
-              <!-- Rendered dynamically by PresetsManager -->
-            </div>
-
-            <!-- Platonic Solids Filter Bar for Metatron's Cube -->
-            <div class="platonic-solids-bar" id="platonicBar" role="toolbar" aria-label="Platonic Solids Filters">
-              <span style="font-size:0.7rem; color:var(--text-faint); width:100%;">Highlight Platonic Solids:</span>
-              <button class="platonic-btn active" data-solid="all" aria-label="Highlight all 78 Metatron chords">All 78
-                Chords</button>
-              <button class="platonic-btn" data-solid="tetra" aria-label="Highlight Star Tetrahedron Merkaba">Merkaba
-                (Star Tetra)</button>
-              <button class="platonic-btn" data-solid="cube" aria-label="Highlight Cube Hexahedron">Cube
-                (Hexahedron)</button>
-              <button class="platonic-btn" data-solid="octa" aria-label="Highlight Octahedron">Octahedron</button>
-              <button class="platonic-btn" data-solid="dodeca" aria-label="Highlight Icosahedron and Dodecahedron">Icosa
-                / Dodeca</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Layer & Dimensions Section -->
-        <div class="panel-section open">
-          <div class="section-header" role="button" tabindex="0" aria-expanded="true"
-            aria-label="Toggle Lattice and Layers Section">
+            aria-label="Toggle Boundary & Expansion Section">
             <span class="section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              Lattice & Layers (N)
+              Boundary &amp; Expansion
             </span>
             <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               aria-hidden="true">
@@ -261,43 +200,342 @@
             </svg>
           </div>
           <div class="section-body">
+            <!-- Boundary Radius Slider -->
             <div class="slider-container">
               <div class="control-row">
-                <label for="layerSlider" class="control-label">Layer Depth (N)</label>
-                <span class="control-val-badge" id="layerCountBadge">N = 2</span>
+                <label for="boundarySlider" class="control-label">Boundary Circle Radius</label>
+                <span class="control-val-badge" id="boundaryBadge">R_bound = 200px</span>
               </div>
-              <input type="range" class="range-slider" id="layerSlider" min="1" max="42" value="2" step="1"
-                aria-label="Layer Depth N" aria-valuemin="1" aria-valuemax="42" aria-valuenow="2">
+              <input type="range" class="range-slider" id="boundarySlider" min="50" max="1800" value="200" step="5"
+                aria-label="Boundary Circle Radius">
+              <span style="font-size: 0.68rem; color: var(--text-faint);">Draws any body circle centers contained within this radius. Expanding zooms out view.</span>
             </div>
 
+            <!-- Body Circle Radius Slider -->
             <div class="slider-container">
               <div class="control-row">
                 <label for="radiusSlider" class="control-label">Body Radius (r)</label>
                 <span class="control-val-badge" id="radiusBadge">r = 50px</span>
               </div>
-              <input type="range" class="range-slider" id="radiusSlider" min="25" max="90" value="50" step="1"
-                aria-label="Body Radius in pixels" aria-valuemin="25" aria-valuemax="90" aria-valuenow="50">
+              <input type="range" class="range-slider" id="radiusSlider" min="20" max="100" value="50" step="1"
+                aria-label="Body Radius in pixels">
             </div>
 
-            <!-- Total Circles Counter -->
-            <div
-              style="background: rgba(0,0,0,0.35); border: 1px solid var(--bg-panel-border); border-radius: var(--radius-sm); padding: 10px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; width: 100%;">
-              <div
-                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; font-size: 0.75rem;">
-                <span style="color:#fca5a5;">Flower of Life Circles:</span>
-                <strong style="font-family:var(--font-mono); color:#fff;" id="folCountStat">19 Circles</strong>
+            <!-- Aura Size Slider (2r to 6r) -->
+            <div class="slider-container">
+              <div class="control-row">
+                <label for="sliderAuraScale" class="control-label">Aura Size</label>
+                <span class="control-val-badge" id="badgeAuraScale">2.0r (100px)</span>
               </div>
-              <div
-                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; font-size: 0.75rem;">
-                <span style="color:#67e8f9;">Flower of Kryst Circles:</span>
-                <strong style="font-family:var(--font-mono); color:#fff;" id="fokCountStat">18 (Flower of
-                  Kryst)</strong>
+              <input type="range" class="range-slider" id="sliderAuraScale" min="2.0" max="6.0" value="2.0" step="0.1"
+                aria-label="Aura Size Ratio from 2r to 6r">
+              <span style="font-size: 0.68rem; color: var(--text-faint);">Adjusts the aura petal circle size from 2r to 6r of the body circle.</span>
+            </div>
+
+            <!-- Full-Screen Infinite Tiling Layout (R-A7) -->
+            <label class="toggle-row" style="margin-top: 6px;">
+              <div class="toggle-info">
+                <span class="toggle-title" style="color: var(--accent-cyan);">Full-Screen Tiling</span>
+                <span class="toggle-desc">Shift layout from concentric rings to infinite tessellation</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleFullScreenTiling">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <!-- Restore Removed Circles Button (E-05) -->
+            <button class="btn btn-secondary" id="btnRestoreCircles"
+              style="width: 100%; margin-top: 6px; font-size: 0.76rem; justify-content: center;"
+              title="Restore all circles removed via clicking">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="width: 13px; height: 13px; margin-right: 4px;">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Restore All Removed Circles
+            </button>
+
+            <!-- Interactive Circle Count Jump Box -->
+            <div class="circle-count-jump-box"
+              style="background: rgba(0,0,0,0.35); border: 1px solid var(--bg-panel-border); border-radius: var(--radius-sm); padding: 10px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; width: 100%; margin-top: 8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <label for="inputCircleCount" style="color:var(--text-muted); font-size:0.75rem; font-weight:500; cursor:pointer;" title="Enter a target circle count to jump boundary circle">
+                  Circles Active:
+                </label>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <input type="number" id="inputCircleCount" min="1" max="10000" step="1" value="18"
+                    aria-label="Enter circle count to jump boundary circle"
+                    title="Enter circle number and press Enter to jump to nearest valid distance"
+                    style="width: 74px; padding: 4px 6px; font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: #fff; background: rgba(255,255,255,0.08); border: 1px solid var(--bg-panel-border); border-radius: 4px; text-align: right;" />
+                  <button class="btn btn-xs btn-primary" id="btnJumpCircleCount" type="button"
+                    title="Jump boundary circle to nearest valid distance"
+                    style="padding: 4px 8px; font-size: 0.70rem; font-weight: 600; text-transform: uppercase;">
+                    Jump
+                  </button>
+                </div>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size: 0.70rem; color: var(--text-faint); margin-top: 2px;">
+                <span id="fokCountStat">18 Circles (Flower of Kryst)</span>
+                <span id="circleCountFeedback" style="color: var(--accent-gold); font-family: var(--font-mono); font-size: 0.68rem;"></span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 3D Matrix & Translucency Controls -->
+        <!-- Section 2: Custom Presets (R-A4, E-11) -->
+        <div class="panel-section open">
+          <div class="section-header" role="button" tabindex="0" aria-expanded="true"
+            aria-label="Toggle Custom Presets Section">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              Sacred Shape Presets
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+          <div class="section-body">
+            <!-- Preset Toolbar -->
+            <div class="preset-toolbar">
+              <button class="btn btn-xs btn-primary" id="btnAddNewPreset"
+                aria-label="Save current highlighted shapes as custom preset"
+                title="Save shape preset (Pyramid, Dove, Shield, Pinecone, Face, etc.)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="width:12px;height:12px;" aria-hidden="true">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span>+ Save Preset</span>
+              </button>
+              <button class="btn btn-xs" id="btnManagePresets"
+                aria-label="Backup and JSON Import/Export"
+                title="Backup or Import presets as JSON">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  style="width:12px;height:12px;" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Backup / JSON</span>
+              </button>
+            </div>
+
+            <span style="font-size:0.68rem; color:var(--text-faint); margin-bottom: 6px; display:block;">
+              Tip: Shift+Click circles in the view to highlight sections, then click <strong>+ Save Preset</strong> (e.g. Pyramid, Dove, Shield, Pinecone, Face, Triveca).
+            </span>
+
+            <!-- Dynamic Custom Presets Grid -->
+            <div class="preset-grid" id="presetGrid" role="region" aria-label="User Presets Selection">
+              <!-- Rendered dynamically by PresetsManager -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Sacred Art & Visualizers (Open for further development) -->
+        <div class="panel-section open" id="sectionSacredArt">
+          <div class="section-header" role="button" tabindex="0" aria-expanded="true"
+            aria-label="Toggle Sacred Art & Visualizers Section">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                <line x1="9" y1="9" x2="9.01" y2="9" />
+                <line x1="15" y1="9" x2="15.01" y2="9" />
+              </svg>
+              Sacred Art &amp; Visualizers
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+          <div class="section-body">
+            <div class="dev-placeholder-card" style="padding: 14px 12px; border: 1px dashed rgba(255, 255, 255, 0.16); border-radius: var(--radius-sm, 6px); background: rgba(255, 255, 255, 0.02); text-align: center; margin: 4px 0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 24px; height: 24px; color: var(--accent-gold, #f59e0b); opacity: 0.85; margin: 0 auto 6px auto; display: block;" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <div style="font-size: 0.78rem; font-weight: 500; color: var(--text-primary, #e2e8f0); margin-bottom: 3px;">Open for Further Development</div>
+              <p style="font-size: 0.70rem; color: var(--text-muted, #94a3b8); margin: 0; line-height: 1.35;">
+                Sacred art visualizer modules and overlays will be configured here.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Aesthetics & Geometric Elements -->
+        <div class="panel-section open dim-2d-only" id="section2dLayers">
+          <div class="section-header">
+            <span class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              Geometric Layers &amp; Styling
+            </span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+          <div class="section-body">
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Aura Circles</span>
+                <span class="toggle-desc">Overlapping circles of radius R = 2r</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleAuraFlower" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Body Circles</span>
+                <span class="toggle-desc">Tangent circles of body radius r</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleBodyCircles" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Shape Guides (Hexagons / Triangles)</span>
+                <span class="toggle-desc">Lattice guide lines connecting centers</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleGuides" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Outer Bounding Ring</span>
+                <span class="toggle-desc">Concentric rim bounding circle at R_bound</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleOuterRing" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Center Dots</span>
+                <span class="toggle-desc">Focal origin dots for all active circles</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleCenterDots" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Radial Symmetry Axes</span>
+                <span class="toggle-desc">12-fold sacred rays radiating through origin</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleRadialAxes">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Sacred Glow</span>
+                <span class="toggle-desc">Luminescent vector glow filter</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="toggleGlow" checked>
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <div class="toggle-info">
+                <span class="toggle-title">Sacred Pulse (Breathing)</span>
+                <span class="toggle-desc">Gentle sinusoidal kinetic respiration</span>
+              </div>
+              <div class="switch">
+                <input type="checkbox" id="togglePulse">
+                <span class="slider-switch"></span>
+              </div>
+            </label>
+
+            <!-- Color Palette Customizer (R-A1) -->
+            <div class="color-grid" style="margin-top: 10px;">
+              <div class="color-picker-item">
+                <input type="color" id="colorKryst" value="#10b981" aria-label="Kryst Aura Color">
+                <label for="colorKryst" class="color-picker-label">Kryst Aura</label>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorLife" value="#ef4444" aria-label="Life Aura Color">
+                <label for="colorLife" class="color-picker-label">Life Aura</label>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorBody" value="#3b82f6" aria-label="Body Circles Color">
+                <label for="colorBody" class="color-picker-label">Body Circles</label>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorGuide" value="#ea580c" aria-label="Guides Color">
+                <label for="colorGuide" class="color-picker-label">Shape Guides</label>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorOuter" value="#f59e0b" aria-label="Outer Ring Color">
+                <label for="colorOuter" class="color-picker-label">Outer Ring</label>
+              </div>
+              <div class="color-picker-item">
+                <input type="color" id="colorAxes" value="#64748b" aria-label="Radial Axes Color">
+                <label for="colorAxes" class="color-picker-label">Radial Axes</label>
+              </div>
+            </div>
+
+            <!-- Stroke Width Sliders -->
+            <div class="slider-container" style="margin-top: 10px;">
+              <div class="control-row">
+                <label for="strokeAuraSlider" class="control-label">Aura Stroke Width</label>
+                <span class="control-val-badge" id="strokeAuraBadge">1.5px</span>
+              </div>
+              <input type="range" class="range-slider" id="strokeAuraSlider" min="0.5" max="6.0" value="1.5" step="0.25">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <label for="strokeBodySlider" class="control-label">Body Stroke Width</label>
+                <span class="control-val-badge" id="strokeBodyBadge">1.0px</span>
+              </div>
+              <input type="range" class="range-slider" id="strokeBodySlider" min="0.5" max="4.0" value="1.0" step="0.25">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <label for="strokeGuideSlider" class="control-label">Guides Stroke Width</label>
+                <span class="control-val-badge" id="strokeGuideBadge">2.0px</span>
+              </div>
+              <input type="range" class="range-slider" id="strokeGuideSlider" min="0.5" max="5.0" value="2.0" step="0.25">
+            </div>
+
+            <div class="slider-container">
+              <div class="control-row">
+                <label for="fillOpacitySlider" class="control-label">Petal Fill Opacity</label>
+                <span class="control-val-badge" id="fillOpacityBadge">4%</span>
+              </div>
+              <input type="range" class="range-slider" id="fillOpacitySlider" min="0" max="30" value="4" step="1">
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Section 5: 3D Matrix & Translucency Controls (E-02 Frozen) -->
         <div class="panel-section open dim-3d-only" id="section3dControls" style="display: none;">
           <div class="section-header" role="button" tabindex="0" aria-expanded="true"
             aria-label="Toggle 3D Matrix and Translucency Controls">
@@ -308,7 +546,7 @@
                 <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                 <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
-              3D Matrix & Translucency
+              3D Matrix Engine
             </span>
             <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               aria-hidden="true">
@@ -316,212 +554,12 @@
             </svg>
           </div>
           <div class="section-body">
-            <!-- 3D Architecture Model Switcher -->
-            <div class="form-group" style="margin-top:2px;">
+            <div class="form-group">
               <label for="select3DModel" class="control-label" style="font-size:0.75rem;">3D Architecture Model</label>
               <select class="custom-select" id="select3DModel" aria-label="3D Architecture Model">
-                <option value="triaxial" selected>Tri-Axial 90° Cross & 3D Infill</option>
-                <option value="fcc">Face-Centered Cubic (FCC 111 Close-Packing)</option>
+                <option value="volumetric_kryst" selected>Volumetric Flower of Kryst</option>
+                <option value="fcc">Face-Centered Cubic (FCC 111)</option>
               </select>
-            </div>
-
-            <!-- Infill Mode Selector -->
-            <div class="form-group" id="groupInfillMode" style="margin-top:6px;">
-              <label for="selectInfillMode" class="control-label" style="font-size:0.75rem;">Infill Between 90°
-                Axes</label>
-              <select class="custom-select" id="selectInfillMode" aria-label="Infill Between 90 Degree Axes">
-                <option value="both" selected>Full Infill (Angular Arcs + 3D Grid)</option>
-                <option value="angular">Angular Arc Infill Only</option>
-                <option value="grid">3D Coordinate Grid Infill Only</option>
-                <option value="planes">Planes Only (0° & 90° Cross)</option>
-              </select>
-            </div>
-
-            <!-- Infill Density Steps Slider -->
-            <div class="slider-container" id="groupInfillSteps" style="margin-top:6px;">
-              <div class="control-row">
-                <label for="infillStepsSlider" class="control-label">Infill Density Steps</label>
-                <span class="control-val-badge" id="infillStepsBadge">2 Steps</span>
-              </div>
-              <input type="range" class="range-slider" id="infillStepsSlider" min="1" max="4" value="2" step="1"
-                aria-label="Infill Density Steps">
-            </div>
-
-            <!-- Sphere Translucency / Opacity Slider -->
-            <div class="slider-container" style="margin-top:6px;">
-              <div class="control-row">
-                <label for="sphereOpacitySlider" class="control-label">Sphere Translucency (Opacity)</label>
-                <span class="control-val-badge" id="sphereOpacityBadge">35%</span>
-              </div>
-              <input type="range" class="range-slider" id="sphereOpacitySlider" min="5" max="100" value="35" step="1"
-                aria-label="3D Sphere Opacity percentage">
-            </div>
-
-            <!-- Plane Visibility Toggles -->
-            <div id="groupTriaxialPlanes"
-              style="margin-top:8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
-              <span class="control-label"
-                style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">Orthogonal
-                Planes:</span>
-
-              <label class="toggle-row" style="margin-top:4px;">
-                <div class="toggle-info">
-                  <span class="toggle-title" style="color:#38bdf8;">XY Plane (0° Original)</span>
-                  <span class="toggle-desc">Horizontal body sacred geometry</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="togglePlaneXY" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title" style="color:#f43f5e;">XZ Plane (90° Rotated Axis)</span>
-                  <span class="toggle-desc">Perpendicular vertical layout</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="togglePlaneXZ" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title" style="color:#10b981;">YZ Plane (3rd Orthogonal Axis)</span>
-                  <span class="toggle-desc">Side perpendicular cross layout</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="togglePlaneYZ" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title" style="color:#f59e0b;">Infill Spheres Between Axes</span>
-                  <span class="toggle-desc">Populate the volume between planes</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggleInfill3D" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title">90° Orthogonal Axis Rings</span>
-                  <span class="toggle-desc">Boundary circles along the 3 axes</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggleAxialRims" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-            </div>
-
-            <!-- 3D Representation Toggles -->
-            <div style="margin-top:8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title">Tangent Spheres (Radius r)</span>
-                  <span class="toggle-desc">Primary translucent spheres</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggle3DSpheres" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title">Torus Petal Rims (2r)</span>
-                  <span class="toggle-desc">Tubular rings centered on spheres</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggle3DTorus">
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title">Expanded 2r Sphere Shells</span>
-                  <span class="toggle-desc">Large overlapping translucent shells</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggle3DShells">
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title">Lattice Strut Guides</span>
-                  <span class="toggle-desc">Geometric inter-axis connect struts</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggle3DGuides" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-
-              <label class="toggle-row">
-                <div class="toggle-info">
-                  <span class="toggle-title">Zero-Point Void Indicator</span>
-                  <span class="toggle-desc">Pulsing core indicator at (0,0,0) in FoK</span>
-                </div>
-                <div class="switch">
-                  <input type="checkbox" id="toggleZeroPointMarker" checked>
-                  <span class="slider-switch"></span>
-                </div>
-              </label>
-            </div>
-
-            <!-- FCC-Specific Controls (Visible when in FCC mode) -->
-            <div id="groupFccControls"
-              style="display:none; margin-top:8px; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px;">
-              <div class="form-group">
-                <label for="select3DExpansionMode" class="control-label" style="font-size:0.75rem;">FCC Kryst Expansion
-                  Mode</label>
-                <select class="custom-select" id="select3DExpansionMode" aria-label="3D Kryst Expansion Mode">
-                  <option value="volumetric">Volumetric 3D FCC Lattice (12 directions)</option>
-                  <option value="stratified">Stratified FCC Slab (XY Stamp + ABC Z-Layers)</option>
-                </select>
-              </div>
-
-              <div style="margin-top:6px;">
-                <span class="control-label" style="font-size:0.75rem;">Isolate FCC (111) Plane:</span>
-                <div class="fcc-plane-bar" id="fccPlaneBar" role="toolbar" aria-label="Isolate FCC Plane"
-                  style="margin-top:4px;">
-                  <button class="fcc-plane-btn active" data-plane="all">All</button>
-                  <button class="fcc-plane-btn" data-plane="A">Plane A (z=0)</button>
-                  <button class="fcc-plane-btn" data-plane="B">Plane B (+Δz)</button>
-                  <button class="fcc-plane-btn" data-plane="C">Plane C (-Δz)</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Z-Slice Clipping Slider -->
-            <div class="slider-container"
-              style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px;">
-              <div class="control-row">
-                <label for="sliceZSlider" class="control-label">3D Cross-Section Z-Slice</label>
-                <span class="control-val-badge" id="sliceZBadge">100% (Full)</span>
-              </div>
-              <input type="range" class="range-slider" id="sliceZSlider" min="-100" max="100" value="100" step="2"
-                aria-label="3D Cross-Section Z-Slice percentage">
-            </div>
-
-            <!-- Camera Preset Views & Auto-Rotate -->
-            <div style="margin-top:6px;">
-              <span class="control-label" style="font-size:0.75rem;">Camera Preset Views:</span>
-              <div class="fcc-plane-bar" style="margin-top:4px;">
-                <button class="fcc-plane-btn" id="camPresetTop" title="Top View looking down Z">Top View</button>
-                <button class="fcc-plane-btn" id="camPresetFront" title="Front View looking along Y">Front
-                  Slice</button>
-                <button class="fcc-plane-btn active" id="camPresetIso" title="Isometric 3D View">Isometric</button>
-              </div>
             </div>
 
             <label class="toggle-row" style="margin-top:8px;">
@@ -537,258 +575,16 @@
           </div>
         </div>
 
-        <!-- Visual Elements Toggles -->
-        <div class="panel-section open dim-2d-only" id="section2dLayers">
-          <div class="section-header">
-            <span class="section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              Geometric Layers
-            </span>
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-          <div class="section-body">
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Aura Circles</span>
-                <span class="toggle-desc">Expanded overlapping circles (Radius R = 2r)</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleAuraFlower" checked>
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Body Circles</span>
-                <span class="toggle-desc">Blue tangent circles of body radius r</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleBodyCircles">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Shape Guides (Hexagons / Circles)</span>
-                <span class="toggle-desc">Lattice guide lines: Hex for FoL, Hex+Circle for FoK</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleGuides">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Outer Bounding Ring</span>
-                <span class="toggle-desc">Circumscribing boundary ring at R = (2N+2)r</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleOuterRing">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Boundary Filler Petals (Clipped)</span>
-                <span class="toggle-desc">Complete outer petals clipped inside boundary</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleBoundaryPetals">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Center Coordinate Dots</span>
-                <span class="toggle-desc">Node points at every circle center (x, y)</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleCenterDots">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Intersection Nodes</span>
-                <span class="toggle-desc">Points where guide hexagons and triangles cross body circles</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleIntersections">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Radial Symmetry Rays</span>
-                <span class="toggle-desc">12-fold / 6-fold dashed axes through origin</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleRadialAxes">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Metatron Vertex Chords</span>
-                <span class="toggle-desc">Geometric connections across centers</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleMetatronLines">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Styling & Colors -->
-        <div class="panel-section open">
-          <div class="section-header">
-            <span class="section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 2v20" />
-              </svg>
-              Aesthetics & Colors
-            </span>
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-          <div class="section-body">
-            <label class="toggle-row dim-2d-only">
-              <div class="toggle-info">
-                <span class="toggle-title">Harmonic Color by Layer</span>
-                <span class="toggle-desc">Assign distinct spectrum colors to layers 0..N</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleColorByLayer">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row dim-2d-only">
-              <div class="toggle-info">
-                <span class="toggle-title">Neon Luminescence Glow</span>
-                <span class="toggle-desc">Ethereal SVG Gaussian blur glow filter</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="toggleGlow" checked>
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row dim-2d-only">
-              <div class="toggle-info">
-                <span class="toggle-title">Sacred Pulse (Breathing)</span>
-                <span class="toggle-desc">Gentle sinusoidal kinetic respiration</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="togglePulse">
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <div class="color-grid">
-              <div class="color-picker-item">
-                <input type="color" id="colorLife" value="#ef4444" aria-label="Flower of Life Accent Color">
-                <label for="colorLife" class="color-picker-label">Life Aura</label>
-              </div>
-              <div class="color-picker-item">
-                <input type="color" id="colorKryst" value="#10b981" aria-label="Flower of Kryst Accent Color">
-                <label for="colorKryst" class="color-picker-label">Kryst Aura</label>
-              </div>
-              <div class="color-picker-item dim-2d-only">
-                <input type="color" id="colorBody" value="#3b82f6" aria-label="Body Hexagons Color">
-                <label for="colorBody" class="color-picker-label">Body Hexagons</label>
-              </div>
-              <div class="color-picker-item dim-2d-only">
-                <input type="color" id="colorTriangle" value="#eab308" aria-label="Body Triangles Color">
-                <label for="colorTriangle" class="color-picker-label">Body Triangles</label>
-              </div>
-              <div class="color-picker-item dim-2d-only">
-                <input type="color" id="colorGuide" value="#ea580c" aria-label="Shape Guides Color">
-                <label for="colorGuide" class="color-picker-label">Shape Guides</label>
-              </div>
-              <div class="color-picker-item dim-2d-only">
-                <input type="color" id="colorIntersection" value="#ec4899" aria-label="Intersection Nodes Color">
-                <label for="colorIntersection" class="color-picker-label">Intersection Nodes</label>
-              </div>
-              <div class="color-picker-item dim-2d-only">
-                <input type="color" id="colorOuter" value="#f59e0b" aria-label="Outer Bounding Ring Color">
-                <label for="colorOuter" class="color-picker-label">Outer Ring</label>
-              </div>
-              <div class="color-picker-item dim-2d-only">
-                <input type="color" id="colorAxes" value="#64748b" aria-label="Radial Symmetry Axes Color">
-                <label for="colorAxes" class="color-picker-label">Radial Axes</label>
-              </div>
-            </div>
-
-            <!-- Stroke Width Sliders -->
-            <div class="slider-container dim-2d-only">
-              <div class="control-row">
-                <label for="strokeAuraSlider" class="control-label">Aura Circles Stroke</label>
-                <span class="control-val-badge" id="strokeAuraBadge">1.0px</span>
-              </div>
-              <input type="range" class="range-slider" id="strokeAuraSlider" min="1.0" max="8.0" value="1.0"
-                step="1.0" aria-label="Aura Circles Stroke Width" aria-valuemin="1.0" aria-valuemax="8.0"
-                aria-valuenow="1.0">
-            </div>
-
-            <div class="slider-container dim-2d-only">
-              <div class="control-row">
-                <label for="strokeBodySlider" class="control-label">Body Circles Stroke</label>
-                <span class="control-val-badge" id="strokeBodyBadge">1.0px</span>
-              </div>
-              <input type="range" class="range-slider" id="strokeBodySlider" min="0.5" max="3.5" value="1.0" step="0.25"
-                aria-label="Body Circles Stroke Width" aria-valuemin="0.5" aria-valuemax="3.5" aria-valuenow="1.0">
-            </div>
-
-            <div class="slider-container dim-2d-only">
-              <div class="control-row">
-                <label for="strokeGuideSlider" class="control-label">Shape Guides Stroke</label>
-                <span class="control-val-badge" id="strokeGuideBadge">2.0px</span>
-              </div>
-              <input type="range" class="range-slider" id="strokeGuideSlider" min="0.5" max="5.0" value="2.0"
-                step="0.25" aria-label="Shape Guides Stroke Width" aria-valuemin="0.5" aria-valuemax="5.0"
-                aria-valuenow="2.0">
-            </div>
-
-            <div class="slider-container dim-2d-only">
-              <div class="control-row">
-                <label for="fillOpacitySlider" class="control-label">Petal Fill Opacity</label>
-                <span class="control-val-badge" id="fillOpacityBadge">4%</span>
-              </div>
-              <input type="range" class="range-slider" id="fillOpacitySlider" min="0" max="30" value="4" step="1"
-                aria-label="Petal Fill Opacity Percentage" aria-valuemin="0" aria-valuemax="30" aria-valuenow="4">
-            </div>
-          </div>
-        </div>
-
-        <!-- Sidebar Inline Measurements & HUD Backup -->
+        <!-- Section 6: Measurements & Stats -->
         <div class="panel-section">
           <div class="section-header" role="button" tabindex="0" aria-expanded="false"
-            aria-label="Toggle Measurements and Analysis Section">
+            aria-label="Toggle Measurements Section">
             <span class="section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path
-                  d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                 <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
-              Measurements & Analysis
+              Measurements &amp; Stats
             </span>
             <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               aria-hidden="true">
@@ -796,27 +592,22 @@
             </svg>
           </div>
           <div class="section-body">
-            <div
-              style="display:flex; flex-direction:column; gap:8px; font-size:0.76rem; width:100%; box-sizing:border-box;">
-              <div
-                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.76rem; width:100%; box-sizing:border-box;">
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
                 <span style="color:var(--text-muted);">Bounding Radius:</span>
-                <span style="font-family:var(--font-mono); color:#fff;" id="sidebarBoundRad">300px (6r)</span>
+                <span style="font-family:var(--font-mono); color:#fff;" id="sidebarBoundRad">200px (4r)</span>
               </div>
-              <div
-                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
-                <span style="color:var(--text-muted);">FoK Layer 2 Expansion:</span>
-                <span style="font-family:var(--font-mono); color:var(--accent-gold);">+15.47% (2/√3)</span>
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+                <span style="color:var(--text-muted);">Highlighted Circles:</span>
+                <span style="font-family:var(--font-mono); color:var(--accent-gold);" id="sidebarHighlightCount">0</span>
               </div>
-              <div
-                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
-                <span style="color:var(--text-muted);">Highlighted Nodes:</span>
-                <span style="font-family:var(--font-mono); color:#fff;" id="sidebarHighlightCount">0</span>
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:4px;">
+                <span style="color:var(--text-muted);">Removed Circles:</span>
+                <span style="font-family:var(--font-mono); color:#ef4444;" id="sidebarDisabledCount">0</span>
               </div>
-              <div
-                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; padding-top:2px;">
-                <span style="color:var(--text-muted);">Symmetry Fold:</span>
-                <span style="font-family:var(--font-mono); color:#fff;">6-Fold / 12-Fold</span>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-top:2px;">
+                <span style="color:var(--text-muted);">Symmetry Harmonic:</span>
+                <span style="font-family:var(--font-mono); color:#fff;">6-Fold / 12-Fold Sacred</span>
               </div>
             </div>
           </div>
@@ -835,56 +626,62 @@
       </svg>
     </button>
 
-    <!-- Viewport Container -->
+    <!-- Viewport Container (Single Viewport Focus - E-01 Whittling Down) -->
     <main class="viewport-container" id="viewportContainer">
 
-      <!-- Divergence Banner (Superimposed View) -->
-      <div class="divergence-hud" id="divergenceHud">
-        <span>Radial Phase Divergence:</span>
-        <span class="divergence-val">r_kryst / r_life = 2/√3 ≈ 1.1547 (+15.47%)</span>
-        <span style="color:var(--text-muted); font-size:0.72rem;">(6 Vertex matches, 6 Midpoint expansions)</span>
-      </div>
-
-      <!-- Left Pane (Flower of Life) -->
-      <div class="viewport-pane fol-theme" id="paneLife">
+      <!-- Single Primary Viewport Pane -->
+      <div class="viewport-pane main-theme" id="paneMain">
+        <!-- Live Viewport Badges: Name, Ring #, Circles in Ring, Total Circles (R-B2, R-B3) -->
         <div class="pane-header">
-          <div class="pane-badge" id="badgeLifeContainer">
-            <span class="pane-badge-title" id="badgeLifeTitle">Flower of Life</span>
-            <span class="pane-badge-count" id="badgeLifeCount">19 Circles</span>
+          <div class="pane-badge" id="badgeMainContainer">
+            <span class="pane-badge-title" id="badgeStageTitle">Seed of Kryst</span>
+            <span class="pane-badge-ring" id="badgeRingIndex">Ring #2</span>
+            <span class="pane-badge-count" id="badgeCircleStats">18 in Ring #2 · 18 Total</span>
           </div>
         </div>
-        <div class="pane-svg-wrapper" id="svgWrapperLife">
-          <svg class="geometry-svg" id="svgLife"></svg>
-        </div>
-        <div class="pane-webgl-wrapper" id="webglWrapperLife" style="display: none;">
-          <canvas class="geometry-canvas-3d" id="canvasLife3D"></canvas>
-        </div>
-      </div>
 
-      <!-- Right Pane (Flower of Kryst) -->
-      <div class="viewport-pane fok-theme" id="paneKryst">
-        <div class="pane-header">
-          <div class="pane-badge">
-            <span class="pane-badge-title">Flower of Kryst</span>
-            <span class="pane-badge-count" id="badgeKrystCount">18 Circles</span>
-          </div>
+        <!-- 2D SVG Viewport -->
+        <div class="pane-svg-wrapper" id="svgWrapperMain">
+          <svg class="geometry-svg" id="svgMain" preserveAspectRatio="xMidYMid meet"></svg>
         </div>
-        <div class="pane-svg-wrapper" id="svgWrapperKryst">
-          <svg class="geometry-svg" id="svgKryst"></svg>
-        </div>
-        <div class="pane-webgl-wrapper" id="webglWrapperKryst" style="display: none;">
+
+        <!-- 3D WebGL Canvas Viewport -->
+        <div class="pane-webgl-wrapper" id="webglWrapperMain" style="display: none;">
           <canvas class="geometry-canvas-3d" id="canvasKryst3D"></canvas>
         </div>
       </div>
 
-      <!-- Floating Controls: Quick Mode Switch (Body / Aura / Combined) -->
-      <div class="quick-mode-bar dim-2d-only" role="toolbar" aria-label="Quick Pattern View Style Modes">
-        <button class="quick-mode-btn active" data-viewstyle="aura"
-          aria-label="Show Aura Overlapping Circles">Aura</button>
-        <button class="quick-mode-btn" data-viewstyle="body"
-          aria-label="Show Body Pattern Tangent Circles and Guides">Body</button>
-        <button class="quick-mode-btn" data-viewstyle="combined"
-          aria-label="Show Combined Aura and Body Matrix">Combined</button>
+      <!-- Independent Body & Aura Layer Visibility & Opacity Bar -->
+      <div class="bottom-fader-bar bottom-layer-bar dim-2d-only" role="toolbar" aria-label="Body and Aura Layer Visibility and Opacity Controls">
+        <!-- Body Layer Control Unit -->
+        <div class="layer-control-unit" id="unitBodyControl">
+          <label class="layer-pill-toggle" title="Toggle Full Body Visibility">
+            <input type="checkbox" id="checkBodyVisible" checked aria-label="Toggle Body Visibility">
+            <span class="layer-toggle-btn body-pill">
+              <span class="pill-dot body-dot"></span>
+              <span class="pill-text">Body</span>
+            </span>
+          </label>
+          <input type="range" class="fader-slider body-fader-slider" id="sliderBodyOpacity" min="0" max="100" value="100" step="1"
+            aria-label="Body Opacity Slider">
+          <span class="control-val-badge fader-badge" id="badgeBodyOpacity">100%</span>
+        </div>
+
+        <div class="layer-bar-separator"></div>
+
+        <!-- Aura Layer Control Unit -->
+        <div class="layer-control-unit" id="unitAuraControl">
+          <label class="layer-pill-toggle" title="Toggle Full Aura Visibility">
+            <input type="checkbox" id="checkAuraVisible" checked aria-label="Toggle Aura Visibility">
+            <span class="layer-toggle-btn aura-pill">
+              <span class="pill-dot aura-dot"></span>
+              <span class="pill-text">Aura</span>
+            </span>
+          </label>
+          <input type="range" class="fader-slider aura-fader-slider" id="sliderAuraOpacity" min="0" max="100" value="100" step="1"
+            aria-label="Aura Opacity Slider">
+          <span class="control-val-badge fader-badge" id="badgeAuraOpacity">100%</span>
+        </div>
       </div>
 
       <!-- Floating Tool Buttons (Zoom / Pan / Fit) -->
@@ -925,79 +722,71 @@
               <polyline points="3 9 3 3 9 3" />
             </svg>
           </button>
-          <button class="floating-tool-btn active" id="syncPanBtn" aria-label="Toggle Synchronized Dual Pan and Zoom"
-            title="Synchronize Dual Pan & Zoom">
+          <button class="floating-tool-btn" id="clearHighlightBtn" aria-label="Clear All Selected Circles"
+            title="Clear Highlights">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;"
               aria-hidden="true">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
-        </div>
-      </div>
-
-      <!-- Inspector HUD Floating Card (Minimizable & Scroll-Constrained) -->
-      <div class="inspector-card" id="inspectorCard" role="complementary" aria-label="Geometry Inspector">
-        <div class="inspector-header">
-          <span class="inspector-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"
-              aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            Geometry Inspector
-          </span>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:0.68rem; color:var(--text-faint);" id="inspectStatus">Active</span>
-            <button id="toggleInspectorCollapseBtn" aria-label="Minimize or Expand Geometry Inspector"
-              title="Minimize / Expand Inspector"
-              style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem; line-height:1; padding:0 3px;">&minus;</button>
-          </div>
-        </div>
-        <div class="inspector-body">
-          <div class="inspector-item">
-            <span class="inspector-item-label">Pattern Lattice:</span>
-            <span class="inspector-item-value" id="inspectPattern">—</span>
-          </div>
-          <div class="inspector-item">
-            <span class="inspector-item-label">Layer Ring (k):</span>
-            <span class="inspector-item-value" id="inspectLayer">—</span>
-          </div>
-          <div class="inspector-item">
-            <span class="inspector-item-label">Polar Distance (d):</span>
-            <span class="inspector-item-value" id="inspectRadius">—</span>
-          </div>
-          <div class="inspector-item">
-            <span class="inspector-item-label">Azimuth Angle (θ):</span>
-            <span class="inspector-item-value" id="inspectAngle">—</span>
-          </div>
-          <div class="inspector-item">
-            <span class="inspector-item-label">Coordinates (x, y):</span>
-            <span class="inspector-item-value" id="inspectCoords">—</span>
-          </div>
-          <div class="inspector-actions">
-            <button class="btn btn-xs" id="clearHighlightBtn" aria-label="Clear All Highlighted Nodes"
-              style="width:100%;">Clear Highlights</button>
-          </div>
         </div>
       </div>
 
     </main>
   </div>
 
-  <!-- Theory & Mathematical Proof Modal -->
+  <!-- Story of Kryst 12-Stage Journey Modal (R-A12) -->
+  <div class="modal-overlay" id="storyModal" role="dialog" aria-modal="true" aria-labelledby="storyModalTitle">
+    <div class="modal-container" style="max-width: 680px;">
+      <div class="modal-header">
+        <div class="modal-title" id="storyModalTitle">Story of Kryst — 12 Stages of Crystallization</div>
+        <button class="modal-close-btn" id="closeStoryBtn" aria-label="Close Story Dialog">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
+          The sacred path of the Krystonial crystallization narrative, tracing genesis from the zero-point void at (0,0) outward into infinite multidimensional harmonic manifestation.
+        </p>
+        <div class="story-timeline" id="storyTimelineContent">
+          <!-- Populated dynamically from KRYST_STORY_DATA -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ring Notes & Solfeggio Harmonics Modal (R-A13) -->
+  <div class="modal-overlay" id="ringNotesModal" role="dialog" aria-modal="true" aria-labelledby="notesModalTitle">
+    <div class="modal-container" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title" id="notesModalTitle">Sacred Numerology &amp; Ring Harmonics</div>
+        <button class="modal-close-btn" id="closeRingNotesBtn" aria-label="Close Ring Notes Dialog">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 16px;">
+        <div id="ringNoteContent">
+          <!-- Populated dynamically from RING_NOTES_DATA -->
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
+          <button class="btn btn-secondary" id="btnPrevRingNote">&larr; Previous Ring</button>
+          <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--accent-gold);" id="ringNoteIndicator">Ring 1 of 12</span>
+          <button class="btn btn-secondary" id="btnNextRingNote">Next Ring &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theory & Mathematical Proof Modal (E-13) -->
   <div class="modal-overlay" id="theoryModal">
     <div class="modal-container">
       <div class="modal-header">
-        <div class="modal-title">Mathematical & Sacred Geometry Specification</div>
+        <div class="modal-title">Mathematical &amp; Sacred Geometry Specification</div>
         <button class="modal-close-btn" id="closeTheoryBtn">&times;</button>
       </div>
       <div class="modal-body">
         <h3>1. The Core Geometric Distinction: Hexagon vs. Circle</h3>
         <p>
           Both geometries share the foundational body circle radius <code>r</code> and expanded aura petal radius
-          <code>R = 2r</code>, with layer vertex distance <code>d_k = 2kr</code>. The profound mathematical divergence
-          arises in how intermediary circle centers are generated across layers:
+          <code>R = 2r</code>. The profound mathematical divergence arises in how intermediary circle centers are generated across layers:
         </p>
 
         <div class="comparison-table-wrapper">
@@ -1018,329 +807,88 @@
               <tr>
                 <td><strong>Innermost Hexagon</strong></td>
                 <td>6 centers at radius 2r (angles m &times; 60&deg;)</td>
-                <td><strong>6 centers</strong> at radius 2r (angles m &times; 60&deg;), surrounding empty center at (0,
-                  0)</td>
+                <td><strong>6 centers</strong> at radius 2r (angles m &times; 60&deg;), surrounding empty center at (0, 0)</td>
               </tr>
               <tr>
                 <td><strong>Surrounding Triangles</strong></td>
                 <td>Concentric hexagonal perimeter rings</td>
-                <td><strong>6 Triangles &times; 3 circles (18 circles):</strong> Base midpoint at (2+&radic;3)r &approx;
-                  3.732r, Apex at (2+2&radic;3)r &approx; 5.464r</td>
+                <td><strong>6 Triangles &times; 3 circles (18 circles):</strong> Base midpoint at (2+&radic;3)r &approx; 3.732r, Apex at (2+2&radic;3)r &approx; 5.464r</td>
               </tr>
               <tr>
                 <td><strong>Outer Ring of 6 Hexagons</strong></td>
                 <td>Hexagonal perimeter progression</td>
-                <td><strong>6 Hexagons &times; 7 circles (42 ring + 6 center circles):</strong> Centers at
-                  (4+2&radic;3)r &approx; 7.464r along 30&deg; axes + 6 Bridge Triangles (18 circles)</td>
-              </tr>
-              <tr>
-                <td><strong>Stamp Expansion (N &ge; 2)</strong></td>
-                <td>Concentric hexagonal perimeter rings</td>
-                <td><strong>Hexagon Lattice Restamping:</strong> Stamp translates outward to each outer hexagon center,
-                  strictly preserving the empty origin at (0, 0)</td>
+                <td><strong>6 Hexagons &times; 7 circles (42 ring + 6 center circles):</strong> Centers at (4+2&radic;3)r &approx; 7.464r along 30&deg; axes + 6 Bridge Triangles (18 circles)</td>
               </tr>
               <tr>
                 <td><strong>Tangency &amp; Alignment</strong></td>
                 <td>Overlapping 2r radius circles</td>
-                <td><strong>Strict Tangency (Distance = 2r):</strong> Zero overlaps and zero gaps between all adjacent
-                  body circles</td>
+                <td><strong>Strict Tangency (Distance = 2r):</strong> Zero overlaps and zero gaps between all adjacent body circles</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h3>2. Why 19 vs. 18 Circles &amp; The Zero-Point Center</h3>
+        <h3>2. Why 18 vs 19 Circles &amp; The Zero-Point Center</h3>
         <p>
           In traditional sacred geometry, the <strong>Flower of Life</strong> is a closed hexagonal loop with 19
-          complete circles enclosed by a double outer ring. The central circle at <code>(0,0)</code> acts as the genesis
-          seed.
+          complete circles enclosed by a double outer ring. The central circle at <code>(0,0)</code> acts as the genesis seed.
         </p>
         <p>
           In Krystonial mechanics, the <strong>Flower of Kryst</strong> omits the central circle at <code>(0,0)</code>.
           Instead, the 6 circles of the innermost hexagon have radius <code>2r</code> and are centered at distance
           <code>2r</code> from the origin; thus, all 6 circles naturally pass directly through the origin
-          <code>(0,0)</code>, forming the 6-petal core meeting at a pure zero-point singularity. Every other hexagon
-          outside <code>(0,0)</code> contains a center circle.
-        </p>
-
-        <h3>3. Hexagon-and-Triangle Stamp Pattern Mathematics</h3>
-        <p>
-          The authoritative Flower of Kryst geometry is generated by a single cohesive <strong>Stamp</strong>
-          constructed from nested 6-circle Hexagons and 3-circle Triangles:
-        </p>
-        <ul
-          style="padding-left: 20px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin: 8px 0 14px 0;">
-          <li><strong>Innermost Hexagon:</strong> 6 circles at distance <code>2r</code> along
-            <code>m &times; 60&deg;</code> axes. Only hexagons away from the global origin <code>(0,0)</code> receive a
-            center circle.
-          </li>
-          <li><strong>Inner Triangles (6 &times; 3 = 18 circles):</strong> Along each <code>m &times; 60&deg;</code>
-            axis, an inner pair at distance <code>(2 + &radic;3)r &approx; 3.732r &plusmn; r</code> tangent, plus an
-            apex circle at distance <code>(2 + 2&radic;3)r &approx; 5.464r</code>.</li>
-          <li><strong>Outer Hexagons (6 &times; 7 = 42 ring + 6 center circles):</strong> Centers positioned at distance
-            <code>(4 + 2&radic;3)r &approx; 7.464r</code> along <code>30&deg; + m &times; 60&deg;</code> rays. Each
-            outer hexagon has its center circle plus 6 ring circles of radius <code>2r</code>.
-          </li>
-          <li><strong>Bridge Triangles (6 &times; 3 = 18 circles):</strong> Outward-facing 3-circle triangles placed
-            between adjacent outer hexagons along <code>m &times; 60&deg;</code> rays, perfectly touching the inner
-            triangle apex circles.</li>
-          <li><strong>Iterative Restamping (N &ge; 2):</strong> Breadth-first translation outward moves the stamp onto
-            each outer hexagon center, seamlessly tiling the lattice while keeping <code>(0,0)</code> as the only
-            hexagon without a center circle.</li>
-        </ul>
-
-        <h3>4. Embedded Platonic Solids (Metatron's Cube)</h3>
-        <p>
-          By taking the 13 tangent circles of the <strong>Fruit of Life</strong> (1 center + 6 layer 1 + 6 layer 2
-          vertices) and connecting all 13 centers to one another via straight line segments (<code>C(13,2) = 78</code>
-          lines), all five Platonic solids (Tetrahedron, Cube, Octahedron, Icosahedron, Dodecahedron) are geometrically
-          inscribed in three dimensions.
+          <code>(0,0)</code>, forming the 6-petal core meeting at a pure zero-point singularity.
         </p>
       </div>
     </div>
   </div>
 
-  <!-- Export Dialog Modal -->
+  <!-- High-Resolution Export Modal (E-12, R-A6) -->
   <div class="modal-overlay" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
     <div class="modal-container" style="max-width: 520px;">
       <div class="modal-header">
-        <div class="modal-title" id="exportModalTitle">Export Sacred Vectors &amp; Images</div>
+        <div class="modal-title" id="exportModalTitle">Export High-Resolution Vectors / Canvas</div>
         <button class="modal-close-btn" id="closeExportBtn" aria-label="Close Export Dialog">&times;</button>
       </div>
-      <div class="modal-body">
-        <p>Select your desired export format and quality level:</p>
+      <div class="modal-body" style="gap: 14px;">
+        <p style="font-size:0.85rem; color:var(--text-muted);">
+          Download production-grade vector assets or ultra-high-resolution raster captures of the current sacred geometry view.
+        </p>
 
-        <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
-          <button class="btn btn-primary" id="downloadSvgBtn" aria-label="Download Standalone SVG Vector file"
-            style="padding:12px; justify-content:flex-start;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            <div style="text-align:left;">
-              <div style="font-weight:600;">Export Standalone SVG (.svg)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Pure resolution-independent vectors for
-                Illustrator/CAD/Inkscape</div>
-            </div>
-          </button>
-
-          <button class="btn" id="downloadPng2kBtn" aria-label="Download High-DPI PNG 2400 by 2400 pixels"
-            style="padding:12px; justify-content:flex-start;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            <div style="text-align:left;">
-              <div style="font-weight:600;">Export High-DPI PNG (2400 &times; 2400)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Crisp rasterized art with deep dark background and glows
-              </div>
-            </div>
-          </button>
-
-          <button class="btn" id="downloadPng4kBtn" aria-label="Download Ultra-HD 4K PNG 3840 by 3840 pixels"
-            style="padding:12px; justify-content:flex-start;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            <div style="text-align:left;">
-              <div style="font-weight:600;">Export Ultra-HD 4K PNG (3840 &times; 3840)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Master publication quality for high-resolution printing</div>
-            </div>
-          </button>
-
-          <button class="btn" id="downloadPng3dBtn" aria-label="Export 3D WebGL Canvas PNG Image"
-            style="padding:12px; justify-content:flex-start; border-color:rgba(6, 182, 212, 0.4);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path
-                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
-            <div style="text-align:left;">
-              <div style="font-weight:600; color:var(--accent-kryst);">Export 3D WebGL Canvas (.png)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">High-resolution screen capture of current 3D crystal camera
-                view</div>
-            </div>
-          </button>
-
-          <button class="btn" id="downloadObjBtn" aria-label="Export 3D FCC Crystal Wavefront OBJ Model"
-            style="padding:12px; justify-content:flex-start; border-color:rgba(234, 179, 8, 0.4);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button class="btn btn-primary" id="downloadSvgBtn" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;" aria-hidden="true">
               <polygon points="12 2 2 7 12 12 22 7 12 2" />
               <polyline points="2 17 12 22 22 17" />
               <polyline points="2 12 12 17 22 12" />
             </svg>
             <div style="text-align:left;">
-              <div style="font-weight:600; color:var(--accent-gold);">Export 3D Lattice Geometry (.obj)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Standard 3D Wavefront model for Blender, Maya, CAD, and 3D
-                printing</div>
+              <div style="font-weight:600;">Vector SVG (.svg)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Lossless infinite-scale vectors with styling and layers</div>
             </div>
           </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Preset Configuration & Add Modal -->
-  <div class="modal-overlay" id="presetConfigModal" role="dialog" aria-modal="true" aria-labelledby="presetModalTitle">
-    <div class="modal-container" style="max-width: 660px;">
-      <div class="modal-header">
-        <div class="modal-title" id="presetModalTitle">Configure Sacred Preset</div>
-        <button class="modal-close-btn" id="closePresetModalBtn"
-          aria-label="Close Preset Configuration Dialog">&times;</button>
-      </div>
-      <div class="modal-body" style="gap: 16px;">
-        <div
-          style="display:flex; justify-content:space-between; align-items:center; background:rgba(6, 182, 212, 0.08); border:1px solid rgba(6, 182, 212, 0.25); padding:10px 14px; border-radius:var(--radius-sm); gap: 12px;">
-          <span style="font-size:0.78rem; color:#67e8f9;">Quickly copy current live studio parameters or customize
-            manually below:</span>
-          <button class="btn btn-xs btn-primary" id="btnCaptureStudioParams" type="button"
-            aria-label="Capture current live studio parameters into form" style="flex-shrink:0;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"
-              aria-hidden="true">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
+          <button class="btn" id="downloadPng2kBtn" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
             </svg>
-            <span>Capture Live Studio</span>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">High-Res PNG (2400 &times; 2400)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Crisp raster with transparency for digital presentation</div>
+            </div>
           </button>
-        </div>
 
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label for="presetInputName" class="form-label">Preset Name *</label>
-            <input type="text" class="form-input" id="presetInputName" placeholder="e.g., Kryst Harmonic Core"
-              maxlength="32" aria-required="true">
-          </div>
-          <div class="form-group">
-            <label for="presetInputSubtitle" class="form-label">Subtitle / Description</label>
-            <input type="text" class="form-input" id="presetInputSubtitle" placeholder="e.g., N=3 Hexagonal Inscription"
-              maxlength="48">
-          </div>
-        </div>
-
-        <div
-          style="border-top: 1px solid var(--bg-panel-border); padding-top: 12px; display:flex; flex-direction:column; gap:12px;">
-          <span
-            style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-gold); font-weight:600;">Lattice
-            &amp; Geometry Parameters</span>
-
-          <div class="form-grid-2">
-            <div class="form-group">
-              <div class="form-label">
-                <label for="presetFormN">Layer Depth (N)</label>
-                <span class="control-val-badge" id="presetFormNBadge">N = 2</span>
-              </div>
-              <input type="range" class="range-slider" id="presetFormN" min="1" max="42" value="2" step="1"
-                aria-label="Preset Layer Depth N" aria-valuemin="1" aria-valuemax="42" aria-valuenow="2">
-            </div>
-
-            <div class="form-group">
-              <div class="form-label">
-                <label for="presetFormR">Body Radius (r)</label>
-                <span class="control-val-badge" id="presetFormRBadge">r = 50px</span>
-              </div>
-              <input type="range" class="range-slider" id="presetFormR" min="25" max="90" value="50" step="1"
-                aria-label="Preset Body Radius in pixels" aria-valuemin="25" aria-valuemax="90" aria-valuenow="50">
-            </div>
-          </div>
-
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="presetFormViewport" class="form-label">Default Viewport Mode</label>
-              <select class="custom-select" id="presetFormViewport" aria-label="Default Viewport Mode">
-                <option value="comparison">Side-by-Side Comparison</option>
-                <option value="superimposed">Superimposed Matrix</option>
-                <option value="single-life">Single Focus: Flower of Life</option>
-                <option value="single-kryst">Single Focus: Flower of Kryst</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="presetFormViewStyle" class="form-label">Style Filter</label>
-              <select class="custom-select" id="presetFormViewStyle" aria-label="Style Filter">
-                <option value="aura">Aura Circles (R = 2r)</option>
-                <option value="body">Body Circles (r) &amp; Guides</option>
-                <option value="combined">Combined Studio Matrix</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="presetFormPlatonic" class="form-label">Metatron Solid Filter</label>
-            <select class="custom-select" id="presetFormPlatonic" aria-label="Metatron Platonic Solid Filter">
-              <option value="all">All 78 Chords</option>
-              <option value="tetra">Merkaba (Star Tetra)</option>
-              <option value="cube">Cube (Hexahedron)</option>
-              <option value="octa">Octahedron</option>
-              <option value="dodeca">Icosa / Dodeca</option>
-            </select>
-          </div>
-        </div>
-
-        <div
-          style="border-top: 1px solid var(--bg-panel-border); padding-top: 12px; display:flex; flex-direction:column; gap:8px;">
-          <span
-            style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-gold); font-weight:600;">Visible
-            Layers &amp; Overlays</span>
-          <div class="form-toggles-grid">
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowAura" checked>
-              <span>Aura Circles</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowBody">
-              <span>Body Pattern Circles (r)</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowGuides" checked>
-              <span>Shape Guides (Hex/Circ)</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowOuterRing" checked>
-              <span>Outer Bounding Ring</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowBoundaryPetals" checked>
-              <span>Boundary Filler Petals</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowCenterDots" checked>
-              <span>Center Coordinate Dots</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowIntersections">
-              <span>Intersection Nodes</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowRadialAxes">
-              <span>Radial Symmetry Axes</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShowMetatron">
-              <span>Metatron Chords (78 Chords)</span>
-            </label>
-            <label class="form-checkbox-label">
-              <input type="checkbox" id="presetFormShading">
-              <span>Spherical 3D Shading</span>
-            </label>
-          </div>
-        </div>
-
-        <div
-          style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; border-top:1px solid var(--bg-panel-border); padding-top:14px;">
-          <button class="btn" id="cancelPresetModalBtn" type="button" aria-label="Cancel Preset Editing">Cancel</button>
-          <button class="btn btn-primary" id="savePresetBtn" type="button" aria-label="Save Preset"
-            style="padding:10px 24px; font-weight:600;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"
-              aria-hidden="true">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
+          <button class="btn" id="downloadPng4kBtn" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <polyline points="21 15 16 10 5 21" />
             </svg>
-            <span>Save Preset</span>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Ultra 4K PNG (3840 &times; 3840)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Master archival resolution suitable for art printing</div>
+            </div>
           </button>
         </div>
       </div>
@@ -1371,7 +919,7 @@
             </svg>
             <div style="text-align:left;">
               <div style="font-weight:600;">Export Presets (.json)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Download all presets and customizations as a JSON file</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Download all custom shape presets as a JSON backup</div>
             </div>
           </button>
 
@@ -1385,15 +933,14 @@
             </svg>
             <div style="text-align:left;">
               <div style="font-weight:600;">Import Presets (.json)</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Load custom presets from a previously exported JSON file
-              </div>
+              <div style="font-size:0.72rem; opacity:0.8;">Load custom shape presets from a previously saved JSON file</div>
             </div>
             <input type="file" id="importPresetsFileInput" accept=".json" style="display:none;"
               aria-label="Upload JSON file with preset configuration">
           </label>
 
           <button class="btn" id="btnResetPresetsDefaults"
-            aria-label="Reset all presets to factory default configuration"
+            aria-label="Reset all presets to clean state"
             style="padding:12px; justify-content:flex-start; color:#f87171; border-color:rgba(239, 68, 68, 0.3);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"
               aria-hidden="true">
@@ -1401,9 +948,8 @@
               <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
             <div style="text-align:left;">
-              <div style="font-weight:600;">Reset to Factory Defaults</div>
-              <div style="font-size:0.72rem; opacity:0.8;">Clear all custom presets and restore original default
-                settings</div>
+              <div style="font-weight:600;">Clear All Custom Presets</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Clear all custom presets and start with a clean slate</div>
             </div>
           </button>
         </div>
@@ -1414,16 +960,18 @@
   <!-- Notification Toast -->
   <div class="toast" id="toastMessage">Action completed successfully</div>
 
-
-
-  <!-- Universal JavaScript Loader: Standalone bundle with cache-busting timestamp on all protocols -->
+  <!-- Universal Script Loader: Loads ES Module or Standalone Bundle seamlessly -->
+  <script type="module" src="./js/main.js"></script>
   <script>
-    (function () {
-      const script = document.createElement('script');
-      const v = Date.now();
-      script.src = './js/bundle.js?v=' + v;
-      document.body.appendChild(script);
-    })();
+    // Fallback for file:/// protocol if ES module blocked by browser local origin policy
+    window.addEventListener('error', function (e) {
+      if (!window.App && !window.__bundle_loaded__) {
+        window.__bundle_loaded__ = true;
+        const script = document.createElement('script');
+        script.src = './js/bundle.js?v=' + Date.now();
+        document.body.appendChild(script);
+      }
+    });
   </script>
 </body>
 

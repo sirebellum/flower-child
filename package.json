@@ -1,0 +1,10 @@
+{
+  "name": "sacred-geometry-studio",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Sacred Geometry Studio — Flower of Kryst & Flower of Life Interactive Vector & 3D WebGL Studio",
+  "scripts": {
+    "test": "node tests/test_features.js",
+    "build": "node scripts/build_bundle.js"
+  }
+}

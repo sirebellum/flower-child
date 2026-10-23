@@ -26,40 +26,91 @@ function clampNumber(val, min, max, defaultVal) {
    GLOBAL APPLICATION STATE
    ========================================================================= */
 const State = {
-  viewportMode: 'comparison', // 'comparison' | 'superimposed' | 'single-life' | 'single-kryst'
-  activePreset: 'krystonial_comparison',
-  // View style: 'aura' | 'body' | 'combined' (aliases 'actual' -> 'aura', 'base' -> 'body')
-  _viewStyle: 'aura',
+  viewportMode: 'single-kryst', // 'single-kryst' | 'single-life'
+  activePreset: null,
+  activePattern: 'kryst', // 'kryst' | 'life'
+  
+  // Independent Body & Aura Layer Visibility & Opacity (0.0 to 1.0, default 1.0 full visibility)
+  bodyOpacity: 1.0,
+  auraOpacity: 1.0,
+  _bodyAuraMix: 0.5,
+  get bodyAuraMix() { return this.auraOpacity; },
+  set bodyAuraMix(v) { this.auraOpacity = clampNumber(v, 0, 1, 1.0); },
+
+  _viewStyle: 'combined',
   get viewStyle() { return this._viewStyle; },
   set viewStyle(v) {
-    if (v === 'actual') this._viewStyle = 'aura';
-    else if (v === 'base') this._viewStyle = 'body';
-    else this._viewStyle = v;
+    if (v === 'actual' || v === 'aura') {
+      this._viewStyle = 'aura';
+      this.showAuraFlower = true;
+      this.showBodyCircles = false;
+      this.bodyOpacity = 0.0;
+      this.auraOpacity = 1.0;
+    } else if (v === 'base' || v === 'body') {
+      this._viewStyle = 'body';
+      this.showAuraFlower = false;
+      this.showBodyCircles = true;
+      this.bodyOpacity = 1.0;
+      this.auraOpacity = 0.0;
+    } else {
+      this._viewStyle = 'combined';
+      this.showAuraFlower = true;
+      this.showBodyCircles = true;
+      this.bodyOpacity = 1.0;
+      this.auraOpacity = 1.0;
+    }
   },
-  platonicFilter: 'all', // 'all' | 'tetra' | 'cube' | 'octa' | 'dodeca'
 
-  // Lattice Geometry (guarded with safe limits)
+  // Dynamic Boundary Circle (E-05)
+  boundaryRadius: 200, // in pixels (default 4 * r)
+  disabledCircleIds: new Set(), // Body circles removed by the user
+
+  // Aura Radius Scale Factor (2.0r to 6.0r body radius, default 2.0)
+  auraScale: 2.0,
+
+  // Lattice Geometry
   N: 2,
   r: 50,
   syncPanZoom: true,
 
-  // Layers visibility (Nomenclature: aura = actual flowers, body = base pattern)
+  // Layers visibility
   showAuraFlower: true,
   get showActualFlower() { return this.showAuraFlower; },
   set showActualFlower(v) { this.showAuraFlower = Boolean(v); },
 
-  showBodyCircles: false,
+  showBodyCircles: true,
   get showBaseCircles() { return this.showBodyCircles; },
   set showBaseCircles(v) { this.showBodyCircles = Boolean(v); },
 
   showGuides: false,
-  showOuterRing: false,
+  showOuterRing: true,
   showBoundaryPetals: false,
   showCenterDots: false,
   showIntersections: false,
   showRadialAxes: false,
-  showMetatronLines: false,
   showEyesOfKryst: false,
+
+  // Advanced Visualizers & Modes
+  circleRainbow: false, // R-A2: Each circle rainbow gradient
+  ringSpectral: false, // R-A3: Rings 1..12 assigned Red -> Magenta
+  fullScreenTiling: false, // R-A7: Full-screen wallpaper tiling
+  rainbowRipple: false, // R-A9: Concentric meditation rainbow ripple
+  showHexagramEyes: false, // R-A10: Circumscribed hexagrams + 12 eyes
+  showSOHOE: false, // R-A11: Star of Heaven on Earth motif
+  showStoryPanel: false, // R-A12: Story of Kryst drawer
+  showRingNotes: false, // R-A13: Notes on current ring
+
+  // Offset Path Generator (R-A5)
+  offsetPath: {
+    enabled: false,
+    count: 3,
+    spacing: 5
+  },
+
+  // Painter of Life (R-A8)
+  painterMode: false,
+  painterColor: '#ef4444',
+  coloredShapesMap: new Map(),
 
   // Aesthetics
   colorByLayer: false,
@@ -87,7 +138,7 @@ const State = {
   strokeBody: 1.0,
   get strokeBase() { return this.strokeBody; },
   set strokeBase(v) { this.strokeBody = Number(v); },
-  strokeGuide: 2.0,
+  strokeGuide: 1.8,
   fillOpacity: 0.04,
 
   // Selections & Highlights
@@ -101,29 +152,55 @@ const State = {
     kryst: { panX: 0, panY: 0, scale: 0.38 }
   },
 
-  // 3D WebGL Engine States
+  // 3D WebGL Engine States (Frozen E-02)
   dimension: '2d', // '2d' | '3d'
-  model3D: 'triaxial', // 'triaxial' (90° Rotated Axis & Infill) | 'fcc' (Face-Centered Cubic)
-  triaxialInfill: 'both', // 'both' | 'angular' | 'grid' | 'planes'
-  infillSteps: 2, // 1 to 4
+  model3D: 'volumetric_kryst',
+  colorCoding3D: 'classic',
+  sphereStyle3D: 'solid',
+  sphereRadiusScale: 1.0,
+  sliceAxisMode: 'z',
+  sliceOffset: 100,
+  sliceSlabMode: false,
+  sliceSlabThickness: 3,
+  sliceRadialShell: 2,
+  opacityHexCores: 0.90,
+  opacityTetraFillers: 0.85,
+  opacityOctantFill: 1.00,
+  opacitySkeleton: 1.00,
+  opacityAura3D: 0.18,
+  opacityGuides3D: 0.70,
+  fresnelGhostMode: false,
+  showRhombicGuides: true,
+  showTetraGuides: true,
+  triaxialInfill: 'both',
+  infillSteps: 2,
   showPlaneXY: true,
   showPlaneXZ: true,
   showPlaneYZ: true,
   showInfill3D: true,
   showAxialRims: true,
-  fccPlaneFilter: 'all', // 'all' | 'A' | 'B' | 'C'
-  fccExpansionMode: 'volumetric', // 'volumetric' | 'stratified'
+  fccPlaneFilter: 'all',
+  fccExpansionMode: 'volumetric',
   show3DSpheres: true,
   show3DTorus: false,
   show3DShells: false,
   show3DGuides: true,
   showZeroPointMarker: true,
-  sliceZ: 100, // -100 to 100 (%)
+  sliceZ: 100,
   autoRotate3D: false,
-  sphereOpacity: 0.35, // Translucent spheres by default
+  sphereOpacity: 0.35,
   sphereRoughness: 0.15,
   sphereMetalness: 0.1,
   cameraPreset3D: 'isometric',
+
+  /**
+   * Sets boundary radius safely.
+   * @param {number} rad
+   */
+  setBoundaryRadius(rad) {
+    this.boundaryRadius = clampNumber(rad, 2 * this.r, 42 * this.r, 4 * this.r);
+    this.N = Math.max(1, Math.ceil(this.boundaryRadius / (2 * this.r)));
+  },
 
   /**
    * Clamps and sets layer count N safely.
@@ -131,6 +208,7 @@ const State = {
    */
   setN(n) {
     this.N = clampNumber(n, 1, 42, 2);
+    this.boundaryRadius = 2 * this.N * this.r;
   },
 
   /**
@@ -138,7 +216,12 @@ const State = {
    * @param {number} radius
    */
   setRadius(radius) {
+    const oldR = this.r;
     this.r = clampNumber(radius, 15, 200, 50);
+    // Keep relative boundary radius scale
+    if (oldR > 0) {
+      this.boundaryRadius = (this.boundaryRadius / oldR) * this.r;
+    }
   },
 
   clampNumber(val, min, max, defaultVal) {
@@ -159,401 +242,30 @@ const LayerColors = [
   '#f8fafc'  // Layer 8: Transcendental White
 ];
 
+// 12-Stage Spectral Palette: Rings 1 (Red) through 12 (Magenta)
+const Spectral12Colors = [
+  '#ff0033', // Ring 1: Crimson Red
+  '#ff4800', // Ring 2: Red-Orange
+  '#ff8800', // Ring 3: Solar Orange
+  '#ffc800', // Ring 4: Amber Gold
+  '#eaff00', // Ring 5: Radiant Lime
+  '#00ff66', // Ring 6: Emerald Green
+  '#00ffd5', // Ring 7: Turquoise Cyan
+  '#00a6ff', // Ring 8: Azure Blue
+  '#0037ff', // Ring 9: Deep Indigo
+  '#7300ff', // Ring 10: Royal Purple
+  '#b700ff', // Ring 11: Electric Violet
+  '#ff00aa'  // Ring 12: Transcendental Magenta
+];
+
 /* =========================================================================
-   PRESETS CONFIGURATION ENGINE & MANAGER
+   PRESETS CONFIGURATION ENGINE & MANAGER (User-Created Only E-11 / R-A4)
    ========================================================================= */
 const PresetsManager = {
   STORAGE_KEY: 'sacred_geometry_custom_presets_v1',
   OVERRIDE_KEY: 'sacred_geometry_builtin_overrides_v1',
 
-  builtinPresets: [
-    {
-      id: 'krystonial_comparison',
-      title: 'Krystonial Dual',
-      subtitle: 'Life 19 vs Kryst 18 (N=2)',
-      isBuiltin: true,
-      config: {
-        N: 2,
-        r: 50,
-        viewportMode: 'comparison',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: false,
-        showBoundaryPetals: false,
-        showCenterDots: false,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        colorKryst: '#10b981',
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'superimposed_divergence',
-      title: 'Phase Divergence',
-      subtitle: 'FoL vs FoK Superimposed',
-      isBuiltin: true,
-      config: {
-        N: 2,
-        r: 50,
-        viewportMode: 'superimposed',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: true,
-        showOuterRing: true,
-        showBoundaryPetals: true,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: true,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'seed_of_life',
-      title: 'Seed of Life',
-      subtitle: 'N=1 Genesis Core (7 Circles)',
-      isBuiltin: true,
-      config: {
-        N: 1,
-        r: 50,
-        viewportMode: 'single-life',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: true,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'egg_of_life',
-      title: 'Egg of Life',
-      subtitle: 'Spherical Volumetric Tangent',
-      isBuiltin: true,
-      config: {
-        N: 1,
-        r: 50,
-        viewportMode: 'single-life',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: true,
-        showGuides: false,
-        showOuterRing: false,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: true,
-        showEyesOfKryst: false,
-        fillOpacity: 0.12
-      }
-    },
-    {
-      id: 'fruit_of_life',
-      title: 'Fruit of Life',
-      subtitle: '13 Tangent Circles (Radius r)',
-      isBuiltin: true,
-      config: {
-        N: 2,
-        r: 50,
-        viewportMode: 'single-life',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: false,
-        showBaseCircles: true,
-        showGuides: false,
-        showOuterRing: true,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'metatrons_cube',
-      title: "Metatron's Cube",
-      subtitle: '13 Centers + 78 Chords',
-      isBuiltin: true,
-      config: {
-        N: 2,
-        r: 50,
-        viewportMode: 'single-life',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: false,
-        showBaseCircles: true,
-        showGuides: false,
-        showOuterRing: true,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: true,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'kryst_seed',
-      title: 'Kryst Seed',
-      subtitle: '6-Petal Zero-Point Core',
-      isBuiltin: true,
-      config: {
-        N: 1,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: true,
-        showOuterRing: true,
-        showBoundaryPetals: true,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'kryst_18_standard',
-      title: 'Kryst 18-Standard',
-      subtitle: 'True Circle Ring 2 (N=2)',
-      isBuiltin: true,
-      config: {
-        N: 2,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: true,
-        showOuterRing: true,
-        showBoundaryPetals: true,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'fruit_of_kryst',
-      title: 'Fruit of Kryst',
-      subtitle: '30 Circles (6+12+12) Scalloped 12-Lobe',
-      isBuiltin: true,
-      config: {
-        N: 3,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: false,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        colorKryst: '#10b981',
-        fillOpacity: 0.05
-      }
-    },
-    {
-      id: 'word_of_kryst',
-      title: 'Word of Kryst',
-      subtitle: '7-Cluster Tiled Stamp Lattice (N=4)',
-      isBuiltin: true,
-      config: {
-        N: 4,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: true,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        colorKryst: '#16a34a',
-        fillOpacity: 0.05
-      }
-    },
-    {
-      id: 'water_of_kryst',
-      title: 'Water of Kryst',
-      subtitle: '19-Cluster Tiled Stamp Lattice (N=5)',
-      isBuiltin: true,
-      config: {
-        N: 5,
-        r: 50,
-        viewportMode: 'single-kryst',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: false,
-        showOuterRing: true,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        colorKryst: '#16a34a',
-        fillOpacity: 0.05
-      }
-    },
-    {
-      id: 'vesica_piscis',
-      title: 'Vesica Piscis',
-      subtitle: 'Dual Circle (√3 Ratio)',
-      isBuiltin: true,
-      config: {
-        N: 1,
-        r: 50,
-        viewportMode: 'single-life',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: true,
-        showGuides: false,
-        showOuterRing: false,
-        showBoundaryPetals: false,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: false,
-        showMetatronLines: false,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'kathara_alignment',
-      title: 'Kathara 12-Tree',
-      subtitle: '12-Point Morphic Grid',
-      isBuiltin: true,
-      config: {
-        N: 3,
-        r: 50,
-        viewportMode: 'comparison',
-        viewStyle: 'aura',
-        platonicFilter: 'all',
-        showActualFlower: true,
-        showBaseCircles: false,
-        showGuides: true,
-        showOuterRing: true,
-        showBoundaryPetals: true,
-        showCenterDots: true,
-        showIntersections: false,
-        showRadialAxes: true,
-        showMetatronLines: true,
-        sphericalShading: false,
-        showEyesOfKryst: false,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'fcc_vector_equilibrium',
-      title: '3D Vector Equilibrium',
-      subtitle: '13-Sphere Cuboctahedron (FoL K=1 vs FoK N=1)',
-      isBuiltin: true,
-      config: {
-        dimension: '3d',
-        N: 1,
-        r: 50,
-        viewportMode: 'comparison',
-        fccExpansionMode: 'volumetric',
-        fccPlaneFilter: 'all',
-        show3DSpheres: true,
-        show3DGuides: true,
-        showZeroPointMarker: true,
-        sliceZ: 100,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'fcc_kryst_matrix_3d',
-      title: '3D Kryst Void Matrix',
-      subtitle: 'Hollow Zero-Point Core FCC Packing (N=2)',
-      isBuiltin: true,
-      config: {
-        dimension: '3d',
-        N: 2,
-        r: 50,
-        viewportMode: 'comparison',
-        fccExpansionMode: 'volumetric',
-        fccPlaneFilter: 'all',
-        show3DSpheres: true,
-        show3DGuides: true,
-        showZeroPointMarker: true,
-        sliceZ: 100,
-        fillOpacity: 0.04
-      }
-    },
-    {
-      id: 'fcc_cleavage_slice',
-      title: 'FCC (111) Slicer',
-      subtitle: 'Cross-Section Revealing ABC Layer Pockets',
-      isBuiltin: true,
-      config: {
-        dimension: '3d',
-        N: 2,
-        r: 50,
-        viewportMode: 'comparison',
-        fccExpansionMode: 'volumetric',
-        fccPlaneFilter: 'all',
-        show3DSpheres: true,
-        show3DGuides: true,
-        showZeroPointMarker: true,
-        sliceZ: 20,
-        fillOpacity: 0.04
-      }
-    }
-  ],
+  builtinPresets: [],
 
   customPresets: [],
   builtinOverrides: {},
@@ -677,7 +389,7 @@ const PresetsManager = {
     try {
       localStorage.removeItem(this.STORAGE_KEY);
       localStorage.removeItem(this.OVERRIDE_KEY);
-    } catch (_) {}
+    } catch (_) { }
     this.renderPresetGrid();
   },
 
@@ -685,6 +397,11 @@ const PresetsManager = {
     return {
       N: State.N,
       r: State.r,
+      boundaryRadius: State.boundaryRadius,
+      auraScale: State.auraScale || 2.0,
+      bodyOpacity: State.bodyOpacity !== undefined ? State.bodyOpacity : 1.0,
+      auraOpacity: State.auraOpacity !== undefined ? State.auraOpacity : 1.0,
+      bodyAuraMix: State.bodyAuraMix,
       viewportMode: State.viewportMode,
       viewStyle: State.viewStyle,
       platonicFilter: State.platonicFilter,
@@ -1075,5 +792,5 @@ const PresetDialog = {
   }
 };
 
-export { State, LayerColors, PresetsManager, PresetDialog, clampNumber };
+export { State, LayerColors, Spectral12Colors, PresetsManager, PresetDialog, clampNumber };
 export default State;
