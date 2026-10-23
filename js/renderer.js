@@ -493,6 +493,49 @@ const SVGRenderer = {
     }
 
     // -----------------------------------------------------------------------
+    // 8b. Individual Aura / Body Intersection Sections (Venn-Diagram Interactive Highlighting)
+    // -----------------------------------------------------------------------
+    const activeSectionPoints = State.showAuraFlower ? auraPoints : (State.showBodyCircles ? points : auraPoints);
+    const effectiveSectionR = State.showAuraFlower ? ((State.auraScale || 2.0) * r) : r;
+
+    if (activeSectionPoints && activeSectionPoints.length > 1) {
+      const sectionsGroup = this.createSvgElement('g', {
+        class: 'group-aura-sections',
+        id: `${idPrefix}-aura-sections`
+      });
+      const sectionsFrag = document.createDocumentFragment();
+      const circleCenters = activeSectionPoints.map(c => ({ x: c.x, y: c.y }));
+      const sections = SacredMath.computeCircleSections(circleCenters, effectiveSectionR);
+      const isHighlightMode = Boolean(State.sectionHighlightMode);
+
+      sections.forEach(sec => {
+        const fillColor = (State.sectionFills && State.sectionFills[sec.id]) || null;
+        const isColored = Boolean(fillColor);
+
+        // If neither aura nor body is visible, and section is not colored, skip rendering
+        if (!State.showAuraFlower && !State.showBodyCircles && !isColored) return;
+
+        const pathEl = this.createSvgElement('path', {
+          d: sec.d,
+          fill: isColored ? fillColor : 'rgba(255, 255, 255, 0.001)',
+          'fill-opacity': isColored ? '0.75' : '0.001',
+          stroke: isColored ? 'rgba(255, 255, 255, 0.65)' : (isHighlightMode ? 'rgba(245, 158, 11, 0.22)' : 'none'),
+          'stroke-width': isColored ? '1.5' : (isHighlightMode ? '0.9' : '0'),
+          class: `aura-intersection-section ${isColored ? 'colored-section' : ''} ${isHighlightMode ? 'highlight-mode-enabled' : ''}`,
+          'data-section-id': sec.id,
+          'data-cx': String(sec.cx),
+          'data-cy': String(sec.cy),
+          'pointer-events': (isHighlightMode || isColored) ? 'all' : 'none'
+        });
+
+        sectionsFrag.appendChild(pathEl);
+      });
+
+      sectionsGroup.appendChild(sectionsFrag);
+      mainGroup.appendChild(sectionsGroup);
+    }
+
+    // -----------------------------------------------------------------------
     // 9. Outer Boundary Ring (E-08 / E-05)
     // -----------------------------------------------------------------------
     if (!State.fullScreenTiling && State.showOuterRing) {

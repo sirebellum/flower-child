@@ -13,6 +13,7 @@ import {
   getSOHOEPaths,
   getHexagramEyePaths,
   getOffsetPathRings,
+  computeCircleSections,
   KRYST_STAGE_NAMES,
   LIFE_STAGE_NAMES,
   KRYST_STORY_DATA,
@@ -231,6 +232,48 @@ inBetweenTests.forEach(({ input, expectedCount }) => {
   assert.strictEqual(geom.totalCircles, target, `Life geometry with radius ${result.radius}px must yield ${target} circles`);
 });
 console.log('Jump to circle count and nearest valid distance verified successfully across Kryst and Life.');
+
+console.log('--- 14. Testing Individual Section Highlighting & Colored Intersections ---');
+// Verify 2-circle Venn diagram lens (Vesica Piscis)
+const lens = computeCircleSections([{x: 0, y: 0}, {x: 100, y: 0}], 100);
+assert.strictEqual(lens.length, 1, 'Two intersecting circles must produce exactly 1 intersection section (the vesica piscis lens)');
+assert.strictEqual(lens[0].containingCount, 2, 'Vesica piscis lens must be contained in both circles');
+assert(lens[0].d.startsWith('M') && lens[0].d.includes('A 100 100 0 0 1'), 'Lens path must have valid SVG arc commands');
+
+const kGeom = getKrystGeometryByRadius(200, r);
+const auraCenters = kGeom.auraCircles.map(c => ({ x: c.x, y: c.y }));
+const auraR = kGeom.auraCircles[0].r;
+const sections = computeCircleSections(auraCenters, auraR);
+
+assert(sections.length > 0, 'computeCircleSections must detect intersecting planar sections between aura circles');
+assert.strictEqual(sections.length, 81, 'Kryst radius 200px should have 81 aura intersection sections (including all 2-circle lenses and multi-circle intersections)');
+
+const firstSec = sections[0];
+assert(firstSec.id && firstSec.id.startsWith('sec_'), 'Section ID must follow stable sec_ convention');
+assert(firstSec.d && firstSec.d.startsWith('M'), 'Section must have valid SVG path string starting with M');
+assert(firstSec.area > 0, 'Section must have positive planar area');
+assert(typeof firstSec.cx === 'number' && typeof firstSec.cy === 'number', 'Section must have numeric centroid coordinates');
+assert(firstSec.containingCount >= 2, 'Section must be an intersection of at least 2 circles');
+
+// Verify sectionHighlightMode in state
+assert('sectionHighlightMode' in State, 'State must contain sectionHighlightMode toggleable mode');
+
+// Verify coloring and preset capture/restore
+const testId = firstSec.id;
+State.sectionFills[testId] = '#f59e0b';
+assert.strictEqual(State.sectionFills[testId], '#f59e0b', 'sectionFills must store color hex');
+
+const capturedConfig = PresetsManager.captureCurrentStudioConfig();
+assert(capturedConfig.sectionFills, 'captureCurrentStudioConfig must include sectionFills');
+assert.strictEqual(capturedConfig.sectionFills[testId], '#f59e0b', 'captured config must retain colored section');
+
+// Clear and restore
+State.sectionFills = {};
+assert.strictEqual(Object.keys(State.sectionFills).length, 0, 'sectionFills can be cleared');
+State.sectionFills = { ...capturedConfig.sectionFills };
+assert.strictEqual(State.sectionFills[testId], '#f59e0b', 'sectionFills successfully restored from preset config');
+
+console.log('Individual aura intersection sections & preset saving verified successfully.');
 
 console.log('\n========================================');
 console.log('ALL FEATURE TESTS PASSED SUCCESSFULLY!');

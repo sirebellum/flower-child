@@ -1946,16 +1946,17 @@ const SacredMath = {
         d: `M ${fmt(c.x - R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x + R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x - R)} ${fmt(c.y)} Z`,
         cx: Math.abs(c.x) < 1e-4 ? 0 : Number(c.x.toFixed(3)),
         cy: Math.abs(c.y) < 1e-4 ? 0 : Number(c.y.toFixed(3)),
-        area: Math.PI * R * R
+        area: Math.PI * R * R,
+        containingCount: 1
       }];
     }
 
     const tol = Math.max(0.25, 0.005 * R);
     const tolSq = tol * tol;
-
-    // 1. Find all pairwise intersection points
-    const rawIntersections = [];
     const M = circles.length;
+
+    // 1. All pairwise circle-circle intersection points
+    const rawVerts = [];
     for (let i = 0; i < M; i++) {
       const c1 = circles[i];
       for (let j = i + 1; j < M; j++) {
@@ -1970,152 +1971,122 @@ const SacredMath = {
         const my = (c1.y + c2.y) / 2;
         const ux = dx / d;
         const uy = dy / d;
-        rawIntersections.push({ x: mx - h * uy, y: my + h * ux });
-        rawIntersections.push({ x: mx + h * uy, y: my - h * ux });
+        rawVerts.push({ x: mx - h * uy, y: my + h * ux });
+        rawVerts.push({ x: mx + h * uy, y: my - h * ux });
       }
     }
 
-    if (rawIntersections.length === 0) {
-      return circles.map((c, idx) => ({
-        id: `sec_${idx}`,
-        d: `M ${fmt(c.x - R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x + R)} ${fmt(c.y)} A ${R} ${R} 0 1 0 ${fmt(c.x - R)} ${fmt(c.y)} Z`,
-        cx: Math.abs(c.x) < 1e-4 ? 0 : Number(c.x.toFixed(3)),
-        cy: Math.abs(c.y) < 1e-4 ? 0 : Number(c.y.toFixed(3)),
-        area: Math.PI * R * R
-      }));
-    }
+    if (rawVerts.length < 2) return [];
 
-    // 2. Spatial grid deduplication of vertices
-    const cellSize = tol * 2.5;
-    const grid = new Map();
+    // Deduplicate vertices spatially
     const vertices = [];
-
-    for (let pIdx = 0; pIdx < rawIntersections.length; pIdx++) {
-      const pt = rawIntersections[pIdx];
-      const gx = Math.floor(pt.x / cellSize);
-      const gy = Math.floor(pt.y / cellSize);
-      let found = null;
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          const bucket = grid.get(`${gx + dx},${gy + dy}`);
-          if (bucket) {
-            for (let b = 0; b < bucket.length; b++) {
-              const v = bucket[b];
-              if ((v.x - pt.x) ** 2 + (v.y - pt.y) ** 2 < tolSq) {
-                found = v;
-                break;
-              }
-            }
-          }
-          if (found) break;
-        }
-        if (found) break;
-      }
-      if (!found) {
-        const newV = { id: vertices.length, x: pt.x, y: pt.y };
-        vertices.push(newV);
-        const key = `${gx},${gy}`;
-        let b = grid.get(key);
-        if (!b) { b = []; grid.set(key, b); }
-        b.push(newV);
+    for (let i = 0; i < rawVerts.length; i++) {
+      const pt = rawVerts[i];
+      if (!vertices.some(v => (v.x - pt.x) ** 2 + (v.y - pt.y) ** 2 < tolSq)) {
+        vertices.push({ id: vertices.length, x: pt.x, y: pt.y });
       }
     }
 
-    // 3. Circle boundary arc half-edges
+    if (vertices.length < 2) return [];
+
+    // 2. Arc half-edges along each circle
     const halfEdges = [];
     const vertexOutgoing = new Map();
-    for (let v = 0; v < vertices.length; v++) vertexOutgoing.set(vertices[v].id, []);
+    for (let v = 0; v < vertices.length; v++) vertexOutgoing.set(v, []);
+
+    const norm = (a) => {
+      let res = a;
+      while (res > Math.PI) res -= 2 * Math.PI;
+      while (res <= -Math.PI) res += 2 * Math.PI;
+      return res;
+    };
 
     for (let cIdx = 0; cIdx < M; cIdx++) {
       const c = circles[cIdx];
-      const circleVerts = [];
+      const cVerts = [];
       for (let v = 0; v < vertices.length; v++) {
         const vert = vertices[v];
-        const dist = Math.hypot(vert.x - c.x, vert.y - c.y);
-        if (Math.abs(dist - R) < tol) {
-          circleVerts.push({ vId: vert.id, angle: Math.atan2(vert.y - c.y, vert.x - c.x) });
+        if (Math.abs(Math.hypot(vert.x - c.x, vert.y - c.y) - R) < tol) {
+          cVerts.push({ vId: vert.id, angle: Math.atan2(vert.y - c.y, vert.x - c.x) });
         }
       }
-      if (circleVerts.length < 2) continue;
+      if (cVerts.length < 2) continue;
 
-      circleVerts.sort((a, b) => a.angle - b.angle);
-      const K = circleVerts.length;
+      cVerts.sort((a, b) => a.angle - b.angle);
+      const K = cVerts.length;
       for (let k = 0; k < K; k++) {
-        const cv1 = circleVerts[k];
-        const cv2 = circleVerts[(k + 1) % K];
+        const cv1 = cVerts[k];
+        const cv2 = cVerts[(k + 1) % K];
+        let dTheta = cv2.angle - cv1.angle;
+        if (dTheta <= 0) dTheta += 2 * Math.PI;
+
         const v1 = vertices[cv1.vId];
         const v2 = vertices[cv2.vId];
 
-        // CCW Arc: cv1 -> cv2
-        let dThetaCCW = cv2.angle - cv1.angle;
-        if (dThetaCCW <= 0) dThetaCCW += 2 * Math.PI;
+        // Sample a point along the arc for unique secant angle sorting
+        const delta = Math.min(0.02, 0.1 * dTheta);
+        const aFwd = cv1.angle + delta;
+        const pFwd = { x: c.x + R * Math.cos(aFwd), y: c.y + R * Math.sin(aFwd) };
+        const secantFwd = Math.atan2(pFwd.y - v1.y, pFwd.x - v1.x);
 
-        const deltaCCW = Math.min(0.05 * dThetaCCW, 0.02);
-        const aOutCCW = cv1.angle + deltaCCW;
-        const pOutCCW = { x: c.x + R * Math.cos(aOutCCW), y: c.y + R * Math.sin(aOutCCW) };
-        const secantOutCCW = Math.atan2(pOutCCW.y - v1.y, pOutCCW.x - v1.x);
+        const aRev = cv2.angle - delta;
+        const pRev = { x: c.x + R * Math.cos(aRev), y: c.y + R * Math.sin(aRev) };
+        const secantRev = Math.atan2(pRev.y - v2.y, pRev.x - v2.x);
 
-        const aInCCW = cv2.angle - deltaCCW;
-        const pInCCW = { x: c.x + R * Math.cos(aInCCW), y: c.y + R * Math.sin(aInCCW) };
-        const secantInCCW = Math.atan2(v2.y - pInCCW.y, v2.x - pInCCW.x);
-
-        const heCCW = {
+        const heFwd = {
           id: halfEdges.length,
           fromV: cv1.vId,
           toV: cv2.vId,
-          dTheta: dThetaCCW,
-          isCCW: true,
-          secantOut: secantOutCCW,
-          secantIn: secantInCCW,
+          cIdx,
+          c,
+          theta1: cv1.angle,
+          theta2: cv2.angle,
+          dTheta,
+          isFwd: true,
+          secantOut: secantFwd,
+          outAngle: norm(cv1.angle + Math.PI / 2),
+          inAngle: norm(cv2.angle + Math.PI / 2),
           used: false
         };
-        halfEdges.push(heCCW);
-        vertexOutgoing.get(cv1.vId).push(heCCW);
+        halfEdges.push(heFwd);
+        vertexOutgoing.get(cv1.vId).push(heFwd);
 
-        // CW Arc: cv2 -> cv1
-        let dThetaCW = cv1.angle - cv2.angle;
-        if (dThetaCW <= 0) dThetaCW += 2 * Math.PI;
-
-        const deltaCW = Math.min(0.05 * dThetaCW, 0.02);
-        const aOutCW = cv2.angle - deltaCW;
-        const pOutCW = { x: c.x + R * Math.cos(aOutCW), y: c.y + R * Math.sin(aOutCW) };
-        const secantOutCW = Math.atan2(pOutCW.y - v2.y, pOutCW.x - v2.x);
-
-        const aInCW = cv1.angle + deltaCW;
-        const pInCW = { x: c.x + R * Math.cos(aInCW), y: c.y + R * Math.sin(aInCW) };
-        const secantInCW = Math.atan2(v1.y - pInCW.y, v1.x - pInCW.x);
-
-        const heCW = {
+        const heRev = {
           id: halfEdges.length,
           fromV: cv2.vId,
           toV: cv1.vId,
-          dTheta: dThetaCW,
-          isCCW: false,
-          secantOut: secantOutCW,
-          secantIn: secantInCW,
+          cIdx,
+          c,
+          theta1: cv2.angle,
+          theta2: cv1.angle,
+          dTheta,
+          isFwd: false,
+          secantOut: secantRev,
+          outAngle: norm(cv2.angle - Math.PI / 2),
+          inAngle: norm(cv1.angle - Math.PI / 2),
           used: false
         };
-        halfEdges.push(heCW);
-        vertexOutgoing.get(cv2.vId).push(heCW);
+        halfEdges.push(heRev);
+        vertexOutgoing.get(cv2.vId).push(heRev);
 
-        heCCW.twin = heCW;
-        heCW.twin = heCCW;
+        heFwd.twin = heRev;
+        heRev.twin = heFwd;
       }
     }
 
-    // Sort outgoing half-edges around each vertex in CCW order by secant angle
-    for (const [vId, edges] of vertexOutgoing) {
-      edges.sort((a, b) => a.secantOut - b.secantOut);
+    // Sort outgoing edges around each vertex by secant angle
+    for (let v = 0; v < vertices.length; v++) {
+      vertexOutgoing.get(v).sort((a, b) => a.secantOut - b.secantOut);
     }
 
-    // 4. Trace faces (planar DCEL face extraction)
+    // 3. Planar DCEL face extraction
     const sections = [];
     for (let eIdx = 0; eIdx < halfEdges.length; eIdx++) {
-      const he = halfEdges[eIdx];
-      if (he.used) continue;
+      const startHe = halfEdges[eIdx];
+      if (startHe.used) continue;
 
       const faceEdges = [];
-      let curr = he;
+      let curr = startHe;
       let valid = true;
 
       while (!curr.used) {
@@ -2123,77 +2094,84 @@ const SacredMath = {
         faceEdges.push(curr);
         const targetV = curr.toV;
         const outgoing = vertexOutgoing.get(targetV);
-        if (!outgoing || outgoing.length === 0) {
-          valid = false;
-          break;
+        if (!outgoing || outgoing.length === 0) { valid = false; break; }
+
+        const twin = curr.twin;
+        const idx = outgoing.indexOf(twin);
+        if (idx === -1) { valid = false; break; }
+
+        const nextIdx = (idx - 1 + outgoing.length) % outgoing.length;
+        curr = outgoing[nextIdx];
+        if (curr === startHe) break;
+        if (faceEdges.length > 500) { valid = false; break; }
+      }
+
+      if (valid && curr === startHe && faceEdges.length >= 2) {
+        let totalTurn = 0;
+        let vx = 0, vy = 0, mx = 0, my = 0;
+        let area2 = 0;
+
+        for (let i = 0; i < faceEdges.length; i++) {
+          const e1 = faceEdges[i];
+          const e2 = faceEdges[(i + 1) % faceEdges.length];
+          const turn = norm(e2.outAngle - e1.inAngle);
+          const arcTurn = e1.isFwd ? e1.dTheta : -e1.dTheta;
+          totalTurn += turn + arcTurn;
+
+          const v1 = vertices[e1.fromV];
+          const v2 = vertices[e1.toV];
+          const chordArea = v1.x * v2.y - v2.x * v1.y;
+          const cap = 0.5 * R * R * (e1.dTheta - Math.sin(e1.dTheta));
+          const signedCap = e1.isFwd ? cap : -cap;
+          area2 += chordArea + 2 * signedCap;
+
+          vx += v1.x; vy += v1.y;
+          const midTheta = e1.isFwd ? (e1.theta1 + e1.dTheta / 2) : (e1.theta1 - e1.dTheta / 2);
+          mx += e1.c.x + R * Math.cos(midTheta);
+          my += e1.c.y + R * Math.sin(midTheta);
         }
 
-        // Find incoming reverse secant angle
-        let inRev = curr.secantIn + Math.PI;
-        while (inRev > Math.PI) inRev -= 2 * Math.PI;
-        while (inRev <= -Math.PI) inRev += 2 * Math.PI;
+        const L = faceEdges.length;
+        vx /= L; vy /= L;
+        mx /= L; my /= L;
+        const centroid = { x: 0.5 * (vx + mx), y: 0.5 * (vy + my) };
 
-        // Choose next edge that makes the most acute/closest CCW turn
-        let bestNext = null;
-        let minDiff = Infinity;
-        for (let n = 0; n < outgoing.length; n++) {
-          const nextHe = outgoing[n];
-          let diff = nextHe.secantOut - inRev;
-          while (diff < 0) diff += 2 * Math.PI;
-          while (diff >= 2 * Math.PI) diff -= 2 * Math.PI;
-          if (diff < 1e-6) diff = 2 * Math.PI;
-          if (diff < minDiff) {
-            minDiff = diff;
-            bestNext = nextHe;
+        let containingCount = 0;
+        for (let cIdx = 0; cIdx < M; cIdx++) {
+          const c = circles[cIdx];
+          if (Math.hypot(centroid.x - c.x, centroid.y - c.y) <= R - 0.05) {
+            containingCount++;
           }
         }
 
-        if (!bestNext) {
-          valid = false;
-          break;
-        }
-        curr = bestNext;
-        if (curr === he) break;
-        if (faceEdges.length > 500) {
-          valid = false;
-          break;
-        }
-      }
+        const turnPi = Math.round(totalTurn / Math.PI);
+        const area = Math.abs(area2 / 2);
 
-      if (valid && curr === he && faceEdges.length >= 2) {
-        let polyArea = 0;
-        let cx = 0;
-        let cy = 0;
-        for (let i = 0; i < faceEdges.length; i++) {
-          const v1 = vertices[faceEdges[i].fromV];
-          const v2 = vertices[faceEdges[i].toV];
-          polyArea += (v1.x * v2.y - v2.x * v1.y);
-          cx += v1.x;
-          cy += v1.y;
-        }
-        polyArea /= 2;
-
-        // Internal faces have negative polygon area (clockwise orientation in screen coordinates)
-        if (polyArea < -0.1) {
-          cx /= faceEdges.length;
-          cy /= faceEdges.length;
-
+        // Bounded interior face (turnPi === 2) that is an intersection of at least 2 circles
+        if (turnPi === 2 && containingCount >= 2 && area > 0.5) {
           let d = `M ${fmt(vertices[faceEdges[0].fromV].x)} ${fmt(vertices[faceEdges[0].fromV].y)}`;
           for (let i = 0; i < faceEdges.length; i++) {
             const e = faceEdges[i];
             const vTo = vertices[e.toV];
             const largeArc = e.dTheta > Math.PI ? 1 : 0;
-            const sweep = e.isCCW ? 1 : 0;
+            const sweep = e.isFwd ? 1 : 0;
             d += ` A ${R} ${R} 0 ${largeArc} ${sweep} ${fmt(vTo.x)} ${fmt(vTo.y)}`;
           }
           d += ' Z';
 
+          const cxVal = Math.abs(centroid.x) < 0.05 ? 0 : Number(centroid.x.toFixed(3));
+          const cyVal = Math.abs(centroid.y) < 0.05 ? 0 : Number(centroid.y.toFixed(3));
+          const cxi = Math.round(cxVal * 10);
+          const cyi = Math.round(cyVal * 10);
+
           sections.push({
-            id: `sec_${sections.length}`,
+            id: `sec_${cxi}_${cyi}`,
+            index: sections.length,
             d,
-            cx: Math.abs(cx) < 1e-4 ? 0 : Number(cx.toFixed(3)),
-            cy: Math.abs(cy) < 1e-4 ? 0 : Number(cy.toFixed(3)),
-            area: Math.abs(polyArea)
+            cx: cxVal,
+            cy: cyVal,
+            area: Number(area.toFixed(2)),
+            containingCount
           });
         }
       }
@@ -2202,6 +2180,8 @@ const SacredMath = {
     return sections;
   }
 };
+
+const computeCircleSections = (circles, R) => SacredMath.computeCircleSections(circles, R);
 
 export {
   SacredMath,
@@ -2217,6 +2197,7 @@ export {
   getSOHOEPaths,
   getHexagramEyePaths,
   getOffsetPathRings,
+  computeCircleSections,
   KRYST_STAGE_NAMES,
   LIFE_STAGE_NAMES,
   KRYST_STORY_DATA,

@@ -136,6 +136,7 @@ const UI = {
     this.bindToggles();
     this.bind3DControls();
     this.bindColorPickers();
+    this.bindSectionColorPicker();
     this.bindPainterControls();
     this.bindPresets();
     this.bindFloatingControls();
@@ -162,14 +163,38 @@ const UI = {
 
       // Delegated click
       svg.addEventListener('click', (e) => {
+        // Mode A: Intersection Highlight Mode is Active
+        if (State.sectionHighlightMode) {
+          const sectionTarget = e.target.closest('[data-section-id]');
+          if (sectionTarget) {
+            e.stopPropagation();
+            const sectionId = sectionTarget.dataset.sectionId;
+            this.openSectionColorPicker(sectionId, e.clientX, e.clientY);
+            return;
+          }
+
+          // In highlight mode, clicking empty canvas closes the color popup
+          this.closeSectionColorPicker();
+          return;
+        }
+
+        // Mode B: Clicking on an already colored section when mode is off allows editing color
+        const coloredSectionTarget = e.target.closest('.aura-intersection-section.colored-section');
+        if (coloredSectionTarget) {
+          e.stopPropagation();
+          const sectionId = coloredSectionTarget.dataset.sectionId;
+          this.openSectionColorPicker(sectionId, e.clientX, e.clientY);
+          return;
+        }
+
         const target = e.target.closest('[data-circle-id]');
 
-        // 1. Click on a circle or center dot
+        // Mode C: Standard circle or center dot click (only when NOT in section highlight mode)
         if (target) {
           e.stopPropagation();
           const circleId = target.dataset.circleId;
 
-          // Mode A: Painter of Life Mode
+          // Mode C1: Painter of Life Mode
           if (State.painterMode) {
             const currentPaint = State.coloredShapesMap.get(circleId);
             if (currentPaint === State.painterColor) {
@@ -181,7 +206,7 @@ const UI = {
             return;
           }
 
-          // Mode B: Shift+Click -> Selection Highlight for Presets
+          // Mode C2: Shift+Click -> Selection Highlight for Presets
           if (e.shiftKey) {
             if (State.highlightedIds.has(circleId)) {
               State.highlightedIds.delete(circleId);
@@ -193,7 +218,7 @@ const UI = {
             return;
           }
 
-          // Mode C: Standard Click -> Toggle Circle Removal (E-05)
+          // Mode C3: Standard Click -> Toggle Circle Removal (E-05)
           if (State.disabledCircleIds.has(circleId)) {
             State.disabledCircleIds.delete(circleId);
             this.showToast('Restored circle');
@@ -206,7 +231,8 @@ const UI = {
           return;
         }
 
-        // 2. Click on empty SVG background -> clear highlights if any
+        // 3. Click on empty SVG background -> clear highlights & close color popup
+        this.closeSectionColorPicker();
         if (State.highlightedIds.size > 0) {
           State.highlightedIds.clear();
           SVGRenderer.updateHighlights(svg.id);
@@ -214,6 +240,143 @@ const UI = {
         }
       });
     });
+  },
+
+  toggleSectionHighlightMode() {
+    State.sectionHighlightMode = !State.sectionHighlightMode;
+    document.body.classList.toggle('section-highlight-mode', State.sectionHighlightMode);
+
+    const btn = document.getElementById('toggleSectionHighlightBtn');
+    if (btn) btn.classList.toggle('active', State.sectionHighlightMode);
+
+    const btnBottom = document.getElementById('btnBottomHighlightMode');
+    if (btnBottom) btnBottom.classList.toggle('active', State.sectionHighlightMode);
+
+    if (!State.sectionHighlightMode) {
+      this.closeSectionColorPicker();
+    }
+
+    this.showToast(State.sectionHighlightMode
+      ? 'Intersection Highlight Mode: ON — Click any intersection section to color it'
+      : 'Intersection Highlight Mode: OFF');
+
+    App.renderAll();
+  },
+
+  bindSectionColorPicker() {
+    const popup = document.getElementById('sectionColorPickerPopup');
+    if (!popup) return;
+
+    // Palette swatches
+    popup.querySelectorAll('.color-swatch-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const color = btn.dataset.color;
+        this.applySectionColor(color);
+      });
+    });
+
+    // Custom color input
+    const customInput = document.getElementById('inputCustomSectionColor');
+    if (customInput) {
+      customInput.addEventListener('input', (e) => {
+        this.applySectionColor(e.target.value);
+      });
+    }
+
+    // Clear fill button
+    const btnClear = document.getElementById('btnClearSectionColor');
+    if (btnClear) {
+      btnClear.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.applySectionColor(null);
+      });
+    }
+
+    // Close button
+    const btnClose = document.getElementById('btnCloseColorPopup');
+    if (btnClose) {
+      btnClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeSectionColorPicker();
+      });
+    }
+
+    // Click outside to close
+    window.addEventListener('pointerdown', (e) => {
+      if (popup.style.display !== 'none' && !popup.contains(e.target) && !e.target.closest('[data-section-id]')) {
+        this.closeSectionColorPicker();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && popup.style.display !== 'none') {
+        this.closeSectionColorPicker();
+      }
+    });
+  },
+
+  openSectionColorPicker(sectionId, clientX, clientY) {
+    this.activeSectionId = sectionId;
+    const popup = document.getElementById('sectionColorPickerPopup');
+    if (!popup) return;
+
+    popup.style.display = 'flex';
+
+    // Measure dimensions & position next to cursor
+    const width = 185;
+    const height = 135;
+
+    let x = clientX + 12;
+    let y = clientY + 12;
+
+    if (x + width > window.innerWidth - 10) {
+      x = clientX - width - 12;
+    }
+    if (y + height > window.innerHeight - 10) {
+      y = clientY - height - 12;
+    }
+
+    popup.style.left = `${Math.max(10, x)}px`;
+    popup.style.top = `${Math.max(10, y)}px`;
+
+    // Highlight current section color if active
+    const curColor = (State.sectionFills && State.sectionFills[sectionId]) || null;
+    popup.querySelectorAll('.color-swatch-btn').forEach(b => {
+      b.style.outline = (curColor && b.dataset.color === curColor) ? '2px solid #fff' : 'none';
+      b.style.outlineOffset = '2px';
+    });
+  },
+
+  closeSectionColorPicker() {
+    const popup = document.getElementById('sectionColorPickerPopup');
+    if (popup) popup.style.display = 'none';
+    this.activeSectionId = null;
+  },
+
+  applySectionColor(color) {
+    if (!this.activeSectionId) return;
+    if (!State.sectionFills) State.sectionFills = {};
+
+    if (color) {
+      State.sectionFills[this.activeSectionId] = color;
+      this.showToast(`Colored intersection: ${color}`);
+    } else {
+      delete State.sectionFills[this.activeSectionId];
+      this.showToast('Cleared intersection color');
+    }
+
+    // Auto-persist to active preset config if user is on a custom preset
+    if (State.activePreset && window.PresetsManager?.getPreset) {
+      const curPreset = PresetsManager.getPreset(State.activePreset);
+      if (curPreset && curPreset.config) {
+        curPreset.config.sectionFills = { ...(State.sectionFills || {}) };
+        PresetsManager.updatePreset(State.activePreset, { config: curPreset.config });
+      }
+    }
+
+    App.renderAll();
+    this.closeSectionColorPicker();
   },
 
   /**
@@ -468,6 +631,12 @@ const UI = {
       this.syncLayerControls();
       App.renderAll();
     });
+
+    // Bottom bar Highlight Mode button
+    document.getElementById('btnBottomHighlightMode')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.toggleSectionHighlightMode();
+    });
   },
 
   syncLayerControls() {
@@ -494,6 +663,15 @@ const UI = {
     if (toggleAura) toggleAura.checked = isAuraVisible;
     if (sliderAura) sliderAura.value = isAuraVisible ? auraVal : 0;
     if (badgeAura) badgeAura.textContent = isAuraVisible ? `${auraVal}%` : 'Off';
+
+    const btnBottomHighlight = document.getElementById('btnBottomHighlightMode');
+    if (btnBottomHighlight) {
+      btnBottomHighlight.classList.toggle('active', !!State.sectionHighlightMode);
+    }
+    const btnFloatHighlight = document.getElementById('toggleSectionHighlightBtn');
+    if (btnFloatHighlight) {
+      btnFloatHighlight.classList.toggle('active', !!State.sectionHighlightMode);
+    }
   },
 
   bindPainterControls() {
@@ -857,7 +1035,8 @@ const UI = {
             colorLife: State.colorLife,
             colorBody: State.colorBody,
             colorGuide: State.colorGuide,
-            colorOuter: State.colorOuter
+            colorOuter: State.colorOuter,
+            sectionFills: { ...(State.sectionFills || {}) }
           }
         };
 
@@ -1026,6 +1205,7 @@ const UI = {
     if (cfg.showGuides !== undefined) State.showGuides = cfg.showGuides;
     if (cfg.showOuterRing !== undefined) State.showOuterRing = cfg.showOuterRing;
     if (cfg.showCenterDots !== undefined) State.showCenterDots = cfg.showCenterDots;
+    State.sectionFills = (cfg.sectionFills && typeof cfg.sectionFills === 'object') ? { ...cfg.sectionFills } : {};
 
     // Sync UI elements
     const boundarySlider = document.getElementById('boundarySlider');
@@ -1256,6 +1436,10 @@ const UI = {
       this.fitToScreen();
     });
 
+    document.getElementById('toggleSectionHighlightBtn')?.addEventListener('click', () => {
+      this.toggleSectionHighlightMode();
+    });
+
     document.getElementById('clearHighlightBtn')?.addEventListener('click', () => {
       State.highlightedIds.clear();
       SVGRenderer.updateHighlights('svgMain');
@@ -1298,6 +1482,8 @@ const UI = {
         document.getElementById('zoomInBtn')?.click();
       } else if (e.key === '-') {
         document.getElementById('zoomOutBtn')?.click();
+      } else if ((e.key === 'h' || e.key === 'H') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        this.toggleSectionHighlightMode();
       } else if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
         State.highlightedIds.clear();

@@ -682,11 +682,31 @@
             aria-label="Aura Opacity Slider">
           <span class="control-val-badge fader-badge" id="badgeAuraOpacity">100%</span>
         </div>
+        <div class="layer-bar-separator"></div>
+
+        <!-- Section Highlight Mode Toggle -->
+        <div class="layer-control-unit" id="unitSectionHighlight">
+          <button class="layer-pill-toggle" id="btnBottomHighlightMode" title="Toggle Intersection Highlighting Mode (H)">
+            <span class="layer-toggle-btn highlight-pill">
+              <span class="pill-dot highlight-dot"></span>
+              <span class="pill-text">Highlight Mode</span>
+            </span>
+          </button>
+        </div>
       </div>
 
-      <!-- Floating Tool Buttons (Zoom / Pan / Fit) -->
+      <!-- Floating Tool Buttons (Zoom / Pan / Fit / Highlight) -->
       <div class="viewport-floating-controls" role="toolbar" aria-label="Viewport Navigation Controls">
         <div class="floating-btn-group">
+          <button class="floating-tool-btn" id="toggleSectionHighlightBtn" aria-label="Toggle Intersection Highlight Mode (H)"
+            title="Toggle Intersection Highlight Mode (H)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;"
+              aria-hidden="true">
+              <circle cx="9" cy="12" r="5.5" stroke="currentColor" />
+              <circle cx="15" cy="12" r="5.5" stroke="currentColor" />
+              <path d="M12 7.7a5.5 5.5 0 0 0 0 8.6" stroke="var(--accent-gold, #f59e0b)" stroke-width="2.5" />
+            </svg>
+          </button>
           <button class="floating-tool-btn" id="zoomInBtn" aria-label="Zoom In (+)" title="Zoom In (+)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px; height:17px;"
               aria-hidden="true">
@@ -954,6 +974,52 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Floating Section Color Picker Popup -->
+  <div id="sectionColorPickerPopup" class="section-color-popup" style="display: none;" role="dialog" aria-label="Color Intersection Section">
+    <div class="color-popup-header">
+      <span class="color-popup-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"/>
+        </svg>
+        Color Intersection
+      </span>
+      <button class="color-popup-close" id="btnCloseColorPopup" title="Close Color Picker" type="button" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="color-popup-palette">
+      <button class="color-swatch-btn" data-color="#f59e0b" style="background:#f59e0b;" title="Radiant Gold" type="button"></button>
+      <button class="color-swatch-btn" data-color="#ef4444" style="background:#ef4444;" title="Ruby Red" type="button"></button>
+      <button class="color-swatch-btn" data-color="#ec4899" style="background:#ec4899;" title="Rose Magenta" type="button"></button>
+      <button class="color-swatch-btn" data-color="#a855f7" style="background:#a855f7;" title="Amethyst Violet" type="button"></button>
+      <button class="color-swatch-btn" data-color="#3b82f6" style="background:#3b82f6;" title="Sapphire Blue" type="button"></button>
+      <button class="color-swatch-btn" data-color="#06b6d4" style="background:#06b6d4;" title="Cyan Turquoise" type="button"></button>
+      <button class="color-swatch-btn" data-color="#10b981" style="background:#10b981;" title="Emerald Green" type="button"></button>
+      <button class="color-swatch-btn" data-color="#f97316" style="background:#f97316;" title="Solar Amber" type="button"></button>
+      <button class="color-swatch-btn" data-color="#ffffff" style="background:#ffffff; border:1px solid rgba(0,0,0,0.25);" title="Pure Pearl" type="button"></button>
+      <label class="color-swatch-custom" title="Custom Color Picker">
+        <input type="color" id="inputCustomSectionColor" value="#f59e0b" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </label>
+    </div>
+    <div class="color-popup-actions">
+      <button class="btn btn-xs" id="btnClearSectionColor" type="button" title="Clear color from this section" style="width:100%; justify-content:center; gap:4px; font-size:0.70rem; color:#f87171;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+        Clear Fill
+      </button>
     </div>
   </div>
 

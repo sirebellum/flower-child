@@ -112,6 +112,10 @@ const State = {
   painterColor: '#ef4444',
   coloredShapesMap: new Map(),
 
+  // Individual Section Highlighting & Colored Intersections (Venn diagram style)
+  sectionHighlightMode: false, // Dedicated mode for highlighting & coloring intersections
+  sectionFills: {}, // { [sectionId]: colorHex }
+
   // Aesthetics
   colorByLayer: false,
   enableGlow: true,
@@ -386,6 +390,7 @@ const PresetsManager = {
   resetAllToDefaults() {
     this.customPresets = [];
     this.builtinOverrides = {};
+    State.sectionFills = {};
     try {
       localStorage.removeItem(this.STORAGE_KEY);
       localStorage.removeItem(this.OVERRIDE_KEY);
@@ -447,7 +452,8 @@ const PresetsManager = {
       sliceZ: State.sliceZ,
       sphereOpacity: State.sphereOpacity,
       sphereRoughness: State.sphereRoughness,
-      sphereMetalness: State.sphereMetalness
+      sphereMetalness: State.sphereMetalness,
+      sectionFills: { ...(State.sectionFills || {}) }
     };
   },
 
