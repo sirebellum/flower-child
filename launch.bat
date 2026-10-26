@@ -21,8 +21,14 @@ echo.
 echo ==============================================================================
 echo.
 
-choice /C YN /N /M "Do you want to proceed? [Y/N]: "
-if errorlevel 2 goto :CANCELLED
+:PROMPT
+set "PROCEED="
+set /p PROCEED="Do you want to proceed? [Y/N]: "
+if /I "%PROCEED%"=="N" goto :CANCELLED
+if /I not "%PROCEED%"=="Y" (
+    echo Invalid input. Please enter Y or N.
+    goto :PROMPT
+)
 
 echo.
 echo [*] Checking Python environment...

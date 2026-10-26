@@ -63,10 +63,10 @@ const State = {
 
   // Dynamic Boundary Circle (E-05)
   boundaryRadius: 200, // in pixels (default 4 * r)
-  disabledCircleIds: new Set(), // Body circles removed by the user
+  disabledCircleIds: new Set(), // Body circles permanently removed by the user
 
-  // Aura Radius Scale Factor (2.0r to 6.0r body radius, default 2.0)
-  auraScale: 2.0,
+  // Aura Radius Scale Factor (1.1r to 20.0r body radius, default 1.95)
+  auraScale: 1.95,
 
   // Lattice Geometry
   N: 2,
@@ -83,7 +83,7 @@ const State = {
   set showBaseCircles(v) { this.showBodyCircles = Boolean(v); },
 
   showGuides: false,
-  showOuterRing: true,
+  showOuterRing: false, // Default outer ring visibility set to false per user request
   showBoundaryPetals: false,
   showCenterDots: false,
   showIntersections: false,
@@ -100,6 +100,16 @@ const State = {
   showStoryPanel: false, // R-A12: Story of Kryst drawer
   showRingNotes: false, // R-A13: Notes on current ring
 
+  // Sacred Gadgets & Overlays (Concurrent Real-Time Animations)
+  gadgetAuraExpansion: false,
+  auraExpansionMaxSize: 20.0,
+  auraExpansionSpeed: 1.0,
+  gadgetRainbowAura: false,
+  rainbowWaveSpeed: 1.0,
+  gadgetBreathing: false,
+  breathingMaxSize: 2.0,
+  breathingSpeed: 1.0,
+
   // Offset Path Generator (R-A5)
   offsetPath: {
     enabled: false,
@@ -114,6 +124,15 @@ const State = {
 
   // Individual Section Highlighting & Colored Intersections (Venn diagram style)
   sectionHighlightMode: false, // Dedicated mode for highlighting & coloring intersections
+  selectedSectionIds: new Set(), // Set of currently selected intersection section IDs for batch fill
+  get selectedSectionId() {
+    return this.selectedSectionIds.values().next().value || null;
+  },
+  set selectedSectionId(v) {
+    if (!this.selectedSectionIds) this.selectedSectionIds = new Set();
+    this.selectedSectionIds.clear();
+    if (v) this.selectedSectionIds.add(v);
+  },
   sectionFills: {}, // { [sectionId]: colorHex }
 
   // Aesthetics
@@ -230,6 +249,86 @@ const State = {
 
   clampNumber(val, min, max, defaultVal) {
     return clampNumber(val, min, max, defaultVal);
+  },
+
+  /**
+   * Resets all intersection fills, selected sections, and highlighted circles.
+   */
+  clearAllHighlights() {
+    this.sectionFills = {};
+    if (this.selectedSectionIds) this.selectedSectionIds.clear();
+    if (this.highlightedIds) this.highlightedIds.clear();
+    if (this.highlightedSectionIds) this.highlightedSectionIds.clear();
+  },
+
+  /**
+   * Applies a studio configuration object to State.
+   * @param {Object} cfg
+   */
+  applyConfig(cfg) {
+    if (!cfg || typeof cfg !== 'object') return;
+    if (cfg.r !== undefined) this.r = clampNumber(cfg.r, 15, 200, 50);
+    if (cfg.boundaryRadius !== undefined) this.boundaryRadius = cfg.boundaryRadius;
+    if (cfg.N !== undefined) this.N = cfg.N;
+    if (cfg.auraScale !== undefined) this.auraScale = clampNumber(cfg.auraScale, 0.0, 20.0, 1.95);
+    if (cfg.auraExpansionMaxSize !== undefined) this.auraExpansionMaxSize = clampNumber(cfg.auraExpansionMaxSize, 0.0, 20.0, 20.0);
+    if (cfg.auraExpansionSpeed !== undefined) this.auraExpansionSpeed = clampNumber(cfg.auraExpansionSpeed, 0.1, 3.0, 1.0);
+    if (cfg.rainbowWaveSpeed !== undefined) this.rainbowWaveSpeed = clampNumber(cfg.rainbowWaveSpeed, 0.1, 3.0, 1.0);
+    if (cfg.gadgetAuraExpansion !== undefined) this.gadgetAuraExpansion = Boolean(cfg.gadgetAuraExpansion);
+    if (cfg.gadgetRainbowAura !== undefined) this.gadgetRainbowAura = Boolean(cfg.gadgetRainbowAura);
+    if (cfg.gadgetBreathing !== undefined) this.gadgetBreathing = Boolean(cfg.gadgetBreathing);
+    if (cfg.breathingMaxSize !== undefined) this.breathingMaxSize = clampNumber(cfg.breathingMaxSize, 1.05, 2.0, 2.0);
+    if (cfg.breathingSpeed !== undefined) this.breathingSpeed = clampNumber(cfg.breathingSpeed, 0.1, 3.0, 1.0);
+    if (cfg.activePattern !== undefined) this.activePattern = cfg.activePattern;
+    if (cfg.bodyOpacity !== undefined) this.bodyOpacity = cfg.bodyOpacity;
+    if (cfg.auraOpacity !== undefined) this.auraOpacity = cfg.auraOpacity;
+    if (cfg.showBodyCircles !== undefined) this.showBodyCircles = cfg.showBodyCircles;
+    if (cfg.showAuraFlower !== undefined) this.showAuraFlower = cfg.showAuraFlower;
+    if (cfg.bodyAuraMix !== undefined) this.bodyAuraMix = cfg.bodyAuraMix;
+
+    // Highlights
+    if (!this.highlightedIds) this.highlightedIds = new Set();
+    this.highlightedIds.clear();
+    if (Array.isArray(cfg.highlightedIds)) {
+      cfg.highlightedIds.forEach(id => this.highlightedIds.add(id));
+    }
+
+    if (!this.selectedSectionIds) this.selectedSectionIds = new Set();
+    this.selectedSectionIds.clear();
+    if (Array.isArray(cfg.selectedSectionIds)) {
+      cfg.selectedSectionIds.forEach(id => this.selectedSectionIds.add(id));
+    }
+
+    if (!this.highlightedSectionIds) this.highlightedSectionIds = new Set();
+    this.highlightedSectionIds.clear();
+    if (Array.isArray(cfg.highlightedSectionIds)) {
+      cfg.highlightedSectionIds.forEach(id => this.highlightedSectionIds.add(id));
+    }
+
+    this.sectionFills = (cfg.sectionFills && typeof cfg.sectionFills === 'object') ? { ...cfg.sectionFills } : {};
+
+    if (!this.disabledCircleIds) this.disabledCircleIds = new Set();
+    this.disabledCircleIds.clear();
+    if (Array.isArray(cfg.disabledCircleIds)) {
+      cfg.disabledCircleIds.forEach(id => this.disabledCircleIds.add(id));
+    }
+
+    if (!this.coloredShapesMap) this.coloredShapesMap = new Map();
+    this.coloredShapesMap.clear();
+    if (Array.isArray(cfg.coloredShapesMap)) {
+      cfg.coloredShapesMap.forEach(([k, v]) => this.coloredShapesMap.set(k, v));
+    }
+
+    if (cfg.circleRainbow !== undefined) this.circleRainbow = cfg.circleRainbow;
+    if (cfg.ringSpectral !== undefined) this.ringSpectral = cfg.ringSpectral;
+    if (cfg.offsetPath !== undefined) this.offsetPath = { ...cfg.offsetPath };
+    if (cfg.fullScreenTiling !== undefined) this.fullScreenTiling = cfg.fullScreenTiling;
+    if (cfg.showSOHOE !== undefined) this.showSOHOE = cfg.showSOHOE;
+    if (cfg.showHexagramEyes !== undefined) this.showHexagramEyes = cfg.showHexagramEyes;
+    if (cfg.showGuides !== undefined) this.showGuides = cfg.showGuides;
+    if (cfg.showOuterRing !== undefined) this.showOuterRing = cfg.showOuterRing;
+    if (cfg.showCenterDots !== undefined) this.showCenterDots = cfg.showCenterDots;
+    if (cfg.sectionHighlightMode !== undefined) this.sectionHighlightMode = Boolean(cfg.sectionHighlightMode);
   }
 };
 
@@ -280,17 +379,44 @@ const PresetsManager = {
 
   loadFromStorage() {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      this.customPresets = stored ? JSON.parse(stored) : [];
-      if (!Array.isArray(this.customPresets)) this.customPresets = [];
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            this.customPresets = parsed;
+          } else if (parsed && typeof parsed === 'object') {
+            // Normalize object-keyed custom presets to array
+            this.customPresets = Object.entries(parsed).map(([k, v]) => ({
+              id: v.id || v.key || k,
+              key: v.key || v.id || k,
+              title: v.title || 'Untitled Preset',
+              subtitle: v.subtitle || '',
+              isBuiltin: false,
+              highlightCount: v.highlightCount || ((v.config?.highlightedIds?.length || 0) + Object.keys(v.config?.sectionFills || {}).length + (v.config?.selectedSectionIds?.length || 0)) || 0,
+              config: v.config || {}
+            }));
+          } else {
+            this.customPresets = [];
+          }
+        } else {
+          this.customPresets = [];
+        }
+      } else {
+        this.customPresets = [];
+      }
     } catch (e) {
       console.warn('Failed to load custom presets from storage:', e);
       this.customPresets = [];
     }
     try {
-      const overrides = localStorage.getItem(this.OVERRIDE_KEY);
-      this.builtinOverrides = overrides ? JSON.parse(overrides) : {};
-      if (typeof this.builtinOverrides !== 'object' || this.builtinOverrides === null) {
+      if (typeof localStorage !== 'undefined') {
+        const overrides = localStorage.getItem(this.OVERRIDE_KEY);
+        this.builtinOverrides = overrides ? JSON.parse(overrides) : {};
+        if (typeof this.builtinOverrides !== 'object' || this.builtinOverrides === null) {
+          this.builtinOverrides = {};
+        }
+      } else {
         this.builtinOverrides = {};
       }
     } catch (e) {
@@ -300,11 +426,17 @@ const PresetsManager = {
 
   saveToStorage() {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.customPresets));
-      localStorage.setItem(this.OVERRIDE_KEY, JSON.stringify(this.builtinOverrides));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.customPresets));
+        localStorage.setItem(this.OVERRIDE_KEY, JSON.stringify(this.builtinOverrides));
+      }
     } catch (e) {
       console.error('Failed to save presets to storage:', e);
     }
+  },
+
+  saveCustomPresets() {
+    return this.saveToStorage();
   },
 
   getAllPresets() {
@@ -322,12 +454,15 @@ const PresetsManager = {
   },
 
   getPreset(id) {
-    return this.getAllPresets().find(p => p.id === id);
+    return this.getAllPresets().find(p => p.id === id || p.key === id);
   },
 
   addCustomPreset(preset) {
     if (!preset.id) {
-      preset.id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+      preset.id = preset.key || ('custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+    }
+    if (!preset.key) {
+      preset.key = preset.id;
     }
     preset.isBuiltin = false;
     this.customPresets.push(preset);
@@ -371,7 +506,7 @@ const PresetsManager = {
   },
 
   deletePreset(id) {
-    const customIndex = this.customPresets.findIndex(p => p.id === id);
+    const customIndex = this.customPresets.findIndex(p => p.id === id || p.key === id);
     if (customIndex !== -1) {
       this.customPresets.splice(customIndex, 1);
       this.saveToStorage();
@@ -391,6 +526,7 @@ const PresetsManager = {
     this.customPresets = [];
     this.builtinOverrides = {};
     State.sectionFills = {};
+    State.selectedSectionId = null;
     try {
       localStorage.removeItem(this.STORAGE_KEY);
       localStorage.removeItem(this.OVERRIDE_KEY);
@@ -403,7 +539,10 @@ const PresetsManager = {
       N: State.N,
       r: State.r,
       boundaryRadius: State.boundaryRadius,
-      auraScale: State.auraScale || 2.0,
+      auraScale: State.auraScale !== undefined ? State.auraScale : 1.95,
+      auraExpansionMaxSize: State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0,
+      auraExpansionSpeed: State.auraExpansionSpeed !== undefined ? State.auraExpansionSpeed : 1.0,
+      rainbowWaveSpeed: State.rainbowWaveSpeed !== undefined ? State.rainbowWaveSpeed : 1.0,
       bodyOpacity: State.bodyOpacity !== undefined ? State.bodyOpacity : 1.0,
       auraOpacity: State.auraOpacity !== undefined ? State.auraOpacity : 1.0,
       bodyAuraMix: State.bodyAuraMix,
@@ -448,12 +587,14 @@ const PresetsManager = {
       show3DTorus: State.show3DTorus,
       show3DShells: State.show3DShells,
       show3DGuides: State.show3DGuides,
-      showZeroPointMarker: State.showZeroPointMarker,
-      sliceZ: State.sliceZ,
-      sphereOpacity: State.sphereOpacity,
-      sphereRoughness: State.sphereRoughness,
-      sphereMetalness: State.sphereMetalness,
-      sectionFills: { ...(State.sectionFills || {}) }
+      activePattern: State.activePattern || 'kryst',
+      highlightedIds: Array.from(State.highlightedIds || []),
+      selectedSectionIds: Array.from(State.selectedSectionIds || []),
+      highlightedSectionIds: Array.from(State.highlightedSectionIds || []),
+      disabledCircleIds: Array.from(State.disabledCircleIds || []),
+      coloredShapesMap: Array.from(State.coloredShapesMap ? State.coloredShapesMap.entries() : []),
+      sectionFills: { ...(State.sectionFills || {}) },
+      sectionHighlightMode: Boolean(State.sectionHighlightMode)
     };
   },
 
@@ -522,11 +663,22 @@ const PresetsManager = {
   },
 
   renderPresetGrid() {
+    if (typeof document === 'undefined') return;
     const grid = document.getElementById('presetGrid');
     if (!grid) return;
     grid.innerHTML = '';
 
     const allPresets = this.getAllPresets();
+    if (allPresets.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 18px 12px; text-align: center; color: var(--text-faint); font-size: 0.78rem; border: 1px dashed var(--bg-panel-border); border-radius: var(--radius-sm);">
+          No saved presets yet.<br/>
+          Select circles or sections in the view, then click <strong>Save Preset</strong> (e.g. Pyramid, Dove, Shield, Pinecone, Face).
+        </div>
+      `;
+      return;
+    }
+
     const frag = document.createDocumentFragment();
 
     allPresets.forEach(preset => {
@@ -549,8 +701,11 @@ const PresetsManager = {
             ${isModifiedBuiltin ? '<span class="preset-badge-edited">Edited</span>' : ''}
           </div>
           <div class="preset-chip-actions">
-            <button class="preset-action-btn edit-preset-btn" title="Configure / Edit Preset" aria-label="Configure preset ${preset.title}" data-preset="${preset.id}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <button class="preset-action-btn edit-preset-btn" title="Edit Preset" aria-label="Edit preset ${preset.title}" data-preset="${preset.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
             </button>
             ${isCustom ? `
               <button class="preset-action-btn delete-preset-btn" title="Delete Preset" aria-label="Delete preset ${preset.title}" data-preset="${preset.id}">
@@ -599,7 +754,7 @@ const PresetsManager = {
             PresetsManager.deletePreset(preset.id);
             if (window.UI?.showToast) window.UI.showToast(`Preset "${preset.title}" deleted.`);
             if (State.activePreset === preset.id) {
-              if (window.UI?.applyPreset) window.UI.applyPreset('krystonial_comparison');
+              State.activePreset = null;
             }
           }
         });
@@ -630,19 +785,22 @@ const PresetsManager = {
    ========================================================================= */
 const PresetDialog = {
   currentEditingId: null,
+  _capturedConfigOverride: null,
 
   openNew() {
     this.currentEditingId = null;
+    this._capturedConfigOverride = null;
     const modalTitle = document.getElementById('presetModalTitle');
     const inputName = document.getElementById('presetInputName');
     const inputSubtitle = document.getElementById('presetInputSubtitle');
     const modal = document.getElementById('presetConfigModal');
+    const statusText = document.getElementById('labelPresetCaptureStatus');
+    if (statusText) statusText.style.display = 'none';
 
     if (modalTitle) modalTitle.textContent = 'Create New Sacred Preset';
     if (inputName) inputName.value = `Sacred Grid ${PresetsManager.getAllPresets().length + 1}`;
     if (inputSubtitle) inputSubtitle.value = `Custom N=${State.N} (${State.viewportMode})`;
 
-    this.populateFormFromConfig(PresetsManager.captureCurrentStudioConfig());
     if (modal) modal.classList.add('open');
   },
 
@@ -650,18 +808,26 @@ const PresetDialog = {
     const preset = PresetsManager.getPreset(presetId);
     if (!preset) return;
     this.currentEditingId = presetId;
+    this._capturedConfigOverride = null;
 
     const modalTitle = document.getElementById('presetModalTitle');
     const inputName = document.getElementById('presetInputName');
     const inputSubtitle = document.getElementById('presetInputSubtitle');
     const modal = document.getElementById('presetConfigModal');
+    const statusText = document.getElementById('labelPresetCaptureStatus');
+    if (statusText) statusText.style.display = 'none';
 
-    if (modalTitle) modalTitle.textContent = `Configure Preset: ${preset.title}`;
+    if (modalTitle) modalTitle.textContent = `Edit Preset: ${preset.title}`;
     if (inputName) inputName.value = preset.title;
     if (inputSubtitle) inputSubtitle.value = preset.subtitle || '';
 
-    this.populateFormFromConfig(preset.config);
     if (modal) modal.classList.add('open');
+  },
+
+  captureCurrentCanvas() {
+    this._capturedConfigOverride = PresetsManager.captureCurrentStudioConfig();
+    const statusText = document.getElementById('labelPresetCaptureStatus');
+    if (statusText) statusText.style.display = 'block';
   },
 
   populateFormFromConfig(cfg) {
@@ -757,7 +923,19 @@ const PresetDialog = {
       strokeFlower: State.strokeAura,
       strokeBody: State.strokeBody,
       strokeBase: State.strokeBody,
-      strokeGuide: State.strokeGuide
+      strokeGuide: State.strokeGuide,
+      auraScale: State.auraScale !== undefined ? State.auraScale : 1.95,
+      auraExpansionMaxSize: State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0,
+      auraExpansionSpeed: State.auraExpansionSpeed !== undefined ? State.auraExpansionSpeed : 1.0,
+      rainbowWaveSpeed: State.rainbowWaveSpeed !== undefined ? State.rainbowWaveSpeed : 1.0,
+      activePattern: State.activePattern || 'kryst',
+      highlightedIds: Array.from(State.highlightedIds || []),
+      selectedSectionIds: Array.from(State.selectedSectionIds || []),
+      highlightedSectionIds: Array.from(State.highlightedSectionIds || []),
+      disabledCircleIds: Array.from(State.disabledCircleIds || []),
+      coloredShapesMap: Array.from(State.coloredShapesMap ? State.coloredShapesMap.entries() : []),
+      sectionFills: { ...(State.sectionFills || {}) },
+      sectionHighlightMode: Boolean(State.sectionHighlightMode)
     };
   },
 
@@ -766,10 +944,19 @@ const PresetDialog = {
     const inputSubtitle = document.getElementById('presetInputSubtitle');
     const title = (inputName?.value || '').trim() || 'Untitled Preset';
     const subtitle = (inputSubtitle?.value || '').trim() || '';
-    const config = this.readConfigFromForm();
+    const preset = this.currentEditingId ? PresetsManager.getPreset(this.currentEditingId) : null;
+    const config = this._capturedConfigOverride || (preset ? preset.config : PresetsManager.captureCurrentStudioConfig());
+    const highlightCount = (State.highlightedIds?.size || 0) +
+      Object.keys(State.sectionFills || {}).length +
+      (State.selectedSectionIds?.size || 0);
 
     if (this.currentEditingId) {
-      PresetsManager.updatePreset(this.currentEditingId, { title, subtitle, config });
+      PresetsManager.updatePreset(this.currentEditingId, {
+        title,
+        subtitle,
+        config,
+        highlightCount
+      });
       if (window.UI?.showToast) window.UI.showToast(`Preset "${title}" updated.`);
       if (State.activePreset === this.currentEditingId && window.UI?.applyPreset) {
         window.UI.applyPreset(this.currentEditingId);
@@ -778,13 +965,29 @@ const PresetDialog = {
       const newPreset = PresetsManager.addCustomPreset({
         title,
         subtitle,
-        config
+        config,
+        highlightCount
       });
       if (window.UI?.showToast) window.UI.showToast(`Preset "${title}" created.`);
       if (window.UI?.applyPreset) window.UI.applyPreset(newPreset.id);
     }
+    this._capturedConfigOverride = null;
     const modal = document.getElementById('presetConfigModal');
     if (modal) modal.classList.remove('open');
+  },
+
+  init() {
+    if (typeof document === 'undefined') return;
+    const closeBtn = document.getElementById('closePresetConfigModalBtn');
+    const cancelBtn = document.getElementById('btnCancelPresetConfig');
+    const saveBtn = document.getElementById('btnSavePresetConfig');
+    const captureBtn = document.getElementById('btnPresetCaptureCurrentCanvas');
+    const modal = document.getElementById('presetConfigModal');
+
+    if (closeBtn && modal) closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+    if (cancelBtn && modal) cancelBtn.addEventListener('click', () => modal.classList.remove('open'));
+    if (saveBtn) saveBtn.addEventListener('click', () => this.save());
+    if (captureBtn) captureBtn.addEventListener('click', () => this.captureCurrentCanvas());
   },
 
   saveCurrentToActive() {

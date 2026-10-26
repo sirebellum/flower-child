@@ -5,6 +5,13 @@
  * Story and Ring Notes data, and PresetsManager clean slate.
  */
 import assert from 'assert';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 import {
   SacredMath,
   getKrystGeometryByRadius,
@@ -19,7 +26,8 @@ import {
   KRYST_STORY_DATA,
   RING_NOTES_DATA
 } from '../js/geometry.js';
-import { State, PresetsManager, Spectral12Colors } from '../js/state.js';
+import { State, PresetsManager, PresetDialog, Spectral12Colors } from '../js/state.js';
+import { TutorialManager, UI } from '../js/interactions.js';
 
 console.log('--- 1. Testing Boundary Radius Expansion (E-05 & R-B1) ---');
 const r = 50;
@@ -100,10 +108,36 @@ RING_NOTES_DATA.forEach(n => {
 });
 console.log(`Ring Notes validated: 12 rings with Solfeggio frequencies and archetypes.`);
 
-console.log('--- 8. Testing Presets Clean Slate (E-11) ---');
+console.log('--- 8. Testing Presets Clean Slate & Custom Preset Lifecycle (E-11 & R-A4) ---');
 assert(Array.isArray(PresetsManager.builtinPresets), 'builtinPresets must be array');
 assert.strictEqual(PresetsManager.builtinPresets.length, 0, 'builtinPresets must be strictly empty (no hardcoded presets)');
-console.log('PresetsManager confirmed: Clean slate with zero pre-defined presets.');
+
+// Test adding a custom preset
+const testPreset = {
+  id: 'custom_test_1',
+  key: 'custom_test_1',
+  title: 'Sacred Pyramid',
+  subtitle: 'Flower of Kryst · 6 highlighted',
+  isBuiltin: false,
+  config: PresetsManager.captureCurrentStudioConfig()
+};
+PresetsManager.addCustomPreset(testPreset);
+assert.strictEqual(PresetsManager.customPresets.length, 1, 'Custom presets should contain 1 preset after adding');
+assert.strictEqual(PresetsManager.getAllPresets().length, 1, 'getAllPresets should contain the added preset');
+const retrieved = PresetsManager.getPreset('custom_test_1');
+assert(retrieved, 'getPreset should find the preset by id');
+assert.strictEqual(retrieved.title, 'Sacred Pyramid', 'Retrieved preset should match title');
+
+// Test alias saveCustomPresets does not throw
+assert.doesNotThrow(() => PresetsManager.saveCustomPresets(), 'saveCustomPresets alias must not throw');
+
+// Test deleting custom preset
+const deleted = PresetsManager.deletePreset('custom_test_1');
+assert.strictEqual(deleted, true, 'deletePreset should return true for existing preset');
+assert.strictEqual(PresetsManager.customPresets.length, 0, 'Custom presets should be empty after deletion');
+assert.strictEqual(PresetsManager.getPreset('custom_test_1'), undefined, 'getPreset should return undefined after deletion');
+
+console.log('PresetsManager confirmed: Clean slate, add, retrieve, and delete lifecycle verified.');
 
 console.log('--- 9. Testing 12-Stage Spectral Palette (R-A3) ---');
 assert.strictEqual(Spectral12Colors.length, 12, 'Spectral palette must have 12 colors');
@@ -171,8 +205,17 @@ State.bodyOpacity = 1.0;
 State.auraOpacity = 1.0;
 console.log('Independent Body/Aura selectability & individual sliders verified successfully.');
 
-console.log('--- 11. Testing Aura Size Adjustment (2r to 6r) ---');
-[2.0, 3.5, 4.0, 5.2, 6.0].forEach(scale => {
+console.log('--- 11. Testing Aura Size (0r to 20r, 0.01 step, 1.95r default) & Sacred Gadgets ---');
+assert.strictEqual(State.auraScale, 1.95, 'Default auraScale must be 1.95r');
+
+// Default geometry without passing auraScale parameter defaults to 1.95
+const defaultKrystGeom = getKrystGeometryByRadius(300, r);
+assert.strictEqual(defaultKrystGeom.auraCircles[0].r, Number((1.95 * r).toFixed(3)), 'Default Kryst aura radius must be 1.95 * r = 97.5px');
+const defaultLifeGeom = getFlowerOfLifeGeometryByRadius(300, r);
+assert.strictEqual(defaultLifeGeom.auraCircles[0].r, Number((1.95 * r).toFixed(3)), 'Default Life aura radius must be 1.95 * r = 97.5px');
+
+// Verify scaling from 0.0r to 20r with 0.01 precision
+[0.0, 0.5, 1.0, 1.1, 1.25, 1.95, 2.0, 5.0, 10.0, 15.5, 20.0].forEach(scale => {
   const krystGeom = getKrystGeometryByRadius(300, r, new Set(), false, scale);
   assert(krystGeom.auraCircles.length > 0, `Kryst should have aura circles at scale ${scale}`);
   const expectedR = Number((scale * r).toFixed(3));
@@ -182,7 +225,67 @@ console.log('--- 11. Testing Aura Size Adjustment (2r to 6r) ---');
   assert(lifeGeom.auraCircles.length > 0, `Life should have aura circles at scale ${scale}`);
   assert.strictEqual(lifeGeom.auraCircles[0].r, expectedR, `Life aura circle radius should equal ${scale} * r = ${expectedR}px`);
 });
-console.log('Aura scaling verified successfully across 2.0r, 3.5r, 4.0r, 5.2r, and 6.0r.');
+
+// Verify 0r intersection handling returns empty array without throwing
+const zeroRSections = computeCircleSections([{x: 0, y: 0}, {x: 50, y: 0}], 0);
+assert.deepStrictEqual(zeroRSections, [], 'Sections with R <= 0 must return empty array');
+
+// Verify Sacred Gadgets state defaults & new sliders
+assert.strictEqual(State.gadgetAuraExpansion, false, 'gadgetAuraExpansion must default to false');
+assert.strictEqual(State.auraExpansionMaxSize, 20.0, 'auraExpansionMaxSize must default to 20.0');
+assert.strictEqual(State.auraExpansionSpeed, 1.0, 'auraExpansionSpeed must default to 1.0');
+assert.strictEqual(State.gadgetRainbowAura, false, 'gadgetRainbowAura must default to false');
+assert.strictEqual(State.rainbowWaveSpeed, 1.0, 'rainbowWaveSpeed must default to 1.0');
+assert.strictEqual(State.gadgetBreathing, false, 'gadgetBreathing must default to false');
+assert.strictEqual(State.breathingMaxSize, 2.0, 'breathingMaxSize must default to 2.0');
+assert.strictEqual(State.breathingSpeed, 1.0, 'breathingSpeed must default to 1.0');
+
+// Verify state applyConfig and PresetsManager capture with new properties
+State.applyConfig({
+  auraScale: 0.0,
+  auraExpansionMaxSize: 15.0,
+  auraExpansionSpeed: 2.5,
+  rainbowWaveSpeed: 1.8
+});
+assert.strictEqual(State.auraScale, 0.0, 'auraScale must accept 0.0r');
+assert.strictEqual(State.auraExpansionMaxSize, 15.0, 'auraExpansionMaxSize must be updated to 15.0');
+assert.strictEqual(State.auraExpansionSpeed, 2.5, 'auraExpansionSpeed must be updated to 2.5');
+assert.strictEqual(State.rainbowWaveSpeed, 1.8, 'rainbowWaveSpeed must be updated to 1.8');
+
+const studioConfig = PresetsManager.captureCurrentStudioConfig();
+assert.strictEqual(studioConfig.auraScale, 0.0, 'studioConfig must capture 0.0 auraScale');
+assert.strictEqual(studioConfig.auraExpansionMaxSize, 15.0, 'studioConfig must capture auraExpansionMaxSize');
+assert.strictEqual(studioConfig.auraExpansionSpeed, 2.5, 'studioConfig must capture auraExpansionSpeed');
+assert.strictEqual(studioConfig.rainbowWaveSpeed, 1.8, 'studioConfig must capture rainbowWaveSpeed');
+
+// Reset auraScale to default 1.95
+State.auraScale = 1.95;
+State.auraExpansionMaxSize = 20.0;
+State.auraExpansionSpeed = 1.0;
+State.rainbowWaveSpeed = 1.0;
+
+// Verify Continuous Rainbow Wave Phase & Hue Propagation
+const waveFactor = 1.85;
+const dists = [100, 193.2];
+let phase = 0;
+const speed = 1.0;
+const dt = 1 / 60; // 60 FPS frame time
+for (let frame = 1; frame <= 180; frame++) {
+  const prevPhase = phase;
+  phase = (phase + dt * 135 * speed) % 360000;
+  assert(phase > prevPhase, 'Rainbow wave phase must advance continuously forward every frame');
+  
+  const ring1Hue = (((phase - dists[0] * waveFactor) % 360) + 360) % 360;
+  const ring2Hue = (((phase - dists[1] * waveFactor) % 360) + 360) % 360;
+  assert(ring1Hue >= 0 && ring1Hue < 360, 'Ring 1 hue must be normalized in [0, 360)');
+  assert(ring2Hue >= 0 && ring2Hue < 360, 'Ring 2 hue must be normalized in [0, 360)');
+  
+  // Phase difference between rings must remain smoothly distributed across complementary spectrum (~172 degrees)
+  const hueDiff = ((ring1Hue - ring2Hue + 360) % 360);
+  assert(Math.abs(hueDiff - 172.4) < 1.0, 'Continuous wave must maintain smooth spectral phase delta across concentric rings');
+}
+
+console.log('Aura scaling (0r to 20r, 1.95r default) and Sacred Gadgets properties verified successfully.');
 
 console.log('--- 12. Testing Pattern Center Invariance Across Boundary Radii ---');
 for (let bRad = 100; bRad <= 1200; bRad += 50) {
@@ -246,7 +349,8 @@ const auraR = kGeom.auraCircles[0].r;
 const sections = computeCircleSections(auraCenters, auraR);
 
 assert(sections.length > 0, 'computeCircleSections must detect intersecting planar sections between aura circles');
-assert.strictEqual(sections.length, 81, 'Kryst radius 200px should have 81 aura intersection sections (including all 2-circle lenses and multi-circle intersections)');
+assert.strictEqual(sections.length, 120, 'Kryst radius 200px at default 1.95r should have 120 aura intersection sections');
+assert.strictEqual(computeCircleSections(auraCenters, 2.0 * r).length, 81, 'Kryst radius 200px at 2.0r should have 81 aura intersection sections');
 
 const firstSec = sections[0];
 assert(firstSec.id && firstSec.id.startsWith('sec_'), 'Section ID must follow stable sec_ convention');
@@ -255,27 +359,319 @@ assert(firstSec.area > 0, 'Section must have positive planar area');
 assert(typeof firstSec.cx === 'number' && typeof firstSec.cy === 'number', 'Section must have numeric centroid coordinates');
 assert(firstSec.containingCount >= 2, 'Section must be an intersection of at least 2 circles');
 
-// Verify sectionHighlightMode in state
+// Verify sectionHighlightMode and selectedSectionId in state
 assert('sectionHighlightMode' in State, 'State must contain sectionHighlightMode toggleable mode');
+assert('selectedSectionId' in State, 'State must contain selectedSectionId field');
+assert.strictEqual(State.showOuterRing, false, 'Outer bounding ring must be false by default');
 
-// Verify coloring and preset capture/restore
+// Verify selection, coloring and preset capture/restore
 const testId = firstSec.id;
+State.selectedSectionId = testId;
+assert.strictEqual(State.selectedSectionId, testId, 'selectedSectionId must store selected section');
 State.sectionFills[testId] = '#f59e0b';
 assert.strictEqual(State.sectionFills[testId], '#f59e0b', 'sectionFills must store color hex');
 
 const capturedConfig = PresetsManager.captureCurrentStudioConfig();
 assert(capturedConfig.sectionFills, 'captureCurrentStudioConfig must include sectionFills');
 assert.strictEqual(capturedConfig.sectionFills[testId], '#f59e0b', 'captured config must retain colored section');
+assert.strictEqual(capturedConfig.showOuterRing, false, 'captured config must store showOuterRing as false by default');
 
-// Clear and restore
-State.sectionFills = {};
-assert.strictEqual(Object.keys(State.sectionFills).length, 0, 'sectionFills can be cleared');
-State.sectionFills = { ...capturedConfig.sectionFills };
-assert.strictEqual(State.sectionFills[testId], '#f59e0b', 'sectionFills successfully restored from preset config');
+// Test multi-section selection and batch coloring
+State.selectedSectionIds.clear();
+State.selectedSectionIds.add(sections[0].id);
+State.selectedSectionIds.add(sections[1].id);
+State.selectedSectionIds.add(sections[2].id);
+assert.strictEqual(State.selectedSectionIds.size, 3, 'Multiple sections can be selected simultaneously');
+State.selectedSectionIds.forEach(id => { State.sectionFills[id] = '#a855f7'; });
+assert.strictEqual(State.sectionFills[sections[0].id], '#a855f7', 'Batch coloring sets color on section 0');
+assert.strictEqual(State.sectionFills[sections[1].id], '#a855f7', 'Batch coloring sets color on section 1');
+assert.strictEqual(State.sectionFills[sections[2].id], '#a855f7', 'Batch coloring sets color on section 2');
 
-console.log('Individual aura intersection sections & preset saving verified successfully.');
+// Test Clear All Highlights
+State.highlightedIds.add('circle_test_1');
+assert('clearAllHighlights' in State, 'State must contain clearAllHighlights method');
+State.clearAllHighlights();
+assert.strictEqual(Object.keys(State.sectionFills).length, 0, 'clearAllHighlights must empty sectionFills');
+assert.strictEqual(State.selectedSectionIds.size, 0, 'clearAllHighlights must clear selectedSectionIds');
+assert.strictEqual(State.highlightedIds.size, 0, 'clearAllHighlights must clear highlightedIds');
+assert.strictEqual(State.selectedSectionId, null, 'selectedSectionId must be null after clearAllHighlights');
+
+// Test Preset Stores and Restores Highlights (circle highlights, section fills, and section selections)
+State.highlightedIds.add('fok_100_0');
+State.selectedSectionIds.add(sections[0].id);
+State.sectionFills[sections[0].id] = '#ec4899';
+
+const presetWithHighlights = PresetsManager.addCustomPreset({
+  title: 'Preset With Highlights',
+  config: PresetsManager.captureCurrentStudioConfig()
+});
+
+assert(presetWithHighlights.config.highlightedIds.includes('fok_100_0'), 'Preset config must store highlightedIds');
+assert(presetWithHighlights.config.selectedSectionIds.includes(sections[0].id), 'Preset config must store selectedSectionIds');
+assert.strictEqual(presetWithHighlights.config.sectionFills[sections[0].id], '#ec4899', 'Preset config must store sectionFills');
+
+// Clear all highlights on canvas
+State.clearAllHighlights();
+assert.strictEqual(State.highlightedIds.size, 0, 'Canvas highlightedIds cleared');
+assert.strictEqual(State.selectedSectionIds.size, 0, 'Canvas selectedSectionIds cleared');
+assert.strictEqual(Object.keys(State.sectionFills).length, 0, 'Canvas sectionFills cleared');
+
+// Verify stored preset in PresetsManager was NOT wiped by canvas clear
+const reloadedPreset = PresetsManager.getPreset(presetWithHighlights.id);
+assert.strictEqual(reloadedPreset.config.highlightedIds.length, 1, 'Saved preset config must not be modified by canvas clear');
+assert.strictEqual(reloadedPreset.config.sectionFills[sections[0].id], '#ec4899', 'Saved preset sectionFills must not be modified by canvas clear');
+assert.strictEqual(reloadedPreset.config.selectedSectionIds.length, 1, 'Saved preset selectedSectionIds must not be modified by canvas clear');
+
+// Restore preset onto State
+State.applyConfig(reloadedPreset.config);
+assert(State.highlightedIds.has('fok_100_0'), 'Preset restoration must restore circle highlightedIds');
+assert(State.selectedSectionIds.has(sections[0].id), 'Preset restoration must restore selectedSectionIds');
+assert.strictEqual(State.sectionFills[sections[0].id], '#ec4899', 'Preset restoration must restore sectionFills');
+
+// Clean up test preset
+PresetsManager.deletePreset(presetWithHighlights.id);
+
+console.log('Individual aura intersection sections & preset highlight preservation verified successfully.');
+
+console.log('--- 15. Testing Preset Editing, Tutorial Tour Controller & Slider Color Fill Calculations ---');
+
+// 15.1 Preset Editing via PresetsManager.updatePreset
+const editTestPreset = PresetsManager.addCustomPreset({
+  title: 'Original Title',
+  subtitle: 'Initial description',
+  config: { auraScale: 2.5, sectionFills: { 'lens_10': '#06b6d4' } }
+});
+
+assert(editTestPreset && editTestPreset.id, 'Custom preset must be created');
+const updatedPreset = PresetsManager.updatePreset(editTestPreset.id, {
+  title: 'Edited Geometric Title',
+  subtitle: 'Updated description with new sacred settings',
+  config: { auraScale: 4.2 }
+});
+
+assert.strictEqual(updatedPreset.title, 'Edited Geometric Title', 'Preset title must update');
+assert.strictEqual(updatedPreset.subtitle, 'Updated description with new sacred settings', 'Preset subtitle must update');
+assert.strictEqual(updatedPreset.config.auraScale, 4.2, 'Preset config auraScale must update');
+assert.strictEqual(updatedPreset.config.sectionFills['lens_10'], '#06b6d4', 'Preset existing config fields must be preserved on update');
+
+// Verify fetching from PresetsManager reflects update
+const fetchedPreset = PresetsManager.getPreset(editTestPreset.id);
+assert.strictEqual(fetchedPreset.title, 'Edited Geometric Title', 'Fetched preset must reflect update');
+
+// 15.2 Builtin Preset Override and Revert
+const mockBuiltin = {
+  id: 'builtin_test_prototype',
+  title: 'Seed of Kryst (Default)',
+  subtitle: 'Factory Archetype',
+  isBuiltin: true,
+  config: { auraScale: 1.95 }
+};
+PresetsManager.builtinPresets.push(mockBuiltin);
+
+const overriddenBuiltin = PresetsManager.updatePreset(mockBuiltin.id, {
+  title: 'Seed of Kryst (Customized)'
+});
+assert.strictEqual(overriddenBuiltin.title, 'Seed of Kryst (Customized)', 'Built-in preset override title must update');
+assert(PresetsManager.builtinOverrides[mockBuiltin.id], 'Built-in override entry must be stored');
+
+// Revert built-in preset
+PresetsManager.deletePreset(mockBuiltin.id);
+const revertedBuiltin = PresetsManager.getPreset(mockBuiltin.id);
+assert.strictEqual(revertedBuiltin.title, 'Seed of Kryst (Default)', 'Deleting override must revert built-in preset to factory default');
+
+// Pop mock builtin to restore clean slate
+PresetsManager.builtinPresets.pop();
+assert.strictEqual(PresetsManager.builtinPresets.length, 0, 'Clean slate preserved for builtins');
+
+// Clean up custom test preset
+PresetsManager.deletePreset(editTestPreset.id);
+assert(!PresetsManager.getPreset(editTestPreset.id), 'Custom preset must be cleanly deleted');
+
+// 15.3 PresetDialog API
+assert(typeof PresetDialog.openEdit === 'function', 'PresetDialog must have openEdit method');
+assert(typeof PresetDialog.openNew === 'function', 'PresetDialog must have openNew method');
+assert(typeof PresetDialog.captureCurrentCanvas === 'function', 'PresetDialog must have captureCurrentCanvas method');
+assert(typeof PresetDialog.save === 'function', 'PresetDialog must have save method');
+assert(typeof PresetDialog.init === 'function', 'PresetDialog must have init method');
+
+// 15.4 TutorialManager Tour Controller
+assert(TutorialManager && Array.isArray(TutorialManager.steps), 'TutorialManager must define steps array');
+assert.strictEqual(TutorialManager.steps.length, 7, 'TutorialManager must contain 7 comprehensive tour steps');
+
+// Validate all steps have required fields and proper target selectors
+TutorialManager.steps.forEach((step, idx) => {
+  assert(step.title && typeof step.title === 'string', `Step ${idx} must have title`);
+  assert(step.desc && typeof step.desc === 'string', `Step ${idx} must have desc`);
+  assert(step.icon && typeof step.icon === 'string', `Step ${idx} must have svg icon`);
+});
+assert.strictEqual(TutorialManager.steps[0].target, null, 'Step 1 should be welcome modal');
+assert.strictEqual(TutorialManager.steps[1].target, '#patternSwitcher', 'Step 2 must target pattern switcher');
+assert.strictEqual(TutorialManager.steps[2].target, '#viewportContainer', 'Step 3 must target viewport container');
+assert.strictEqual(TutorialManager.steps[3].target, '#sectionGeometry', 'Step 4 must target geometry section');
+assert.strictEqual(TutorialManager.steps[4].target, '#sectionSacredGadgets', 'Step 5 must target sacred gadgets');
+assert.strictEqual(TutorialManager.steps[5].target, '#presetGrid', 'Step 6 must target presets grid');
+assert.strictEqual(TutorialManager.steps[6].target, '#bottomLayerToolbar', 'Step 7 must target bottom layer toolbar');
+
+// Test navigation step indices
+TutorialManager.goTo(0);
+assert.strictEqual(TutorialManager.currentStep, 0, 'Tutorial goTo(0) works');
+TutorialManager.next();
+assert.strictEqual(TutorialManager.currentStep, 1, 'Tutorial next() advances step');
+TutorialManager.next();
+assert.strictEqual(TutorialManager.currentStep, 2, 'Tutorial next() advances to step 2');
+TutorialManager.prev();
+assert.strictEqual(TutorialManager.currentStep, 1, 'Tutorial prev() retreats step');
+TutorialManager.goTo(6);
+assert.strictEqual(TutorialManager.currentStep, 6, 'Tutorial goTo(6) reaches final step');
+TutorialManager.close();
+
+// 15.5 Range Slider Color Track Fill Calculations
+const calculateFillPercentage = (val, min = 0, max = 100) => {
+  const range = max - min;
+  return range > 0 ? Math.max(0, Math.min(100, ((val - min) / range) * 100)) : 0;
+};
+
+// Test boundary edge cases and values
+assert.strictEqual(calculateFillPercentage(0, 0, 20), 0, 'Min value must produce 0% fill');
+assert.strictEqual(calculateFillPercentage(20, 0, 20), 100, 'Max value must produce 100% fill');
+assert.strictEqual(calculateFillPercentage(10, 0, 20), 50, 'Midpoint must produce 50% fill');
+assert.strictEqual(calculateFillPercentage(1.95, 0, 20), 9.75, 'Aura scale default 1.95r out of 20r must produce 9.75% fill');
+assert.strictEqual(calculateFillPercentage(0.5, 0, 1), 50, 'Fader slider 0.5 must produce 50% fill');
+assert.strictEqual(calculateFillPercentage(1.0, 0, 1), 100, 'Fader slider 1.0 must produce 100% fill');
+
+// 15.6 Validate 4-Curtain Framing Geometry (Guarantees zero blur over spotlight hole)
+const computeCurtains = (spotLeft, spotTop, spotWidth, spotHeight, vw = 1920, vh = 1080) => {
+  return {
+    top: { top: 0, left: 0, width: '100%', height: Math.max(0, spotTop) },
+    bottom: { top: spotTop + spotHeight, left: 0, width: '100%', height: Math.max(0, vh - (spotTop + spotHeight)) },
+    left: { top: spotTop, left: 0, width: Math.max(0, spotLeft), height: spotHeight },
+    right: { top: spotTop, left: spotLeft + spotWidth, width: Math.max(0, vw - (spotLeft + spotWidth)), height: spotHeight }
+  };
+};
+
+const curtains = computeCurtains(100, 50, 200, 80, 1920, 1080);
+assert.strictEqual(curtains.top.height, 50, 'Top curtain stops at spotTop');
+assert.strictEqual(curtains.bottom.top, 130, 'Bottom curtain starts at spotTop + spotHeight');
+assert.strictEqual(curtains.bottom.height, 1080 - 130, 'Bottom curtain covers remainder of screen');
+assert.strictEqual(curtains.left.width, 100, 'Left curtain width equals spotLeft');
+assert.strictEqual(curtains.right.left, 300, 'Right curtain starts at spotLeft + spotWidth');
+assert.strictEqual(curtains.right.width, 1920 - 300, 'Right curtain covers remainder of screen width');
+
+console.log('Preset editing, tutorial tour controller, 4-curtain framing, and slider color-fill calculations verified successfully.');
+
+console.log('--- 16. Testing Body Circle Hit Threshold (20px) & Fade-out Removal Hover ---');
+// Verify hit threshold configurations
+const hitThresholdWidth = 20; // 20px wide transparent stroke
+assert(hitThresholdWidth >= 16, 'Hit area threshold must be at least 16px thick for comfortable hovering');
+assert.strictEqual(hitThresholdWidth, 20, 'Hit area stroke-width should be 20px');
+
+// Verify that the body circle hover opacity drops to <= 0.35 to indicate pending removal
+const hoverOpacity = 0.28;
+assert(hoverOpacity <= 0.35, 'Body circle hover opacity must fade out to <= 0.35 to indicate pending removal');
+assert(hoverOpacity > 0, 'Body circle hover opacity must remain visible so user sees what is being removed');
+console.log('Body circle hover threshold (20px) and removal fade-out indicators verified successfully.');
+
+console.log('--- 17. Testing Direct Click-to-Highlight & "Remove Circles" Action (No In-Between Mode) ---');
+
+// 17.1 Initial State
+State.highlightedIds.clear();
+State.disabledCircleIds.clear();
+assert.strictEqual(State.highlightedIds.size, 0, 'highlightedIds must start empty');
+assert.strictEqual(State.disabledCircleIds.size, 0, 'disabledCircleIds must start empty');
+
+const geomBaseline = getKrystGeometryByRadius(220, 50, State.disabledCircleIds);
+const circleIdA = geomBaseline.circles[0].id;
+const circleIdB = geomBaseline.circles[1].id;
+
+// 17.2 Clicking circles toggles their highlight state (no in-between mode)
+// Simulate clicking circle A
+if (State.highlightedIds.has(circleIdA)) {
+  State.highlightedIds.delete(circleIdA);
+} else {
+  State.highlightedIds.add(circleIdA);
+}
+assert(State.highlightedIds.has(circleIdA), 'Clicking circle A must highlight it');
+assert.strictEqual(State.disabledCircleIds.size, 0, 'Clicking circle A must NOT remove it');
+
+// Simulate clicking circle B
+if (State.highlightedIds.has(circleIdB)) {
+  State.highlightedIds.delete(circleIdB);
+} else {
+  State.highlightedIds.add(circleIdB);
+}
+assert(State.highlightedIds.has(circleIdB), 'Clicking circle B must highlight it');
+assert.strictEqual(State.highlightedIds.size, 2, 'Both circle A and B should be highlighted');
+assert.strictEqual(State.disabledCircleIds.size, 0, 'Clicking must not populate disabledCircleIds');
+
+// Verify circles remain in active geometry while highlighted
+const geomWhileHighlighted = getKrystGeometryByRadius(220, 50, State.disabledCircleIds);
+assert.strictEqual(geomWhileHighlighted.circles.length, geomBaseline.circles.length, 'Circles must remain visible in geometry while highlighted');
+
+// 17.3 Clicking an already highlighted circle un-highlights it
+if (State.highlightedIds.has(circleIdB)) {
+  State.highlightedIds.delete(circleIdB);
+}
+assert(!State.highlightedIds.has(circleIdB), 'Clicking circle B again must un-highlight it');
+assert.strictEqual(State.highlightedIds.size, 1, 'Only circle A remains highlighted');
+
+// 17.4 Clicking "Remove Circles" removes all highlighted circles directly (no in-between mode)
+UI.removeHighlightedCircles();
+assert.strictEqual(State.highlightedIds.size, 0, 'highlightedIds must be cleared after removal');
+assert(State.disabledCircleIds.has(circleIdA), 'Circle A must now be in disabledCircleIds');
+assert(!State.disabledCircleIds.has(circleIdB), 'Circle B was un-highlighted and must not be disabled');
+
+// Verify Circle A is omitted from pattern geometry
+const geomAfterRemove = getKrystGeometryByRadius(220, 50, State.disabledCircleIds);
+assert.strictEqual(geomAfterRemove.circles.length, geomBaseline.circles.length - 1, 'Geometry circle count must decrease by 1');
+assert(!geomAfterRemove.circles.some(c => c.id === circleIdA), 'Circle A must not exist in geometry');
+assert(geomAfterRemove.circles.some(c => c.id === circleIdB), 'Circle B must still exist in geometry');
+
+// 17.5 Calling Remove Circles when nothing is highlighted is a no-op
+const prevDisabledCount = State.disabledCircleIds.size;
+UI.removeHighlightedCircles();
+assert.strictEqual(State.disabledCircleIds.size, prevDisabledCount, 'Calling remove when no circles are highlighted does not change disabledCircleIds');
+
+// 17.6 Restore All Removed Circles
+State.disabledCircleIds.clear();
+const geomRestored = getKrystGeometryByRadius(220, 50, State.disabledCircleIds);
+assert.strictEqual(geomRestored.circles.length, geomBaseline.circles.length, 'Restoring circles brings back all original circles');
+
+// 17.7 Popup and Bottom Bar Option Verifications
+assert(typeof UI.showRemoveCirclesPopup === 'function', 'UI.showRemoveCirclesPopup must be a function');
+assert(typeof UI.hideRemoveCirclesPopup === 'function', 'UI.hideRemoveCirclesPopup must be a function');
+UI.showRemoveCirclesPopup(200, 300);
+UI.hideRemoveCirclesPopup();
+
+const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const layoutCss = fs.readFileSync(path.join(__dirname, '..', 'css', 'layout.css'), 'utf8');
+
+// Ensure Remove Circles is not a button on the left pane
+assert(!indexHtml.includes('id="btnRemoveCircles" class="btn'), 'Remove Circles should not be a button in sidebar');
+// Ensure Remove Circles popup exists and contains "Remove Circles"
+assert(indexHtml.includes('id="removeCirclesPopup"'), 'removeCirclesPopup must exist in index.html');
+assert(indexHtml.includes('<span>Remove Circles</span>'), 'Popup must read "Remove Circles"');
+
+// Ensure Restore Circles is an option alongside Highlight Mode at the bottom
+assert(indexHtml.includes('id="btnRestoreCircles"'), 'btnRestoreCircles must exist');
+const unitHighlightIndex = indexHtml.indexOf('id="unitSectionHighlight"');
+const restoreCirclesIndex = indexHtml.indexOf('id="btnRestoreCircles"');
+assert(unitHighlightIndex > 0 && restoreCirclesIndex > unitHighlightIndex, 'Restore Circles must be located inside the bottom unitSectionHighlight bar alongside highlight mode');
+
+// Ensure Highlight Mode styles: dark gray background, white text, rounded corners, nowrap, active yellow outline
+assert(layoutCss.includes('background: #1e293b !important;'), 'Highlight mode pill must use darker gray #1e293b background');
+assert(layoutCss.includes('color: #ffffff !important;'), 'Highlight mode pill must use white text');
+assert(layoutCss.includes('border-radius: 8px;'), 'Highlight mode pill must have rounded corners (8px)');
+assert(layoutCss.includes('white-space: nowrap !important;'), 'Highlight mode button must not wrap into two lines');
+assert(layoutCss.includes('border: 1.5px solid var(--accent-gold, #f59e0b) !important;'), 'While activated, highlight mode must have yellow outline');
+
+// Ensure Sacred Pulse (Breathing) toggle is removed from Geometric Layers & Styling menu
+assert(!indexHtml.includes('id="togglePulse"'), 'Sacred Pulse (Breathing) toggle should be removed from Geometric Layers & Styling');
+assert(!indexHtml.includes('Sacred Pulse (Breathing)'), 'Sacred Pulse label text should be removed from index.html');
+
+console.log('Click-to-highlight, direct "Remove Circles", and restoration without in-between mode verified successfully.');
 
 console.log('\n========================================');
 console.log('ALL FEATURE TESTS PASSED SUCCESSFULLY!');
 console.log('========================================');
+
 

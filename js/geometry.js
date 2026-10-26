@@ -928,7 +928,7 @@ const RING_NOTES_DATA = [
  * @param {boolean} [fullScreen=false] - If true, tiles across extended viewport.
  * @returns {Object} Geometry packet with circles, auraCircles, guides, ringCounts, stageName.
  */
-function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 2.0) {
+function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 1.95) {
   const maxRadiusInR = fullScreen ? 40 : Math.max(2, boundaryRadius / r);
   const lattice = getKrystUnitLattice(Math.ceil(maxRadiusInR));
   const maxD = maxRadiusInR + EPSILON;
@@ -937,7 +937,7 @@ function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fu
   const auraCircles = [];
   const ringCounts = new Map();
   let totalCircles = 0;
-  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 2.0;
+  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 1.95;
 
   for (let i = 0; i < lattice.circles.length; i++) {
     const c = lattice.circles[i];
@@ -1038,7 +1038,7 @@ function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fu
  * @param {boolean} [fullScreen=false] - If true, tiles across extended viewport.
  * @returns {Object} Geometry packet with circles, auraCircles, guides, ringCounts, stageName.
  */
-function getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 2.0) {
+function getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 1.95) {
   const maxLayers = fullScreen ? 30 : Math.max(1, Math.ceil(boundaryRadius / (2 * r)));
   const rawGeom = getFlowerOfLifeGeometry(maxLayers, r);
 
@@ -1047,7 +1047,7 @@ function getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds = new Se
   const ringCounts = new Map();
   let totalCircles = 0;
   const maxD = fullScreen ? Infinity : boundaryRadius + EPSILON;
-  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 2.0;
+  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 1.95;
 
   for (let i = 0; i < rawGeom.points.length; i++) {
     const pt = rawGeom.points[i];
@@ -1932,7 +1932,7 @@ const SacredMath = {
    * @returns {Array<{id: string, d: string, cx: number, cy: number, area: number}>}
    */
   computeCircleSections(circles, R) {
-    if (!circles || circles.length === 0) return [];
+    if (!circles || circles.length === 0 || R <= 0) return [];
 
     const fmt = (n) => {
       const s = n.toFixed(3);

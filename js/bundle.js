@@ -938,7 +938,7 @@ const RING_NOTES_DATA = [
  * @param {boolean} [fullScreen=false] - If true, tiles across extended viewport.
  * @returns {Object} Geometry packet with circles, auraCircles, guides, ringCounts, stageName.
  */
-function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 2.0) {
+function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 1.95) {
   const maxRadiusInR = fullScreen ? 40 : Math.max(2, boundaryRadius / r);
   const lattice = getKrystUnitLattice(Math.ceil(maxRadiusInR));
   const maxD = maxRadiusInR + EPSILON;
@@ -947,7 +947,7 @@ function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fu
   const auraCircles = [];
   const ringCounts = new Map();
   let totalCircles = 0;
-  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 2.0;
+  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 1.95;
 
   for (let i = 0; i < lattice.circles.length; i++) {
     const c = lattice.circles[i];
@@ -1048,7 +1048,7 @@ function getKrystGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fu
  * @param {boolean} [fullScreen=false] - If true, tiles across extended viewport.
  * @returns {Object} Geometry packet with circles, auraCircles, guides, ringCounts, stageName.
  */
-function getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 2.0) {
+function getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds = new Set(), fullScreen = false, auraScale = 1.95) {
   const maxLayers = fullScreen ? 30 : Math.max(1, Math.ceil(boundaryRadius / (2 * r)));
   const rawGeom = getFlowerOfLifeGeometry(maxLayers, r);
 
@@ -1057,7 +1057,7 @@ function getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds = new Se
   const ringCounts = new Map();
   let totalCircles = 0;
   const maxD = fullScreen ? Infinity : boundaryRadius + EPSILON;
-  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 2.0;
+  const effectiveAuraScale = (auraScale !== undefined && auraScale !== null) ? Number(auraScale) : 1.95;
 
   for (let i = 0; i < rawGeom.points.length; i++) {
     const pt = rawGeom.points[i];
@@ -1942,7 +1942,7 @@ const SacredMath = {
    * @returns {Array<{id: string, d: string, cx: number, cy: number, area: number}>}
    */
   computeCircleSections(circles, R) {
-    if (!circles || circles.length === 0) return [];
+    if (!circles || circles.length === 0 || R <= 0) return [];
 
     const fmt = (n) => {
       const s = n.toFixed(3);
@@ -3493,10 +3493,10 @@ const State = {
 
   // Dynamic Boundary Circle (E-05)
   boundaryRadius: 200, // in pixels (default 4 * r)
-  disabledCircleIds: new Set(), // Body circles removed by the user
+  disabledCircleIds: new Set(), // Body circles permanently removed by the user
 
-  // Aura Radius Scale Factor (2.0r to 6.0r body radius, default 2.0)
-  auraScale: 2.0,
+  // Aura Radius Scale Factor (1.1r to 20.0r body radius, default 1.95)
+  auraScale: 1.95,
 
   // Lattice Geometry
   N: 2,
@@ -3513,7 +3513,7 @@ const State = {
   set showBaseCircles(v) { this.showBodyCircles = Boolean(v); },
 
   showGuides: false,
-  showOuterRing: true,
+  showOuterRing: false, // Default outer ring visibility set to false per user request
   showBoundaryPetals: false,
   showCenterDots: false,
   showIntersections: false,
@@ -3530,6 +3530,16 @@ const State = {
   showStoryPanel: false, // R-A12: Story of Kryst drawer
   showRingNotes: false, // R-A13: Notes on current ring
 
+  // Sacred Gadgets & Overlays (Concurrent Real-Time Animations)
+  gadgetAuraExpansion: false,
+  auraExpansionMaxSize: 20.0,
+  auraExpansionSpeed: 1.0,
+  gadgetRainbowAura: false,
+  rainbowWaveSpeed: 1.0,
+  gadgetBreathing: false,
+  breathingMaxSize: 2.0,
+  breathingSpeed: 1.0,
+
   // Offset Path Generator (R-A5)
   offsetPath: {
     enabled: false,
@@ -3544,6 +3554,15 @@ const State = {
 
   // Individual Section Highlighting & Colored Intersections (Venn diagram style)
   sectionHighlightMode: false, // Dedicated mode for highlighting & coloring intersections
+  selectedSectionIds: new Set(), // Set of currently selected intersection section IDs for batch fill
+  get selectedSectionId() {
+    return this.selectedSectionIds.values().next().value || null;
+  },
+  set selectedSectionId(v) {
+    if (!this.selectedSectionIds) this.selectedSectionIds = new Set();
+    this.selectedSectionIds.clear();
+    if (v) this.selectedSectionIds.add(v);
+  },
   sectionFills: {}, // { [sectionId]: colorHex }
 
   // Aesthetics
@@ -3660,6 +3679,86 @@ const State = {
 
   clampNumber(val, min, max, defaultVal) {
     return clampNumber(val, min, max, defaultVal);
+  },
+
+  /**
+   * Resets all intersection fills, selected sections, and highlighted circles.
+   */
+  clearAllHighlights() {
+    this.sectionFills = {};
+    if (this.selectedSectionIds) this.selectedSectionIds.clear();
+    if (this.highlightedIds) this.highlightedIds.clear();
+    if (this.highlightedSectionIds) this.highlightedSectionIds.clear();
+  },
+
+  /**
+   * Applies a studio configuration object to State.
+   * @param {Object} cfg
+   */
+  applyConfig(cfg) {
+    if (!cfg || typeof cfg !== 'object') return;
+    if (cfg.r !== undefined) this.r = clampNumber(cfg.r, 15, 200, 50);
+    if (cfg.boundaryRadius !== undefined) this.boundaryRadius = cfg.boundaryRadius;
+    if (cfg.N !== undefined) this.N = cfg.N;
+    if (cfg.auraScale !== undefined) this.auraScale = clampNumber(cfg.auraScale, 0.0, 20.0, 1.95);
+    if (cfg.auraExpansionMaxSize !== undefined) this.auraExpansionMaxSize = clampNumber(cfg.auraExpansionMaxSize, 0.0, 20.0, 20.0);
+    if (cfg.auraExpansionSpeed !== undefined) this.auraExpansionSpeed = clampNumber(cfg.auraExpansionSpeed, 0.1, 3.0, 1.0);
+    if (cfg.rainbowWaveSpeed !== undefined) this.rainbowWaveSpeed = clampNumber(cfg.rainbowWaveSpeed, 0.1, 3.0, 1.0);
+    if (cfg.gadgetAuraExpansion !== undefined) this.gadgetAuraExpansion = Boolean(cfg.gadgetAuraExpansion);
+    if (cfg.gadgetRainbowAura !== undefined) this.gadgetRainbowAura = Boolean(cfg.gadgetRainbowAura);
+    if (cfg.gadgetBreathing !== undefined) this.gadgetBreathing = Boolean(cfg.gadgetBreathing);
+    if (cfg.breathingMaxSize !== undefined) this.breathingMaxSize = clampNumber(cfg.breathingMaxSize, 1.05, 2.0, 2.0);
+    if (cfg.breathingSpeed !== undefined) this.breathingSpeed = clampNumber(cfg.breathingSpeed, 0.1, 3.0, 1.0);
+    if (cfg.activePattern !== undefined) this.activePattern = cfg.activePattern;
+    if (cfg.bodyOpacity !== undefined) this.bodyOpacity = cfg.bodyOpacity;
+    if (cfg.auraOpacity !== undefined) this.auraOpacity = cfg.auraOpacity;
+    if (cfg.showBodyCircles !== undefined) this.showBodyCircles = cfg.showBodyCircles;
+    if (cfg.showAuraFlower !== undefined) this.showAuraFlower = cfg.showAuraFlower;
+    if (cfg.bodyAuraMix !== undefined) this.bodyAuraMix = cfg.bodyAuraMix;
+
+    // Highlights
+    if (!this.highlightedIds) this.highlightedIds = new Set();
+    this.highlightedIds.clear();
+    if (Array.isArray(cfg.highlightedIds)) {
+      cfg.highlightedIds.forEach(id => this.highlightedIds.add(id));
+    }
+
+    if (!this.selectedSectionIds) this.selectedSectionIds = new Set();
+    this.selectedSectionIds.clear();
+    if (Array.isArray(cfg.selectedSectionIds)) {
+      cfg.selectedSectionIds.forEach(id => this.selectedSectionIds.add(id));
+    }
+
+    if (!this.highlightedSectionIds) this.highlightedSectionIds = new Set();
+    this.highlightedSectionIds.clear();
+    if (Array.isArray(cfg.highlightedSectionIds)) {
+      cfg.highlightedSectionIds.forEach(id => this.highlightedSectionIds.add(id));
+    }
+
+    this.sectionFills = (cfg.sectionFills && typeof cfg.sectionFills === 'object') ? { ...cfg.sectionFills } : {};
+
+    if (!this.disabledCircleIds) this.disabledCircleIds = new Set();
+    this.disabledCircleIds.clear();
+    if (Array.isArray(cfg.disabledCircleIds)) {
+      cfg.disabledCircleIds.forEach(id => this.disabledCircleIds.add(id));
+    }
+
+    if (!this.coloredShapesMap) this.coloredShapesMap = new Map();
+    this.coloredShapesMap.clear();
+    if (Array.isArray(cfg.coloredShapesMap)) {
+      cfg.coloredShapesMap.forEach(([k, v]) => this.coloredShapesMap.set(k, v));
+    }
+
+    if (cfg.circleRainbow !== undefined) this.circleRainbow = cfg.circleRainbow;
+    if (cfg.ringSpectral !== undefined) this.ringSpectral = cfg.ringSpectral;
+    if (cfg.offsetPath !== undefined) this.offsetPath = { ...cfg.offsetPath };
+    if (cfg.fullScreenTiling !== undefined) this.fullScreenTiling = cfg.fullScreenTiling;
+    if (cfg.showSOHOE !== undefined) this.showSOHOE = cfg.showSOHOE;
+    if (cfg.showHexagramEyes !== undefined) this.showHexagramEyes = cfg.showHexagramEyes;
+    if (cfg.showGuides !== undefined) this.showGuides = cfg.showGuides;
+    if (cfg.showOuterRing !== undefined) this.showOuterRing = cfg.showOuterRing;
+    if (cfg.showCenterDots !== undefined) this.showCenterDots = cfg.showCenterDots;
+    if (cfg.sectionHighlightMode !== undefined) this.sectionHighlightMode = Boolean(cfg.sectionHighlightMode);
   }
 };
 
@@ -3710,17 +3809,44 @@ const PresetsManager = {
 
   loadFromStorage() {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      this.customPresets = stored ? JSON.parse(stored) : [];
-      if (!Array.isArray(this.customPresets)) this.customPresets = [];
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            this.customPresets = parsed;
+          } else if (parsed && typeof parsed === 'object') {
+            // Normalize object-keyed custom presets to array
+            this.customPresets = Object.entries(parsed).map(([k, v]) => ({
+              id: v.id || v.key || k,
+              key: v.key || v.id || k,
+              title: v.title || 'Untitled Preset',
+              subtitle: v.subtitle || '',
+              isBuiltin: false,
+              highlightCount: v.highlightCount || ((v.config?.highlightedIds?.length || 0) + Object.keys(v.config?.sectionFills || {}).length + (v.config?.selectedSectionIds?.length || 0)) || 0,
+              config: v.config || {}
+            }));
+          } else {
+            this.customPresets = [];
+          }
+        } else {
+          this.customPresets = [];
+        }
+      } else {
+        this.customPresets = [];
+      }
     } catch (e) {
       console.warn('Failed to load custom presets from storage:', e);
       this.customPresets = [];
     }
     try {
-      const overrides = localStorage.getItem(this.OVERRIDE_KEY);
-      this.builtinOverrides = overrides ? JSON.parse(overrides) : {};
-      if (typeof this.builtinOverrides !== 'object' || this.builtinOverrides === null) {
+      if (typeof localStorage !== 'undefined') {
+        const overrides = localStorage.getItem(this.OVERRIDE_KEY);
+        this.builtinOverrides = overrides ? JSON.parse(overrides) : {};
+        if (typeof this.builtinOverrides !== 'object' || this.builtinOverrides === null) {
+          this.builtinOverrides = {};
+        }
+      } else {
         this.builtinOverrides = {};
       }
     } catch (e) {
@@ -3730,11 +3856,17 @@ const PresetsManager = {
 
   saveToStorage() {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.customPresets));
-      localStorage.setItem(this.OVERRIDE_KEY, JSON.stringify(this.builtinOverrides));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.customPresets));
+        localStorage.setItem(this.OVERRIDE_KEY, JSON.stringify(this.builtinOverrides));
+      }
     } catch (e) {
       console.error('Failed to save presets to storage:', e);
     }
+  },
+
+  saveCustomPresets() {
+    return this.saveToStorage();
   },
 
   getAllPresets() {
@@ -3752,12 +3884,15 @@ const PresetsManager = {
   },
 
   getPreset(id) {
-    return this.getAllPresets().find(p => p.id === id);
+    return this.getAllPresets().find(p => p.id === id || p.key === id);
   },
 
   addCustomPreset(preset) {
     if (!preset.id) {
-      preset.id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+      preset.id = preset.key || ('custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+    }
+    if (!preset.key) {
+      preset.key = preset.id;
     }
     preset.isBuiltin = false;
     this.customPresets.push(preset);
@@ -3801,7 +3936,7 @@ const PresetsManager = {
   },
 
   deletePreset(id) {
-    const customIndex = this.customPresets.findIndex(p => p.id === id);
+    const customIndex = this.customPresets.findIndex(p => p.id === id || p.key === id);
     if (customIndex !== -1) {
       this.customPresets.splice(customIndex, 1);
       this.saveToStorage();
@@ -3821,6 +3956,7 @@ const PresetsManager = {
     this.customPresets = [];
     this.builtinOverrides = {};
     State.sectionFills = {};
+    State.selectedSectionId = null;
     try {
       localStorage.removeItem(this.STORAGE_KEY);
       localStorage.removeItem(this.OVERRIDE_KEY);
@@ -3833,7 +3969,10 @@ const PresetsManager = {
       N: State.N,
       r: State.r,
       boundaryRadius: State.boundaryRadius,
-      auraScale: State.auraScale || 2.0,
+      auraScale: State.auraScale !== undefined ? State.auraScale : 1.95,
+      auraExpansionMaxSize: State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0,
+      auraExpansionSpeed: State.auraExpansionSpeed !== undefined ? State.auraExpansionSpeed : 1.0,
+      rainbowWaveSpeed: State.rainbowWaveSpeed !== undefined ? State.rainbowWaveSpeed : 1.0,
       bodyOpacity: State.bodyOpacity !== undefined ? State.bodyOpacity : 1.0,
       auraOpacity: State.auraOpacity !== undefined ? State.auraOpacity : 1.0,
       bodyAuraMix: State.bodyAuraMix,
@@ -3878,12 +4017,14 @@ const PresetsManager = {
       show3DTorus: State.show3DTorus,
       show3DShells: State.show3DShells,
       show3DGuides: State.show3DGuides,
-      showZeroPointMarker: State.showZeroPointMarker,
-      sliceZ: State.sliceZ,
-      sphereOpacity: State.sphereOpacity,
-      sphereRoughness: State.sphereRoughness,
-      sphereMetalness: State.sphereMetalness,
-      sectionFills: { ...(State.sectionFills || {}) }
+      activePattern: State.activePattern || 'kryst',
+      highlightedIds: Array.from(State.highlightedIds || []),
+      selectedSectionIds: Array.from(State.selectedSectionIds || []),
+      highlightedSectionIds: Array.from(State.highlightedSectionIds || []),
+      disabledCircleIds: Array.from(State.disabledCircleIds || []),
+      coloredShapesMap: Array.from(State.coloredShapesMap ? State.coloredShapesMap.entries() : []),
+      sectionFills: { ...(State.sectionFills || {}) },
+      sectionHighlightMode: Boolean(State.sectionHighlightMode)
     };
   },
 
@@ -3952,11 +4093,22 @@ const PresetsManager = {
   },
 
   renderPresetGrid() {
+    if (typeof document === 'undefined') return;
     const grid = document.getElementById('presetGrid');
     if (!grid) return;
     grid.innerHTML = '';
 
     const allPresets = this.getAllPresets();
+    if (allPresets.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 18px 12px; text-align: center; color: var(--text-faint); font-size: 0.78rem; border: 1px dashed var(--bg-panel-border); border-radius: var(--radius-sm);">
+          No saved presets yet.<br/>
+          Select circles or sections in the view, then click <strong>Save Preset</strong> (e.g. Pyramid, Dove, Shield, Pinecone, Face).
+        </div>
+      `;
+      return;
+    }
+
     const frag = document.createDocumentFragment();
 
     allPresets.forEach(preset => {
@@ -3979,8 +4131,11 @@ const PresetsManager = {
             ${isModifiedBuiltin ? '<span class="preset-badge-edited">Edited</span>' : ''}
           </div>
           <div class="preset-chip-actions">
-            <button class="preset-action-btn edit-preset-btn" title="Configure / Edit Preset" aria-label="Configure preset ${preset.title}" data-preset="${preset.id}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <button class="preset-action-btn edit-preset-btn" title="Edit Preset" aria-label="Edit preset ${preset.title}" data-preset="${preset.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
             </button>
             ${isCustom ? `
               <button class="preset-action-btn delete-preset-btn" title="Delete Preset" aria-label="Delete preset ${preset.title}" data-preset="${preset.id}">
@@ -4029,7 +4184,7 @@ const PresetsManager = {
             PresetsManager.deletePreset(preset.id);
             if (window.UI?.showToast) window.UI.showToast(`Preset "${preset.title}" deleted.`);
             if (State.activePreset === preset.id) {
-              if (window.UI?.applyPreset) window.UI.applyPreset('krystonial_comparison');
+              State.activePreset = null;
             }
           }
         });
@@ -4060,19 +4215,22 @@ const PresetsManager = {
    ========================================================================= */
 const PresetDialog = {
   currentEditingId: null,
+  _capturedConfigOverride: null,
 
   openNew() {
     this.currentEditingId = null;
+    this._capturedConfigOverride = null;
     const modalTitle = document.getElementById('presetModalTitle');
     const inputName = document.getElementById('presetInputName');
     const inputSubtitle = document.getElementById('presetInputSubtitle');
     const modal = document.getElementById('presetConfigModal');
+    const statusText = document.getElementById('labelPresetCaptureStatus');
+    if (statusText) statusText.style.display = 'none';
 
     if (modalTitle) modalTitle.textContent = 'Create New Sacred Preset';
     if (inputName) inputName.value = `Sacred Grid ${PresetsManager.getAllPresets().length + 1}`;
     if (inputSubtitle) inputSubtitle.value = `Custom N=${State.N} (${State.viewportMode})`;
 
-    this.populateFormFromConfig(PresetsManager.captureCurrentStudioConfig());
     if (modal) modal.classList.add('open');
   },
 
@@ -4080,18 +4238,26 @@ const PresetDialog = {
     const preset = PresetsManager.getPreset(presetId);
     if (!preset) return;
     this.currentEditingId = presetId;
+    this._capturedConfigOverride = null;
 
     const modalTitle = document.getElementById('presetModalTitle');
     const inputName = document.getElementById('presetInputName');
     const inputSubtitle = document.getElementById('presetInputSubtitle');
     const modal = document.getElementById('presetConfigModal');
+    const statusText = document.getElementById('labelPresetCaptureStatus');
+    if (statusText) statusText.style.display = 'none';
 
-    if (modalTitle) modalTitle.textContent = `Configure Preset: ${preset.title}`;
+    if (modalTitle) modalTitle.textContent = `Edit Preset: ${preset.title}`;
     if (inputName) inputName.value = preset.title;
     if (inputSubtitle) inputSubtitle.value = preset.subtitle || '';
 
-    this.populateFormFromConfig(preset.config);
     if (modal) modal.classList.add('open');
+  },
+
+  captureCurrentCanvas() {
+    this._capturedConfigOverride = PresetsManager.captureCurrentStudioConfig();
+    const statusText = document.getElementById('labelPresetCaptureStatus');
+    if (statusText) statusText.style.display = 'block';
   },
 
   populateFormFromConfig(cfg) {
@@ -4187,7 +4353,19 @@ const PresetDialog = {
       strokeFlower: State.strokeAura,
       strokeBody: State.strokeBody,
       strokeBase: State.strokeBody,
-      strokeGuide: State.strokeGuide
+      strokeGuide: State.strokeGuide,
+      auraScale: State.auraScale !== undefined ? State.auraScale : 1.95,
+      auraExpansionMaxSize: State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0,
+      auraExpansionSpeed: State.auraExpansionSpeed !== undefined ? State.auraExpansionSpeed : 1.0,
+      rainbowWaveSpeed: State.rainbowWaveSpeed !== undefined ? State.rainbowWaveSpeed : 1.0,
+      activePattern: State.activePattern || 'kryst',
+      highlightedIds: Array.from(State.highlightedIds || []),
+      selectedSectionIds: Array.from(State.selectedSectionIds || []),
+      highlightedSectionIds: Array.from(State.highlightedSectionIds || []),
+      disabledCircleIds: Array.from(State.disabledCircleIds || []),
+      coloredShapesMap: Array.from(State.coloredShapesMap ? State.coloredShapesMap.entries() : []),
+      sectionFills: { ...(State.sectionFills || {}) },
+      sectionHighlightMode: Boolean(State.sectionHighlightMode)
     };
   },
 
@@ -4196,10 +4374,19 @@ const PresetDialog = {
     const inputSubtitle = document.getElementById('presetInputSubtitle');
     const title = (inputName?.value || '').trim() || 'Untitled Preset';
     const subtitle = (inputSubtitle?.value || '').trim() || '';
-    const config = this.readConfigFromForm();
+    const preset = this.currentEditingId ? PresetsManager.getPreset(this.currentEditingId) : null;
+    const config = this._capturedConfigOverride || (preset ? preset.config : PresetsManager.captureCurrentStudioConfig());
+    const highlightCount = (State.highlightedIds?.size || 0) +
+      Object.keys(State.sectionFills || {}).length +
+      (State.selectedSectionIds?.size || 0);
 
     if (this.currentEditingId) {
-      PresetsManager.updatePreset(this.currentEditingId, { title, subtitle, config });
+      PresetsManager.updatePreset(this.currentEditingId, {
+        title,
+        subtitle,
+        config,
+        highlightCount
+      });
       if (window.UI?.showToast) window.UI.showToast(`Preset "${title}" updated.`);
       if (State.activePreset === this.currentEditingId && window.UI?.applyPreset) {
         window.UI.applyPreset(this.currentEditingId);
@@ -4208,13 +4395,29 @@ const PresetDialog = {
       const newPreset = PresetsManager.addCustomPreset({
         title,
         subtitle,
-        config
+        config,
+        highlightCount
       });
       if (window.UI?.showToast) window.UI.showToast(`Preset "${title}" created.`);
       if (window.UI?.applyPreset) window.UI.applyPreset(newPreset.id);
     }
+    this._capturedConfigOverride = null;
     const modal = document.getElementById('presetConfigModal');
     if (modal) modal.classList.remove('open');
+  },
+
+  init() {
+    if (typeof document === 'undefined') return;
+    const closeBtn = document.getElementById('closePresetConfigModalBtn');
+    const cancelBtn = document.getElementById('btnCancelPresetConfig');
+    const saveBtn = document.getElementById('btnSavePresetConfig');
+    const captureBtn = document.getElementById('btnPresetCaptureCurrentCanvas');
+    const modal = document.getElementById('presetConfigModal');
+
+    if (closeBtn && modal) closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+    if (cancelBtn && modal) cancelBtn.addEventListener('click', () => modal.classList.remove('open'));
+    if (saveBtn) saveBtn.addEventListener('click', () => this.save());
+    if (captureBtn) captureBtn.addEventListener('click', () => this.captureCurrentCanvas());
   },
 
   saveCurrentToActive() {
@@ -4367,7 +4570,7 @@ const SVGRenderer = {
 
     const pattern = patternType || State.activePattern || 'kryst';
     const r = State.r || 50;
-    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 2.0;
+    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 1.95;
     const boundaryRadius = State.boundaryRadius || (2 * State.N * r);
     const transform = transformState || State.transforms[pattern] || { panX: 0, panY: 0, scale: 0.38 };
     const idPrefix = svgId;
@@ -4397,6 +4600,9 @@ const SVGRenderer = {
     const mainGroup = this.createSvgElement('g', {
       class: `sacred-main-group ${State.enablePulse ? 'sacred-pulse' : ''}`
     });
+    if (State.gadgetBreathing && window._currentBreathingScale) {
+      mainGroup.setAttribute('transform', `scale(${window._currentBreathingScale.toFixed(4)})`);
+    }
 
     // Populate lookup map
     this.pointsMap.clear();
@@ -4608,7 +4814,7 @@ const SVGRenderer = {
 
     // Helper to compute stroke color based on active settings
     const resolveCircleStroke = (pt, defaultStroke) => {
-      if (State.highlightedIds.has(pt.id)) return '#ffffff';
+      if (State.highlightedIds.has(pt.id) || (pt.bodyId && State.highlightedIds.has(pt.bodyId))) return '#ffffff';
       if (State.circleRainbow) return `url(#${idPrefix}-rainbow-grad)`;
       if (State.ringSpectral) {
         const ringIdx = (pt.ring ? pt.ring - 1 : 0);
@@ -4652,6 +4858,11 @@ const SVGRenderer = {
           fillOpacity = '0.2';
         }
 
+        const unitGroup = this.createSvgElement('g', {
+          class: 'body-circle-unit',
+          'data-circle-id': pt.id
+        });
+
         const circle = this.createSvgElement('circle', {
           cx: pt.x,
           cy: pt.y,
@@ -4668,8 +4879,24 @@ const SVGRenderer = {
           'data-default-stroke': baseStroke,
           style: 'cursor: pointer;'
         });
+        unitGroup.appendChild(circle);
 
-        bodyFrag.appendChild(circle);
+        // Generous hover & click target threshold (20px thick transparent stroke hit-area)
+        const hitArea = this.createSvgElement('circle', {
+          cx: pt.x,
+          cy: pt.y,
+          r,
+          fill: 'none',
+          stroke: 'rgba(0, 0, 0, 0.001)',
+          'stroke-width': '20',
+          class: 'body-circle-hit-area',
+          'data-circle-id': pt.id,
+          'pointer-events': 'stroke',
+          style: 'cursor: pointer;'
+        });
+        unitGroup.appendChild(hitArea);
+
+        bodyFrag.appendChild(unitGroup);
       });
       bodyGroup.appendChild(bodyFrag);
       mainGroup.appendChild(bodyGroup);
@@ -4686,7 +4913,7 @@ const SVGRenderer = {
       });
       const auraFrag = document.createDocumentFragment();
       const defaultAuraColor = (pattern === 'life') ? State.colorLife : State.colorKryst;
-      const effectiveAuraR = (State.auraScale || 2.0) * r;
+      const effectiveAuraR = (State.auraScale !== undefined ? State.auraScale : 1.95) * r;
 
       auraPoints.forEach(apt => {
         const isHighlighted = State.highlightedIds.has(apt.bodyId);
@@ -4698,12 +4925,15 @@ const SVGRenderer = {
         if (State.coloredShapesMap.has(apt.id)) {
           fillColor = State.coloredShapesMap.get(apt.id);
           fillOpacity = '0.35';
+        } else if (isHighlighted) {
+          fillColor = 'rgba(255, 255, 255, 0.12)';
+          fillOpacity = '0.18';
         }
 
         const circle = this.createSvgElement('circle', {
           cx: apt.x,
           cy: apt.y,
-          r: apt.r || effectiveAuraR,
+          r: (apt.r !== undefined && !Number.isNaN(apt.r)) ? apt.r : effectiveAuraR,
           fill: fillColor,
           'fill-opacity': fillOpacity,
           stroke: strokeColor,
@@ -4712,6 +4942,7 @@ const SVGRenderer = {
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node aura-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'pointer-events': 'none',
+          style: 'transition: none !important;',
           'data-circle-id': apt.bodyId,
           'data-aura-id': apt.id,
           'data-pattern': pattern,
@@ -4728,9 +4959,9 @@ const SVGRenderer = {
     // 8b. Individual Aura / Body Intersection Sections (Venn-Diagram Interactive Highlighting)
     // -----------------------------------------------------------------------
     const activeSectionPoints = State.showAuraFlower ? auraPoints : (State.showBodyCircles ? points : auraPoints);
-    const effectiveSectionR = State.showAuraFlower ? ((State.auraScale || 2.0) * r) : r;
+    const effectiveSectionR = State.showAuraFlower ? ((State.auraScale !== undefined ? State.auraScale : 1.95) * r) : r;
 
-    if (activeSectionPoints && activeSectionPoints.length > 1) {
+    if (activeSectionPoints && activeSectionPoints.length > 1 && effectiveSectionR > 0) {
       const sectionsGroup = this.createSvgElement('g', {
         class: 'group-aura-sections',
         id: `${idPrefix}-aura-sections`
@@ -4743,9 +4974,10 @@ const SVGRenderer = {
       sections.forEach(sec => {
         const fillColor = (State.sectionFills && State.sectionFills[sec.id]) || null;
         const isColored = Boolean(fillColor);
+        const isSelected = Boolean(State.selectedSectionIds && State.selectedSectionIds.has(sec.id));
 
         // If neither aura nor body is visible, and section is not colored, skip rendering
-        if (!State.showAuraFlower && !State.showBodyCircles && !isColored) return;
+        if (!State.showAuraFlower && !State.showBodyCircles && !isColored && !isSelected) return;
 
         const pathEl = this.createSvgElement('path', {
           d: sec.d,
@@ -4753,11 +4985,11 @@ const SVGRenderer = {
           'fill-opacity': isColored ? '0.75' : '0.001',
           stroke: isColored ? 'rgba(255, 255, 255, 0.65)' : (isHighlightMode ? 'rgba(245, 158, 11, 0.22)' : 'none'),
           'stroke-width': isColored ? '1.5' : (isHighlightMode ? '0.9' : '0'),
-          class: `aura-intersection-section ${isColored ? 'colored-section' : ''} ${isHighlightMode ? 'highlight-mode-enabled' : ''}`,
+          class: `aura-intersection-section ${isColored ? 'colored-section' : ''} ${isHighlightMode ? 'highlight-mode-enabled' : ''} ${isSelected ? 'selected-section' : ''}`,
           'data-section-id': sec.id,
           'data-cx': String(sec.cx),
           'data-cy': String(sec.cy),
-          'pointer-events': (isHighlightMode || isColored) ? 'all' : 'none'
+          'pointer-events': (isHighlightMode || isColored || isSelected) ? 'all' : 'none'
         });
 
         sectionsFrag.appendChild(pathEl);
@@ -4842,11 +5074,12 @@ const SVGRenderer = {
    * @param {string} svgId
    */
   updateHighlights(svgId = 'svgMain') {
+    if (typeof document === 'undefined') return;
     const svg = document.getElementById(svgId);
     if (!svg) return;
 
     const r = State.r || 50;
-    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 2.0;
+    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 1.95;
     const R = auraScale * r;
     const idPrefix = svgId;
 
@@ -4864,6 +5097,11 @@ const SVGRenderer = {
           el.setAttribute('stroke', '#ffffff');
           el.setAttribute('stroke-width', '3.0');
           el.setAttribute('filter', `url(#${idPrefix}-glow)`);
+        } else {
+          const defaultStroke = el.getAttribute('data-default-stroke') || (State.colorBody || '#3b82f6');
+          el.setAttribute('stroke', defaultStroke);
+          el.setAttribute('stroke-width', String(State.strokeBody || 1.0));
+          el.setAttribute('filter', State.enableGlow ? `url(#${idPrefix}-glow)` : 'none');
         }
       }
     });
@@ -6398,6 +6636,9 @@ const Exporter = {
       if (!clone.getAttribute('height')) clone.setAttribute('height', String(vb.height));
     }
 
+    // Strip interactive hit-area helper circles from exported vector clone
+    clone.querySelectorAll('.body-circle-hit-area').forEach(el => el.remove());
+
     // Embed dark cosmic background rect behind all sacred geometry elements
     const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     bgRect.setAttribute('x', String(vb.x));
@@ -6635,9 +6876,7 @@ class PanZoomController {
       this.hasMoved = false;
       this.startX = e.clientX;
       this.startY = e.clientY;
-      try {
-        this.wrapper.setPointerCapture(e.pointerId);
-      } catch (_) { }
+      this.activePointerId = e.pointerId;
     });
 
     this.wrapper.addEventListener('pointermove', (e) => {
@@ -6645,8 +6884,17 @@ class PanZoomController {
       const dx = e.clientX - this.startX;
       const dy = e.clientY - this.startY;
       if (Math.hypot(dx, dy) > 4) {
-        this.hasMoved = true;
+        if (!this.hasMoved) {
+          this.hasMoved = true;
+          try {
+            if (this.activePointerId !== null && this.activePointerId !== undefined && this.wrapper.setPointerCapture) {
+              this.wrapper.setPointerCapture(this.activePointerId);
+            }
+          } catch (_) { }
+        }
       }
+      if (!this.hasMoved) return;
+
       this.startX = e.clientX;
       this.startY = e.clientY;
 
@@ -6665,10 +6913,12 @@ class PanZoomController {
       if (this.isDragging) {
         this.isDragging = false;
         try {
-          if (e && e.pointerId && this.wrapper.hasPointerCapture(e.pointerId)) {
-            this.wrapper.releasePointerCapture(e.pointerId);
+          const pid = (e && e.pointerId !== undefined) ? e.pointerId : this.activePointerId;
+          if (pid !== null && pid !== undefined && this.wrapper.hasPointerCapture && this.wrapper.hasPointerCapture(pid)) {
+            this.wrapper.releasePointerCapture(pid);
           }
         } catch (_) { }
+        this.activePointerId = null;
       }
     };
 
@@ -6716,6 +6966,370 @@ class PanZoomController {
 }
 
 /* =========================================================================
+   ONBOARDING TUTORIAL TOUR CONTROLLER
+   ========================================================================= */
+const TutorialManager = {
+  currentStep: 0,
+  _eventsBound: false,
+  steps: [
+    {
+      target: null, // Full screen welcome
+      title: 'Welcome to Sacred Studio',
+      desc: 'Explore the living mathematics of Flower of Kryst and Flower of Life.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>`
+    },
+    {
+      target: '#patternSwitcher',
+      title: 'Pattern Engines',
+      desc: 'Switch instantly between Flower of Kryst and Flower of Life.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><circle cx="12" cy="12" r="9"/><polygon points="12 5 19 12 12 19 5 12"/></svg>`
+    },
+    {
+      target: '#viewportContainer',
+      title: 'Interactive Canvas',
+      desc: 'Drag to pan, scroll to zoom, and click circles or lenses to inspect.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="3"/><path d="m15 15 3 3"/></svg>`
+    },
+    {
+      target: '#sectionGeometry',
+      title: 'Radius & Aura Size',
+      desc: 'Adjust circle radius and smoothly scale expanded aura petals from 0r to 20r.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><circle cx="12" cy="12" r="10"/><path d="M12 8a4 4 0 1 0 4 4"/></svg>`
+    },
+    {
+      target: '#sectionSacredGadgets',
+      title: 'Sacred Gadgets',
+      desc: 'Run concurrent animations: Aura Expansion, Rainbow Wave, and Breathing.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
+    },
+    {
+      target: '#presetGrid',
+      title: 'Shape Presets',
+      desc: 'Save custom highlights and click the pencil icon on any preset to edit.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+    },
+    {
+      target: '#bottomLayerToolbar',
+      title: 'Layer Toolbar',
+      desc: 'Blend Body and Aura opacities and toggle intersection highlight mode.',
+      icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;max-width:22px;max-height:22px;display:block;"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>`
+    }
+  ],
+
+  start() {
+    this.currentStep = 0;
+    if (typeof document === 'undefined') return;
+    const overlay = document.getElementById('tutorialTourOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'block';
+    this.bindEvents();
+    this.renderStep();
+  },
+
+  close() {
+    if (typeof document !== 'undefined') {
+      const overlay = document.getElementById('tutorialTourOverlay');
+      if (overlay) overlay.style.display = 'none';
+      const backdrop = document.getElementById('tutorialBackdrop');
+      if (backdrop) {
+        backdrop.style.clipPath = 'none';
+        backdrop.style.webkitClipPath = 'none';
+      }
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('sacred_geometry_tutorial_completed', 'true');
+    }
+  },
+
+  next() {
+    if (this.currentStep < this.steps.length - 1) {
+      this.currentStep++;
+      this.renderStep();
+    } else {
+      this.close();
+      if (typeof window !== 'undefined' && window.UI?.showToast) {
+        window.UI.showToast('Tour completed! Click "Tour" in the top bar to restart anytime.');
+      }
+    }
+  },
+
+  prev() {
+    if (this.currentStep > 0) {
+      this.currentStep--;
+      this.renderStep();
+    }
+  },
+
+  goTo(index) {
+    if (index >= 0 && index < this.steps.length) {
+      this.currentStep = index;
+      this.renderStep();
+    }
+  },
+
+  renderStep() {
+    if (typeof document === 'undefined') return;
+    const step = this.steps[this.currentStep];
+    const card = document.getElementById('tutorialCard');
+    const spotlight = document.getElementById('tutorialSpotlight');
+    const backdrop = document.getElementById('tutorialBackdrop');
+    const badge = document.getElementById('tutorialStepBadge');
+    const title = document.getElementById('tutorialTitle');
+    const desc = document.getElementById('tutorialDesc');
+    const iconBox = document.getElementById('tutorialIconBox');
+    const nextBtn = document.getElementById('btnTutorialNext');
+    const prevBtn = document.getElementById('btnTutorialPrev');
+    const dotsContainer = document.getElementById('tutorialDots');
+
+    if (!card) return;
+
+    if (badge) badge.textContent = `Step ${this.currentStep + 1} of ${this.steps.length}`;
+    if (title) title.textContent = step.title;
+    if (desc) desc.textContent = step.desc;
+    if (iconBox) iconBox.innerHTML = step.icon;
+
+    if (prevBtn) {
+      prevBtn.style.visibility = this.currentStep === 0 ? 'hidden' : 'visible';
+    }
+    if (nextBtn) {
+      nextBtn.textContent = this.currentStep === this.steps.length - 1 ? 'Get Started' : 'Next';
+    }
+
+    // Render Dots
+    if (dotsContainer) {
+      dotsContainer.innerHTML = '';
+      this.steps.forEach((_, idx) => {
+        const dot = document.createElement('div');
+        dot.className = `tutorial-dot ${idx === this.currentStep ? 'active' : ''}`;
+        dot.title = `Step ${idx + 1}: ${this.steps[idx].title}`;
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          this.goTo(idx);
+        });
+        dotsContainer.appendChild(dot);
+      });
+    }
+
+    // Ensure curtain elements exist inside backdrop
+    let curtainTop = document.getElementById('tutorialCurtainTop');
+    let curtainBottom = document.getElementById('tutorialCurtainBottom');
+    let curtainLeft = document.getElementById('tutorialCurtainLeft');
+    let curtainRight = document.getElementById('tutorialCurtainRight');
+
+    if (backdrop) {
+      backdrop.style.clipPath = 'none';
+      backdrop.style.webkitClipPath = 'none';
+      backdrop.style.background = 'transparent';
+      backdrop.style.pointerEvents = 'none';
+      if (!curtainTop || !curtainBottom || !curtainLeft || !curtainRight) {
+        backdrop.innerHTML = `
+          <div class="tutorial-curtain tutorial-curtain-top" id="tutorialCurtainTop"></div>
+          <div class="tutorial-curtain tutorial-curtain-bottom" id="tutorialCurtainBottom"></div>
+          <div class="tutorial-curtain tutorial-curtain-left" id="tutorialCurtainLeft"></div>
+          <div class="tutorial-curtain tutorial-curtain-right" id="tutorialCurtainRight"></div>
+        `;
+        curtainTop = document.getElementById('tutorialCurtainTop');
+        curtainBottom = document.getElementById('tutorialCurtainBottom');
+        curtainLeft = document.getElementById('tutorialCurtainLeft');
+        curtainRight = document.getElementById('tutorialCurtainRight');
+      }
+    }
+
+    const cardWidth = 420;
+    const cardHeight = 220;
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+
+    card.style.pointerEvents = 'auto';
+
+    // Position Card & Spotlight
+    if (step.target) {
+      const targetEl = document.querySelector(step.target);
+      if (targetEl) {
+        // Ensure sidebar is uncollapsed if target is inside sidebar
+        const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
+        if (sidebar && sidebar.contains(targetEl) && sidebar.classList.contains('collapsed')) {
+          sidebar.classList.remove('collapsed');
+        }
+
+        // Ensure parent accordion is open if inside a panel-section
+        const parentSection = targetEl.closest('.panel-section');
+        if (parentSection && !parentSection.classList.contains('open')) {
+          parentSection.classList.add('open');
+        }
+
+        const sidebarContent = targetEl.closest('.sidebar-content');
+        if (sidebarContent && sidebarContent.contains(targetEl)) {
+          const targetOffsetTop = targetEl.offsetTop;
+          sidebarContent.scrollTo({ top: Math.max(0, targetOffsetTop - 20), behavior: 'auto' });
+        }
+
+        const rect = targetEl.getBoundingClientRect();
+
+        let spotTop = Math.max(10, rect.top - 6);
+        let spotLeft = Math.max(10, rect.left - 6);
+        let spotWidth = Math.min(viewportW - spotLeft - 20, rect.width + 12);
+        let spotHeight = Math.min(viewportH - spotTop - 20, rect.height + 12);
+
+        if (step.target === '#viewportContainer') {
+          // Bounded canvas spotlight rather than taking over the entire screen
+          const canvasW = Math.min(rect.width - 60, 680);
+          const canvasH = Math.min(rect.height - 60, 420);
+          spotLeft = rect.left + Math.max(0, (rect.width - canvasW) / 2);
+          spotTop = rect.top + Math.max(0, (rect.height - canvasH) / 2);
+          spotWidth = canvasW;
+          spotHeight = canvasH;
+        }
+
+        if (spotlight) {
+          spotlight.style.display = 'block';
+          spotlight.style.top = `${spotTop}px`;
+          spotlight.style.left = `${spotLeft}px`;
+          spotlight.style.width = `${spotWidth}px`;
+          spotlight.style.height = `${spotHeight}px`;
+        }
+
+        // Position 4 surrounding curtains: leave the spotlight area 100% uncovered with zero blur
+        if (curtainTop && curtainBottom && curtainLeft && curtainRight) {
+          curtainTop.style.top = '0px';
+          curtainTop.style.left = '0px';
+          curtainTop.style.width = '100%';
+          curtainTop.style.height = `${Math.max(0, spotTop)}px`;
+
+          const bottomY = spotTop + spotHeight;
+          curtainBottom.style.top = `${bottomY}px`;
+          curtainBottom.style.left = '0px';
+          curtainBottom.style.width = '100%';
+          curtainBottom.style.height = `${Math.max(0, viewportH - bottomY)}px`;
+
+          curtainLeft.style.top = `${spotTop}px`;
+          curtainLeft.style.left = '0px';
+          curtainLeft.style.width = `${Math.max(0, spotLeft)}px`;
+          curtainLeft.style.height = `${spotHeight}px`;
+
+          const rightX = spotLeft + spotWidth;
+          curtainRight.style.top = `${spotTop}px`;
+          curtainRight.style.left = `${rightX}px`;
+          curtainRight.style.width = `${Math.max(0, viewportW - rightX)}px`;
+          curtainRight.style.height = `${spotHeight}px`;
+        }
+
+        card.style.position = 'fixed';
+        card.style.width = `${cardWidth}px`;
+
+        let cardTop = spotTop + spotHeight + 14;
+        let cardLeft = spotLeft + (spotWidth / 2) - (cardWidth / 2);
+
+        // If target is in the right half of the screen (e.g. sidebar), place card to the left
+        if (spotLeft > viewportW * 0.5) {
+          cardLeft = Math.max(20, spotLeft - cardWidth - 18);
+          cardTop = Math.max(20, Math.min(viewportH - cardHeight - 20, spotTop));
+        } else if (spotTop + spotHeight > viewportH * 0.65 || cardTop + cardHeight > viewportH - 20) {
+          // If target is in bottom half or card overflows bottom, place above
+          cardTop = Math.max(20, spotTop - cardHeight - 14);
+        }
+
+        // Bounded within screen
+        cardLeft = Math.max(16, Math.min(viewportW - cardWidth - 16, cardLeft));
+        cardTop = Math.max(16, Math.min(viewportH - cardHeight - 16, cardTop));
+
+        card.style.top = `${cardTop}px`;
+        card.style.left = `${cardLeft}px`;
+        card.style.transform = 'none';
+        return;
+      }
+    }
+
+    // Fallback or centered step (e.g. Welcome modal)
+    if (spotlight) spotlight.style.display = 'none';
+    if (curtainTop && curtainBottom && curtainLeft && curtainRight) {
+      curtainTop.style.top = '0px';
+      curtainTop.style.left = '0px';
+      curtainTop.style.width = '100%';
+      curtainTop.style.height = '100%';
+
+      curtainBottom.style.top = '100%';
+      curtainBottom.style.left = '0px';
+      curtainBottom.style.width = '100%';
+      curtainBottom.style.height = '0px';
+
+      curtainLeft.style.top = '0px';
+      curtainLeft.style.left = '0px';
+      curtainLeft.style.width = '0px';
+      curtainLeft.style.height = '0px';
+
+      curtainRight.style.top = '0px';
+      curtainRight.style.left = '100%';
+      curtainRight.style.width = '0px';
+      curtainRight.style.height = '0px';
+    }
+
+    card.style.position = 'fixed';
+    card.style.width = '420px';
+    card.style.top = '50%';
+    card.style.left = '50%';
+    card.style.transform = 'translate(-50%, -50%)';
+  },
+
+  bindEvents() {
+    if (typeof document === 'undefined') return;
+    if (this._eventsBound) return;
+    this._eventsBound = true;
+
+    document.getElementById('btnTutorialNext')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.next();
+    });
+    document.getElementById('btnTutorialPrev')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.prev();
+    });
+    document.getElementById('btnTutorialSkip')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.close();
+    });
+    document.getElementById('btnTutorialClose')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.close();
+    });
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      const overlay = document.getElementById('tutorialTourOverlay');
+      if (!overlay || overlay.style.display === 'none') return;
+
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        this.next();
+      } else if (e.key === 'ArrowLeft') {
+        this.prev();
+      } else if (e.key === 'Escape') {
+        this.close();
+      }
+    });
+
+    // Smooth reposition on window resize or sidebar scroll
+    window.addEventListener('resize', () => {
+      const overlay = document.getElementById('tutorialTourOverlay');
+      if (overlay && overlay.style.display !== 'none') {
+        this.renderStep();
+      }
+    });
+
+    document.querySelector('.sidebar-content')?.addEventListener('scroll', () => {
+      const overlay = document.getElementById('tutorialTourOverlay');
+      if (overlay && overlay.style.display !== 'none') {
+        this.renderStep();
+      }
+    });
+  }
+};
+
+/* =========================================================================
    UI CONTROLLER
    ========================================================================= */
 const UI = {
@@ -6724,11 +7338,14 @@ const UI = {
 
   init() {
     PresetsManager.init();
+    PresetDialog.init();
     this.setDimension(State.dimension || '2d');
+    this.initSliderFills();
     this.bindAccordions();
     this.bindDimensionTabs();
     this.bindPatternSwitcher();
     this.bindBoundaryControls();
+    this.bindRemoveCirclesPopup();
     this.bindFaderBar();
     this.bindSliders();
     this.bindToggles();
@@ -6736,6 +7353,7 @@ const UI = {
     this.bindColorPickers();
     this.bindSectionColorPicker();
     this.bindPainterControls();
+    this.bindSacredGadgets();
     this.bindPresets();
     this.bindFloatingControls();
     this.bindModals();
@@ -6743,6 +7361,58 @@ const UI = {
     this.initSvgEventDelegation();
     this.renderCustomPresets();
     this.updateSidebarStats();
+    this.updateAllRangeSliderFills();
+    this.initTutorial();
+  },
+
+  initSliderFills() {
+    if (typeof document === 'undefined') return;
+    this.updateAllRangeSliderFills();
+
+    document.addEventListener('input', (e) => {
+      if (e.target && e.target.type === 'range') {
+        this.updateRangeSliderFill(e.target);
+      }
+    });
+  },
+
+  updateRangeSliderFill(slider) {
+    if (!slider || slider.type !== 'range') return;
+    const min = parseFloat(slider.min) !== undefined && !isNaN(parseFloat(slider.min)) ? parseFloat(slider.min) : 0;
+    const max = parseFloat(slider.max) !== undefined && !isNaN(parseFloat(slider.max)) ? parseFloat(slider.max) : 100;
+    const val = parseFloat(slider.value) !== undefined && !isNaN(parseFloat(slider.value)) ? parseFloat(slider.value) : min;
+    const range = max - min;
+    const pct = range > 0 ? Math.max(0, Math.min(100, ((val - min) / range) * 100)) : 0;
+    slider.style.setProperty('--fill-pct', `${pct}%`);
+  },
+
+  updateAllRangeSliderFills() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('input[type="range"]').forEach(slider => {
+      this.updateRangeSliderFill(slider);
+    });
+  },
+
+  initTutorial() {
+    const btnTour = document.getElementById('btnStartTutorial');
+    if (btnTour) {
+      btnTour.addEventListener('click', () => {
+        TutorialManager.start();
+      });
+    }
+
+    // Auto-launch on first startup
+    if (typeof localStorage !== 'undefined' && !localStorage.getItem('sacred_geometry_tutorial_completed')) {
+      setTimeout(() => {
+        TutorialManager.start();
+      }, 750);
+    }
+  },
+
+  openEditPreset(id) {
+    if (typeof PresetDialog !== 'undefined' && PresetDialog.openEdit) {
+      PresetDialog.openEdit(id);
+    }
   },
 
   /**
@@ -6767,11 +7437,11 @@ const UI = {
           if (sectionTarget) {
             e.stopPropagation();
             const sectionId = sectionTarget.dataset.sectionId;
-            this.openSectionColorPicker(sectionId, e.clientX, e.clientY);
+            this.toggleSectionSelection(sectionId);
             return;
           }
 
-          // In highlight mode, clicking empty canvas closes the color popup
+          // In highlight mode, clicking empty canvas closes the color popup & clears section selection
           this.closeSectionColorPicker();
           return;
         }
@@ -6781,7 +7451,7 @@ const UI = {
         if (coloredSectionTarget) {
           e.stopPropagation();
           const sectionId = coloredSectionTarget.dataset.sectionId;
-          this.openSectionColorPicker(sectionId, e.clientX, e.clientY);
+          this.toggleSectionSelection(sectionId, true);
           return;
         }
 
@@ -6804,37 +7474,50 @@ const UI = {
             return;
           }
 
-          // Mode C2: Shift+Click -> Selection Highlight for Presets
-          if (e.shiftKey) {
-            if (State.highlightedIds.has(circleId)) {
-              State.highlightedIds.delete(circleId);
-            } else {
-              State.highlightedIds.add(circleId);
-            }
-            SVGRenderer.updateHighlights(svg.id);
-            this.updateSidebarStats();
-            return;
-          }
-
-          // Mode C3: Standard Click -> Toggle Circle Removal (E-05)
-          if (State.disabledCircleIds.has(circleId)) {
-            State.disabledCircleIds.delete(circleId);
-            this.showToast('Restored circle');
+          // Mode C2: Clicking a circle highlights / unhighlights it
+          if (State.highlightedIds.has(circleId)) {
+            State.highlightedIds.delete(circleId);
           } else {
-            State.disabledCircleIds.add(circleId);
-            this.showToast('Removed circle (Click again or "Restore All" to return)');
+            State.highlightedIds.add(circleId);
           }
+          const svgIds = ['svgMain', 'svgKryst', 'svgLife'];
+          svgIds.forEach(sid => {
+            if (typeof SVGRenderer !== 'undefined' && SVGRenderer.updateHighlights) {
+              SVGRenderer.updateHighlights(sid);
+            }
+          });
           this.updateSidebarStats();
-          App.renderAll();
+          if (State.highlightedIds.size > 0) {
+            this.showRemoveCirclesPopup(e.clientX, e.clientY);
+          } else {
+            this.hideRemoveCirclesPopup();
+          }
           return;
         }
 
-        // 3. Click on empty SVG background -> clear highlights & close color popup
+        // 3. Click on empty SVG background -> clear highlights & close popups
         this.closeSectionColorPicker();
+        this.hideRemoveCirclesPopup();
         if (State.highlightedIds.size > 0) {
           State.highlightedIds.clear();
           SVGRenderer.updateHighlights(svg.id);
           this.updateSidebarStats();
+        }
+      });
+    });
+
+    // Also delegate on wrappers as safe fallback
+    const wrapperIds = ['svgWrapperMain', 'svgWrapperKryst', 'svgWrapperLife'];
+    wrapperIds.forEach(wid => {
+      const wrapper = document.getElementById(wid);
+      if (!wrapper) return;
+      wrapper.addEventListener('click', (e) => {
+        if (!State.sectionHighlightMode) return;
+        const sectionTarget = e.target.closest('[data-section-id]');
+        if (sectionTarget) {
+          e.stopPropagation();
+          const sectionId = sectionTarget.dataset.sectionId;
+          this.toggleSectionSelection(sectionId);
         }
       });
     });
@@ -6852,6 +7535,8 @@ const UI = {
 
     if (!State.sectionHighlightMode) {
       this.closeSectionColorPicker();
+    } else {
+      this.openSectionColorPicker();
     }
 
     this.showToast(State.sectionHighlightMode
@@ -6877,9 +7562,11 @@ const UI = {
     // Custom color input
     const customInput = document.getElementById('inputCustomSectionColor');
     if (customInput) {
-      customInput.addEventListener('input', (e) => {
+      const handleCustom = (e) => {
         this.applySectionColor(e.target.value);
-      });
+      };
+      customInput.addEventListener('input', handleCustom);
+      customInput.addEventListener('change', handleCustom);
     }
 
     // Clear fill button
@@ -6888,6 +7575,24 @@ const UI = {
       btnClear.addEventListener('click', (e) => {
         e.stopPropagation();
         this.applySectionColor(null);
+      });
+    }
+
+    // Clear all highlights button
+    const btnClearAll = document.getElementById('btnClearAllHighlights');
+    if (btnClearAll) {
+      btnClearAll.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.clearAllHighlights();
+      });
+    }
+
+    // Done / Deselect button
+    const btnDeselect = document.getElementById('btnDeselectSections');
+    if (btnDeselect) {
+      btnDeselect.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeSectionColorPicker();
       });
     }
 
@@ -6902,7 +7607,13 @@ const UI = {
 
     // Click outside to close
     window.addEventListener('pointerdown', (e) => {
-      if (popup.style.display !== 'none' && !popup.contains(e.target) && !e.target.closest('[data-section-id]')) {
+      if (popup.style.display !== 'none' &&
+          !popup.contains(e.target) &&
+          !e.target.closest('[data-section-id]') &&
+          !e.target.closest('#toggleSectionHighlightBtn') &&
+          !e.target.closest('#btnBottomHighlightMode') &&
+          !e.target.closest('#btnBottomClearHighlights') &&
+          !e.target.closest('#clearHighlightBtn')) {
         this.closeSectionColorPicker();
       }
     });
@@ -6914,67 +7625,193 @@ const UI = {
     });
   },
 
-  openSectionColorPicker(sectionId, clientX, clientY) {
-    this.activeSectionId = sectionId;
+  toggleSectionSelection(sectionId, singleOnly = false) {
+    if (!State.selectedSectionIds) State.selectedSectionIds = new Set();
+
+    if (singleOnly) {
+      State.selectedSectionIds.clear();
+      State.selectedSectionIds.add(sectionId);
+    } else {
+      if (State.selectedSectionIds.has(sectionId)) {
+        State.selectedSectionIds.delete(sectionId);
+      } else {
+        State.selectedSectionIds.add(sectionId);
+      }
+    }
+
+    if (State.selectedSectionIds.size === 0) {
+      this.closeSectionColorPicker();
+    } else {
+      this.openSectionColorPicker();
+    }
+  },
+
+  updateSelectedSectionDOM() {
+    const selectedSet = State.selectedSectionIds || new Set();
+    document.querySelectorAll('.aura-intersection-section').forEach(el => {
+      el.classList.toggle('selected-section', selectedSet.has(el.dataset.sectionId));
+    });
+  },
+
+  openSectionColorPicker(sectionId = null) {
+    if (sectionId) {
+      if (!State.selectedSectionIds) State.selectedSectionIds = new Set();
+      State.selectedSectionIds.add(sectionId);
+    }
+
+    const count = State.selectedSectionIds ? State.selectedSectionIds.size : 0;
+    if (count === 0 && !State.sectionHighlightMode) {
+      this.closeSectionColorPicker();
+      return;
+    }
+
     const popup = document.getElementById('sectionColorPickerPopup');
     if (!popup) return;
 
+    // Apply selected-section class to highlight all selected intersections in all SVGs
+    this.updateSelectedSectionDOM();
+
+    // Update count badge in header
+    const countBadge = document.getElementById('sectionColorCountBadge');
+    if (countBadge) {
+      countBadge.textContent = `${count} selected`;
+    }
+
+    // Popup is docked in the upper right of view pane via CSS layout
     popup.style.display = 'flex';
 
-    // Measure dimensions & position next to cursor
-    const width = 185;
-    const height = 135;
-
-    let x = clientX + 12;
-    let y = clientY + 12;
-
-    if (x + width > window.innerWidth - 10) {
-      x = clientX - width - 12;
+    // Highlight current section color if all selected sections share the same color
+    let commonColor = null;
+    let isUniform = true;
+    for (const secId of State.selectedSectionIds) {
+      const c = (State.sectionFills && State.sectionFills[secId]) || null;
+      if (commonColor === null) {
+        commonColor = c;
+      } else if (commonColor !== c) {
+        isUniform = false;
+        break;
+      }
     }
-    if (y + height > window.innerHeight - 10) {
-      y = clientY - height - 12;
-    }
 
-    popup.style.left = `${Math.max(10, x)}px`;
-    popup.style.top = `${Math.max(10, y)}px`;
-
-    // Highlight current section color if active
-    const curColor = (State.sectionFills && State.sectionFills[sectionId]) || null;
     popup.querySelectorAll('.color-swatch-btn').forEach(b => {
-      b.style.outline = (curColor && b.dataset.color === curColor) ? '2px solid #fff' : 'none';
+      const isMatch = Boolean(isUniform && commonColor && b.dataset.color.toLowerCase() === commonColor.toLowerCase());
+      b.style.outline = isMatch ? '2px solid #fff' : 'none';
       b.style.outlineOffset = '2px';
     });
+
+    const customInput = document.getElementById('inputCustomSectionColor');
+    if (customInput && isUniform && commonColor && /^#[0-9a-fA-F]{6}$/.test(commonColor)) {
+      customInput.value = commonColor;
+    }
   },
 
   closeSectionColorPicker() {
     const popup = document.getElementById('sectionColorPickerPopup');
     if (popup) popup.style.display = 'none';
+    if (State.selectedSectionIds) State.selectedSectionIds.clear();
     this.activeSectionId = null;
+    document.querySelectorAll('.aura-intersection-section.selected-section').forEach(el => {
+      el.classList.remove('selected-section');
+    });
   },
 
   applySectionColor(color) {
-    if (!this.activeSectionId) return;
+    if (!State.selectedSectionIds || State.selectedSectionIds.size === 0) return;
     if (!State.sectionFills) State.sectionFills = {};
 
+    const count = State.selectedSectionIds.size;
+    State.selectedSectionIds.forEach(secId => {
+      if (color) {
+        State.sectionFills[secId] = color;
+      } else {
+        delete State.sectionFills[secId];
+      }
+    });
+
     if (color) {
-      State.sectionFills[this.activeSectionId] = color;
-      this.showToast(`Colored intersection: ${color}`);
+      this.showToast(`Colored ${count} intersection section${count > 1 ? 's' : ''}: ${color}`);
     } else {
-      delete State.sectionFills[this.activeSectionId];
-      this.showToast('Cleared intersection color');
+      this.showToast(`Cleared fill from ${count} intersection section${count > 1 ? 's' : ''}`);
     }
 
-    // Auto-persist to active preset config if user is on a custom preset
-    if (State.activePreset && window.PresetsManager?.getPreset) {
-      const curPreset = PresetsManager.getPreset(State.activePreset);
-      if (curPreset && curPreset.config) {
-        curPreset.config.sectionFills = { ...(State.sectionFills || {}) };
-        PresetsManager.updatePreset(State.activePreset, { config: curPreset.config });
+    // Unlink active preset so canvas edits do not overwrite the saved preset
+    State.activePreset = null;
+    if (typeof this.renderCustomPresets === 'function') this.renderCustomPresets();
+
+    App.renderAll();
+    // After re-rendering, maintain the selected-section class on newly created SVG DOM elements
+    this.updateSelectedSectionDOM();
+
+    // Update swatches outline
+    const popup = document.getElementById('sectionColorPickerPopup');
+    if (popup) {
+      popup.querySelectorAll('.color-swatch-btn').forEach(b => {
+        const isMatch = Boolean(color && b.dataset.color.toLowerCase() === color.toLowerCase());
+        b.style.outline = isMatch ? '2px solid #fff' : 'none';
+        b.style.outlineOffset = '2px';
+      });
+    }
+  },
+
+  /**
+   * Clears all intersection colored section highlights, active section selections,
+   * and highlighted circles, keeping highlight mode active.
+   */
+  clearAllHighlights() {
+    if (typeof State !== 'undefined') {
+      if (typeof State.clearAllHighlights === 'function') {
+        State.clearAllHighlights();
+      } else {
+        State.sectionFills = {};
+        if (State.selectedSectionIds) State.selectedSectionIds.clear();
+        if (State.highlightedIds) State.highlightedIds.clear();
+        if (State.highlightedSectionIds) State.highlightedSectionIds.clear();
+      }
+    }
+    this.hideRemoveCirclesPopup();
+
+    // Unlink active preset so canvas clear does not overwrite the saved preset
+    State.activePreset = null;
+    if (typeof this.renderCustomPresets === 'function') this.renderCustomPresets();
+
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('.aura-intersection-section.selected-section').forEach(el => {
+        el.classList.remove('selected-section');
+      });
+      document.querySelectorAll('.highlighted-circle').forEach(el => {
+        el.classList.remove('highlighted-circle');
+      });
+
+      const countBadge = document.getElementById('sectionColorCountBadge');
+      if (countBadge) countBadge.textContent = '0 selected';
+
+      const popup = document.getElementById('sectionColorPickerPopup');
+      if (popup) {
+        popup.querySelectorAll('.color-swatch-btn').forEach(b => {
+          b.style.outline = 'none';
+        });
       }
     }
 
-    App.renderAll();
-    this.closeSectionColorPicker();
+    if (typeof SVGRenderer !== 'undefined' && SVGRenderer.updateHighlights) {
+      ['svgMain', 'svgLife', 'svgKryst'].forEach(id => {
+        if (typeof document !== 'undefined' && document.getElementById(id)) {
+          SVGRenderer.updateHighlights(id);
+        }
+      });
+    }
+
+    if (typeof this.updateSidebarStats === 'function') {
+      this.updateSidebarStats();
+    }
+
+    if (typeof App !== 'undefined' && App.renderAll) {
+      App.renderAll();
+    }
+
+    if (typeof this.showToast === 'function') {
+      this.showToast('Cleared all highlights and section colors.');
+    }
   },
 
   /**
@@ -7161,19 +7998,81 @@ const UI = {
       btnJump.addEventListener('click', handleJump);
     }
 
-    // Restore All Removed Circles Button
+    // Remove Circles Button: Removes all currently highlighted circles
+    const btnRemove = document.getElementById('btnRemoveCircles') || document.getElementById('btnToggleRemoveCircles') || document.getElementById('btnPopupRemoveCircles');
+    if (btnRemove) {
+      btnRemove.addEventListener('click', () => {
+        this.removeHighlightedCircles();
+      });
+    }
+
+    // Restore All Removed Circles Button (alongside highlight mode at bottom)
     const btnRestore = document.getElementById('btnRestoreCircles');
     if (btnRestore) {
       btnRestore.addEventListener('click', () => {
-        if (State.disabledCircleIds.size === 0) {
+        if (!State.disabledCircleIds || State.disabledCircleIds.size === 0) {
           this.showToast('No circles have been removed.');
           return;
         }
         State.disabledCircleIds.clear();
+        this.hideRemoveCirclesPopup();
         this.updateSidebarStats();
         App.renderAll();
         this.showToast('All removed circles have been restored.');
       });
+    }
+  },
+
+  bindRemoveCirclesPopup() {
+    if (typeof document === 'undefined') return;
+    const btnPopupRemove = document.getElementById('btnPopupRemoveCircles');
+    if (btnPopupRemove) {
+      btnPopupRemove.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removeHighlightedCircles();
+      });
+    }
+
+    const btnClose = document.getElementById('btnCloseRemoveCirclesPopup');
+    if (btnClose) {
+      btnClose.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.hideRemoveCirclesPopup();
+      });
+    }
+  },
+
+  showRemoveCirclesPopup(clientX, clientY) {
+    if (typeof document === 'undefined') return;
+    const popup = document.getElementById('removeCirclesPopup');
+    if (!popup) return;
+
+    popup.style.display = 'inline-flex';
+
+    if (typeof clientX === 'number' && typeof clientY === 'number') {
+      const popupWidth = popup.offsetWidth || 160;
+      const popupHeight = popup.offsetHeight || 38;
+
+      let left = clientX - (popupWidth / 2);
+      let top = clientY - popupHeight - 14;
+
+      const pad = 12;
+      const winW = (typeof window !== 'undefined') ? window.innerWidth : 1200;
+      left = Math.max(pad, Math.min(winW - popupWidth - pad, left));
+      if (top < pad) {
+        top = clientY + 24;
+      }
+
+      popup.style.left = `${Math.round(left)}px`;
+      popup.style.top = `${Math.round(top)}px`;
+    }
+  },
+
+  hideRemoveCirclesPopup() {
+    if (typeof document === 'undefined') return;
+    const popup = document.getElementById('removeCirclesPopup');
+    if (popup) {
+      popup.style.display = 'none';
     }
   },
 
@@ -7235,6 +8134,12 @@ const UI = {
       e.preventDefault();
       this.toggleSectionHighlightMode();
     });
+
+    // Bottom bar Clear All Highlights button
+    document.getElementById('btnBottomClearHighlights')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.clearAllHighlights();
+    });
   },
 
   syncLayerControls() {
@@ -7252,14 +8157,20 @@ const UI = {
     const bodyVal = Math.round((State.bodyOpacity !== undefined ? State.bodyOpacity : 1.0) * 100);
     if (checkBody) checkBody.checked = isBodyVisible;
     if (toggleBody) toggleBody.checked = isBodyVisible;
-    if (sliderBody) sliderBody.value = isBodyVisible ? bodyVal : 0;
+    if (sliderBody) {
+      sliderBody.value = isBodyVisible ? bodyVal : 0;
+      this.updateRangeSliderFill(sliderBody);
+    }
     if (badgeBody) badgeBody.textContent = isBodyVisible ? `${bodyVal}%` : 'Off';
 
     const isAuraVisible = Boolean(State.showAuraFlower);
     const auraVal = Math.round((State.auraOpacity !== undefined ? State.auraOpacity : 1.0) * 100);
     if (checkAura) checkAura.checked = isAuraVisible;
     if (toggleAura) toggleAura.checked = isAuraVisible;
-    if (sliderAura) sliderAura.value = isAuraVisible ? auraVal : 0;
+    if (sliderAura) {
+      sliderAura.value = isAuraVisible ? auraVal : 0;
+      this.updateRangeSliderFill(sliderAura);
+    }
     if (badgeAura) badgeAura.textContent = isAuraVisible ? `${auraVal}%` : 'Off';
 
     const btnBottomHighlight = document.getElementById('btnBottomHighlightMode');
@@ -7424,7 +8335,7 @@ const UI = {
     const updateAuraScaleLabel = (scale) => {
       if (!auraScaleBadge) return;
       const px = Math.round(scale * (State.r || 50));
-      auraScaleBadge.textContent = `${scale.toFixed(1)}r (${px}px)`;
+      auraScaleBadge.textContent = `${scale.toFixed(2)}r (${px}px)`;
     };
 
     if (radiusSlider && radiusBadge) {
@@ -7433,19 +8344,19 @@ const UI = {
       radiusSlider.addEventListener('input', (e) => {
         State.setRadius(e.target.value);
         radiusBadge.textContent = `r = ${State.r}px`;
-        updateAuraScaleLabel(State.auraScale || 2.0);
+        updateAuraScaleLabel(State.auraScale !== undefined ? State.auraScale : 1.95);
         this.updateSidebarStats();
         App.renderAll();
       });
     }
 
-    // Aura Scale Slider (2r to 6r)
+    // Aura Scale Slider (0r to 20r in 0.01 increments)
     if (auraScaleSlider) {
-      auraScaleSlider.value = State.auraScale || 2.0;
+      auraScaleSlider.value = State.auraScale !== undefined ? State.auraScale : 1.95;
       updateAuraScaleLabel(Number(auraScaleSlider.value));
 
       auraScaleSlider.addEventListener('input', (e) => {
-        const val = clampNumber(e.target.value, 2.0, 6.0, 2.0);
+        const val = clampNumber(e.target.value, 0.0, 20.0, 1.95);
         State.auraScale = val;
         updateAuraScaleLabel(val);
         this.updateSidebarStats();
@@ -7541,8 +8452,7 @@ const UI = {
       { id: 'toggleCenterDots', prop: 'showCenterDots' },
       { id: 'toggleIntersections', prop: 'showIntersections' },
       { id: 'toggleRadialAxes', prop: 'showRadialAxes' },
-      { id: 'toggleGlow', prop: 'enableGlow' },
-      { id: 'togglePulse', prop: 'enablePulse' }
+      { id: 'toggleGlow', prop: 'enableGlow' }
     ];
 
     toggleMap.forEach(item => {
@@ -7594,54 +8504,328 @@ const UI = {
     });
   },
 
+  _gadgetsRafId: null,
+  _auraExpansionStartTime: 0,
+  _rainbowStartTime: 0,
+  _lastRainbowTime: 0,
+  _rainbowPhase: 0,
+  _auraCircleElements: null,
+  _breathingStartTime: 0,
+
+  /**
+   * Sacred Gadgets: Real-time interactive animations that can overlay simultaneously:
+   * 1. Aura Expansion: Progressively expands aura from 1.1r to 20r in 0.01 increments and recedes back
+   * 2. Rainbow Aura Wave: Cycles aura petals through rainbow colors from center to outside
+   * 3. Sacred Breathing: Breathes entire pattern from center up to max size (slider up to 2.0) and back to 1.0
+   */
+  bindSacredGadgets() {
+    const toggleAuraExp = document.getElementById('toggleAuraExpansion');
+    const cardAuraExp = document.getElementById('cardAuraExpansion');
+    const sliderAuraExpMaxSize = document.getElementById('sliderAuraExpMaxSize');
+    const badgeAuraExpMaxSize = document.getElementById('badgeAuraExpMaxSize');
+    const sliderAuraExpSpeed = document.getElementById('sliderAuraExpSpeed');
+    const badgeAuraExpSpeed = document.getElementById('badgeAuraExpSpeed');
+
+    const toggleRainbow = document.getElementById('toggleRainbowAura');
+    const cardRainbow = document.getElementById('cardRainbowAura');
+    const sliderRainbowSpeed = document.getElementById('sliderRainbowSpeed');
+    const badgeRainbowSpeed = document.getElementById('badgeRainbowSpeed');
+
+    const toggleBreathing = document.getElementById('toggleBreathing');
+    const cardBreathing = document.getElementById('cardBreathing');
+    const sliderBreathingSize = document.getElementById('sliderBreathingSize');
+    const badgeBreathingSize = document.getElementById('badgeBreathingSize');
+    const sliderBreathingSpeed = document.getElementById('sliderBreathingSpeed');
+    const badgeBreathingSpeed = document.getElementById('badgeBreathingSpeed');
+
+    // 1. Aura Expansion Toggle (0r to max size up to 20r progressively, increments 0.01)
+    if (toggleAuraExp) {
+      toggleAuraExp.checked = Boolean(State.gadgetAuraExpansion);
+      toggleAuraExp.addEventListener('change', (e) => {
+        State.gadgetAuraExpansion = e.target.checked;
+        cardAuraExp?.classList.toggle('active', State.gadgetAuraExpansion);
+        if (State.gadgetAuraExpansion) {
+          this._auraExpansionStartTime = performance.now();
+          this.startSacredGadgetsLoop();
+          this.showToast('Sacred Gadget: Aura Expansion ON (0r ↔ max)');
+        } else {
+          cardAuraExp?.classList.remove('active');
+          this.stopSacredGadgetsLoopIfAllInactive();
+          // Turning off aura expansion resets aura size to default 1.95
+          State.auraScale = 1.95;
+          const slider = document.getElementById('sliderAuraScale');
+          const badge = document.getElementById('badgeAuraScale');
+          if (slider) {
+            slider.value = '1.95';
+            this.updateRangeSliderFill(slider);
+          }
+          if (badge) {
+            const px = Math.round(1.95 * (State.r || 50));
+            badge.textContent = `1.95r (${px}px)`;
+          }
+          this.showToast('Sacred Gadget: Aura Expansion OFF (Reset to 1.95r)');
+          App.renderAll();
+        }
+      });
+    }
+
+    if (sliderAuraExpMaxSize && badgeAuraExpMaxSize) {
+      sliderAuraExpMaxSize.value = State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0;
+      badgeAuraExpMaxSize.textContent = `${Number(sliderAuraExpMaxSize.value).toFixed(1)}r`;
+      sliderAuraExpMaxSize.addEventListener('input', (e) => {
+        const val = clampNumber(e.target.value, 0.0, 20.0, 20.0);
+        State.auraExpansionMaxSize = val;
+        badgeAuraExpMaxSize.textContent = `${val.toFixed(1)}r`;
+      });
+    }
+
+    if (sliderAuraExpSpeed && badgeAuraExpSpeed) {
+      sliderAuraExpSpeed.value = State.auraExpansionSpeed !== undefined ? State.auraExpansionSpeed : 1.0;
+      badgeAuraExpSpeed.textContent = `${Number(sliderAuraExpSpeed.value).toFixed(1)}x`;
+      sliderAuraExpSpeed.addEventListener('input', (e) => {
+        const val = clampNumber(e.target.value, 0.1, 3.0, 1.0);
+        State.auraExpansionSpeed = val;
+        badgeAuraExpSpeed.textContent = `${val.toFixed(1)}x`;
+      });
+    }
+
+    // 2. Rainbow Aura Wave Toggle (Cycles rainbow from center to outside)
+    if (toggleRainbow) {
+      toggleRainbow.checked = Boolean(State.gadgetRainbowAura);
+      toggleRainbow.addEventListener('change', (e) => {
+        State.gadgetRainbowAura = e.target.checked;
+        cardRainbow?.classList.toggle('active', State.gadgetRainbowAura);
+        if (State.gadgetRainbowAura) {
+          this._rainbowStartTime = performance.now();
+          this._lastRainbowTime = performance.now() / 1000;
+          this._rainbowPhase = 0;
+          this._auraCircleElements = null;
+          document.querySelectorAll('.aura-circle').forEach(circle => {
+            circle.style.setProperty('transition', 'none', 'important');
+          });
+          this.startSacredGadgetsLoop();
+          this.showToast('Sacred Gadget: Rainbow Aura Wave ON');
+        } else {
+          cardRainbow?.classList.remove('active');
+          this._auraCircleElements = null;
+          this.resetRainbowAuraStrokes();
+          this.stopSacredGadgetsLoopIfAllInactive();
+          this.showToast('Sacred Gadget: Rainbow Aura Wave OFF');
+        }
+      });
+    }
+
+    if (sliderRainbowSpeed && badgeRainbowSpeed) {
+      sliderRainbowSpeed.value = State.rainbowWaveSpeed !== undefined ? State.rainbowWaveSpeed : 1.0;
+      badgeRainbowSpeed.textContent = `${Number(sliderRainbowSpeed.value).toFixed(1)}x`;
+      sliderRainbowSpeed.addEventListener('input', (e) => {
+        const val = clampNumber(e.target.value, 0.1, 3.0, 1.0);
+        State.rainbowWaveSpeed = val;
+        badgeRainbowSpeed.textContent = `${val.toFixed(1)}x`;
+      });
+    }
+
+    // 3. Sacred Breathing Toggle & Sliders (Breathes from middle to max size up to 2.0 and back to 1.0)
+    if (toggleBreathing) {
+      toggleBreathing.checked = Boolean(State.gadgetBreathing);
+      toggleBreathing.addEventListener('change', (e) => {
+        State.gadgetBreathing = e.target.checked;
+        cardBreathing?.classList.toggle('active', State.gadgetBreathing);
+        if (State.gadgetBreathing) {
+          this._breathingStartTime = performance.now();
+          this.startSacredGadgetsLoop();
+          this.showToast('Sacred Gadget: Sacred Breathing ON');
+        } else {
+          cardBreathing?.classList.remove('active');
+          this.resetBreathingTransforms();
+          this.stopSacredGadgetsLoopIfAllInactive();
+          this.showToast('Sacred Gadget: Sacred Breathing OFF (Restored size to 1.0x)');
+        }
+      });
+    }
+
+    if (sliderBreathingSize && badgeBreathingSize) {
+      sliderBreathingSize.value = State.breathingMaxSize || 2.0;
+      badgeBreathingSize.textContent = `${Number(sliderBreathingSize.value).toFixed(2)}x`;
+      sliderBreathingSize.addEventListener('input', (e) => {
+        const val = clampNumber(e.target.value, 1.05, 2.0, 2.0);
+        State.breathingMaxSize = val;
+        badgeBreathingSize.textContent = `${val.toFixed(2)}x`;
+      });
+    }
+
+    if (sliderBreathingSpeed && badgeBreathingSpeed) {
+      sliderBreathingSpeed.value = State.breathingSpeed || 1.0;
+      badgeBreathingSpeed.textContent = `${Number(sliderBreathingSpeed.value).toFixed(1)}x`;
+      sliderBreathingSpeed.addEventListener('input', (e) => {
+        const val = clampNumber(e.target.value, 0.2, 3.0, 1.0);
+        State.breathingSpeed = val;
+        badgeBreathingSpeed.textContent = `${val.toFixed(1)}x`;
+      });
+    }
+  },
+
+  startSacredGadgetsLoop() {
+    if (this._gadgetsRafId) return;
+
+    const loop = (timestamp) => {
+      this.updateSacredGadgetsFrame(timestamp);
+
+      if (State.gadgetAuraExpansion || State.gadgetRainbowAura || State.gadgetBreathing) {
+        this._gadgetsRafId = requestAnimationFrame(loop);
+      } else {
+        this._gadgetsRafId = null;
+      }
+    };
+    this._gadgetsRafId = requestAnimationFrame(loop);
+  },
+
+  stopSacredGadgetsLoopIfAllInactive() {
+    if (!State.gadgetAuraExpansion && !State.gadgetRainbowAura && !State.gadgetBreathing) {
+      if (this._gadgetsRafId) {
+        cancelAnimationFrame(this._gadgetsRafId);
+        this._gadgetsRafId = null;
+      }
+    }
+  },
+
+  updateSacredGadgetsFrame(timestamp) {
+    const nowSec = timestamp / 1000;
+
+    // --- 1. Aura Expansion (0r to max size up to 20r in 0.01 increments) ---
+    if (State.gadgetAuraExpansion) {
+      const speed = State.auraExpansionSpeed || 1.0;
+      const basePeriod = 10.0; // base period of 10s
+      const period = basePeriod / speed;
+      const elapsed = nowSec - (this._auraExpansionStartTime / 1000 || 0);
+      const theta = (2 * Math.PI * elapsed) / period;
+      const u = (1 - Math.cos(theta)) / 2;
+      const minScale = 0.0;
+      const maxScale = State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0;
+      const rawScale = minScale + (maxScale - minScale) * u;
+      const scale = Math.round(rawScale * 100) / 100;
+      State.auraScale = scale;
+
+      const slider = document.getElementById('sliderAuraScale');
+      const badge = document.getElementById('badgeAuraScale');
+      if (slider && document.activeElement !== slider) {
+        slider.value = scale.toFixed(2);
+        this.updateRangeSliderFill(slider);
+      }
+      if (badge) {
+        const px = Math.round(scale * (State.r || 50));
+        badge.textContent = `${scale.toFixed(2)}r (${px}px)`;
+      }
+
+      const effectiveR = Number((scale * (State.r || 50)).toFixed(2));
+      document.querySelectorAll('.aura-circle').forEach(circle => {
+        circle.setAttribute('r', effectiveR);
+      });
+    }
+
+    // --- 2. Rainbow Aura Wave (Continuous Center to Outside Spectrum) ---
+    if (State.gadgetRainbowAura) {
+      const speed = State.rainbowWaveSpeed || 1.0;
+      const lastTime = this._lastRainbowTime || nowSec;
+      const dt = Math.min(Math.max(nowSec - lastTime, 0), 0.1);
+      this._lastRainbowTime = nowSec;
+      this._rainbowPhase = ((this._rainbowPhase || 0) + dt * 135 * speed) % 360000;
+
+      let auraCircles = this._auraCircleElements;
+      if (!auraCircles || auraCircles.length === 0 || !auraCircles[0]?.isConnected) {
+        auraCircles = Array.from(document.querySelectorAll('.aura-circle'));
+        this._auraCircleElements = auraCircles;
+      }
+
+      // Wave factor 1.85 creates a continuous, unbroken chromatic wave across concentric rings
+      const waveFactor = 1.85;
+      const phase = this._rainbowPhase;
+
+      for (let i = 0; i < auraCircles.length; i++) {
+        const circle = auraCircles[i];
+        let dist = circle._patternDist;
+        if (dist === undefined) {
+          const cx = parseFloat(circle.getAttribute('cx')) || 0;
+          const cy = parseFloat(circle.getAttribute('cy')) || 0;
+          dist = Math.hypot(cx, cy);
+          circle._patternDist = dist;
+        }
+        const hue = (((phase - dist * waveFactor) % 360) + 360) % 360;
+        const colorStr = `hsl(${Math.round(hue)}, 95%, 65%)`;
+        circle.style.setProperty('transition', 'none', 'important');
+        circle.style.stroke = colorStr;
+        circle.setAttribute('stroke', colorStr);
+      }
+    }
+
+    // --- 3. Sacred Breathing (Middle to max size up to 2.0, then back to 1.0) ---
+    if (State.gadgetBreathing) {
+      const speed = State.breathingSpeed || 1.0;
+      const basePeriod = 8.0;
+      const period = basePeriod / speed;
+      const elapsed = nowSec - (this._breathingStartTime / 1000 || 0);
+      const theta = (2 * Math.PI * elapsed) / period;
+      const u = (1 - Math.cos(theta)) / 2;
+      const maxSize = State.breathingMaxSize !== undefined ? State.breathingMaxSize : 2.0;
+      const breathScale = 1.0 + (maxSize - 1.0) * u;
+      window._currentBreathingScale = breathScale;
+
+      document.querySelectorAll('.sacred-main-group').forEach(group => {
+        group.setAttribute('transform', `scale(${breathScale.toFixed(4)})`);
+      });
+    }
+  },
+
+  resetRainbowAuraStrokes() {
+    this._auraCircleElements = null;
+    this._rainbowPhase = 0;
+    this._lastRainbowTime = 0;
+    document.querySelectorAll('.aura-circle').forEach(circle => {
+      const defaultStroke = circle.getAttribute('data-default-stroke') || 
+        ((circle.dataset.pattern === 'life') ? (State.colorLife || '#ef4444') : (State.colorKryst || '#10b981'));
+      circle.style.stroke = '';
+      circle.style.transition = '';
+      circle.setAttribute('stroke', defaultStroke);
+    });
+  },
+
+  resetBreathingTransforms() {
+    window._currentBreathingScale = 1.0;
+    document.querySelectorAll('.sacred-main-group').forEach(group => {
+      group.removeAttribute('transform');
+    });
+    App.renderAll();
+  },
+
   bindPresets() {
     // Add New Custom Preset
     const btnAdd = document.getElementById('btnAddNewPreset');
     if (btnAdd) {
       btnAdd.addEventListener('click', () => {
-        const name = prompt('Enter a name for this custom shape preset (e.g., Pyramid, Dove, Shield, Pinecone, Face):');
+        const name = prompt('Enter a name for this custom shape preset (e.g., Pyramid, Dove, Shield, Pinecone, Face):', 'My Sacred Preset');
         if (!name || !name.trim()) return;
 
-        const presetKey = 'custom_' + Date.now();
+        const presetKey = 'custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+        const highlightCount = (State.highlightedIds?.size || 0) +
+          Object.keys(State.sectionFills || {}).length +
+          (State.selectedSectionIds?.size || 0);
+        const patternName = State.activePattern === 'life' ? 'Flower of Life' : 'Flower of Kryst';
+        const subtitle = `${patternName} · ${highlightCount > 0 ? highlightCount + ' highlighted' : 'Geometry'}`;
+
         const newPreset = {
+          id: presetKey,
           key: presetKey,
           title: name.trim(),
-          highlightCount: State.highlightedIds.size,
-          config: {
-            boundaryRadius: State.boundaryRadius,
-            r: State.r,
-            auraScale: State.auraScale || 2.0,
-            activePattern: State.activePattern,
-            bodyOpacity: State.bodyOpacity !== undefined ? State.bodyOpacity : 1.0,
-            auraOpacity: State.auraOpacity !== undefined ? State.auraOpacity : 1.0,
-            showBodyCircles: State.showBodyCircles,
-            showAuraFlower: State.showAuraFlower,
-            bodyAuraMix: State.bodyAuraMix,
-            highlightedIds: Array.from(State.highlightedIds),
-            disabledCircleIds: Array.from(State.disabledCircleIds),
-            coloredShapesMap: Array.from(State.coloredShapesMap.entries()),
-            circleRainbow: State.circleRainbow,
-            ringSpectral: State.ringSpectral,
-            offsetPath: { ...State.offsetPath },
-            fullScreenTiling: State.fullScreenTiling,
-            showSOHOE: State.showSOHOE,
-            showHexagramEyes: State.showHexagramEyes,
-            showGuides: State.showGuides,
-            showOuterRing: State.showOuterRing,
-            showCenterDots: State.showCenterDots,
-            colorKryst: State.colorKryst,
-            colorLife: State.colorLife,
-            colorBody: State.colorBody,
-            colorGuide: State.colorGuide,
-            colorOuter: State.colorOuter,
-            sectionFills: { ...(State.sectionFills || {}) }
-          }
+          subtitle: subtitle,
+          isBuiltin: false,
+          highlightCount: highlightCount,
+          config: PresetsManager.captureCurrentStudioConfig()
         };
 
-        PresetsManager.customPresets[presetKey] = newPreset;
-        PresetsManager.saveCustomPresets();
+        PresetsManager.addCustomPreset(newPreset);
+        State.activePreset = presetKey;
         this.renderCustomPresets();
-        this.showToast(`Saved custom preset: "${name.trim()}"`);
+        this.showToast(`Saved preset: "${name.trim()}"`);
       });
     }
 
@@ -7688,8 +8872,7 @@ const UI = {
     if (btnResetDefaults) {
       btnResetDefaults.addEventListener('click', () => {
         if (confirm('Clear all custom presets?')) {
-          PresetsManager.customPresets = {};
-          PresetsManager.saveCustomPresets();
+          PresetsManager.resetAllToDefaults();
           this.renderCustomPresets();
           manageModal?.classList.remove('open');
           this.showToast('Cleared custom presets.');
@@ -7699,124 +8882,93 @@ const UI = {
   },
 
   renderCustomPresets() {
-    const grid = document.getElementById('presetGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    const customKeys = Object.keys(PresetsManager.customPresets || {});
-    if (customKeys.length === 0) {
-      grid.innerHTML = `
-        <div style="grid-column: 1 / -1; padding: 18px 12px; text-align: center; color: var(--text-faint); font-size: 0.78rem; border: 1px dashed var(--bg-panel-border); border-radius: var(--radius-sm);">
-          No saved presets yet.<br/>
-          Select circles or configure your geometry, then click <strong>+ Add Preset</strong> to save (e.g. Pyramid, Dove, Shield, Pinecone, Face).
-        </div>
-      `;
-      return;
-    }
-
-    customKeys.forEach(key => {
-      const p = PresetsManager.customPresets[key];
-      const card = document.createElement('div');
-      card.className = `preset-card ${State.activePreset === key ? 'active' : ''}`;
-      card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-          <strong style="font-size:0.82rem; color:var(--text-bright);">${p.title}</strong>
-          <button class="btn-delete-preset" title="Delete preset" style="background:transparent; border:none; color:var(--text-faint); cursor:pointer; font-size:0.9rem; padding:2px 4px;">&times;</button>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; font-size:0.7rem; color:var(--text-muted); margin-top:4px;">
-          <span>${p.config?.activePattern === 'life' ? 'Flower of Life' : 'Flower of Kryst'}</span>
-          <span style="font-family:var(--font-mono); color:var(--accent-gold);">${p.config?.highlightedIds?.length || 0} selected</span>
-        </div>
-      `;
-
-      // Apply preset
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-delete-preset')) return;
-        this.applyCustomPreset(key);
-      });
-
-      // Delete preset
-      const delBtn = card.querySelector('.btn-delete-preset');
-      if (delBtn) {
-        delBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (confirm(`Delete preset "${p.title}"?`)) {
-            delete PresetsManager.customPresets[key];
-            PresetsManager.saveCustomPresets();
-            this.renderCustomPresets();
-            this.showToast(`Deleted preset "${p.title}"`);
-          }
-        });
-      }
-
-      grid.appendChild(card);
-    });
+    PresetsManager.renderPresetGrid();
   },
 
-  applyCustomPreset(key) {
-    const preset = PresetsManager.customPresets[key];
+  applyPreset(id) {
+    const preset = PresetsManager.getPreset(id);
     if (!preset || !preset.config) return;
 
-    State.activePreset = key;
+    State.activePreset = id;
     const cfg = preset.config;
 
-    if (cfg.boundaryRadius !== undefined) State.boundaryRadius = cfg.boundaryRadius;
-    if (cfg.r !== undefined) State.setRadius(cfg.r);
-    if (cfg.auraScale !== undefined) {
-      State.auraScale = clampNumber(cfg.auraScale, 2.0, 6.0, 2.0);
-      const auraScaleSlider = document.getElementById('sliderAuraScale');
-      const auraScaleBadge = document.getElementById('badgeAuraScale');
-      if (auraScaleSlider) auraScaleSlider.value = State.auraScale;
-      if (auraScaleBadge) {
-        const px = Math.round(State.auraScale * (State.r || 50));
-        auraScaleBadge.textContent = `${State.auraScale.toFixed(1)}r (${px}px)`;
-      }
-    }
-    if (cfg.activePattern !== undefined) State.activePattern = cfg.activePattern;
-    if (cfg.bodyOpacity !== undefined) State.bodyOpacity = cfg.bodyOpacity;
-    if (cfg.auraOpacity !== undefined) State.auraOpacity = cfg.auraOpacity;
-    if (cfg.showBodyCircles !== undefined) State.showBodyCircles = cfg.showBodyCircles;
-    if (cfg.showAuraFlower !== undefined) State.showAuraFlower = cfg.showAuraFlower;
-    if (cfg.bodyAuraMix !== undefined) State.bodyAuraMix = cfg.bodyAuraMix;
+    // Apply configuration to state safely
+    State.applyConfig(cfg);
 
-    State.highlightedIds.clear();
-    if (Array.isArray(cfg.highlightedIds)) {
-      cfg.highlightedIds.forEach(id => State.highlightedIds.add(id));
+    // Sync highlight mode UI if specified in preset
+    if (cfg.sectionHighlightMode !== undefined && typeof document !== 'undefined') {
+      document.body.classList.toggle('section-highlight-mode', State.sectionHighlightMode);
+      document.getElementById('toggleSectionHighlightBtn')?.classList.toggle('active', State.sectionHighlightMode);
+      document.getElementById('btnBottomHighlightMode')?.classList.toggle('active', State.sectionHighlightMode);
     }
-
-    State.disabledCircleIds.clear();
-    if (Array.isArray(cfg.disabledCircleIds)) {
-      cfg.disabledCircleIds.forEach(id => State.disabledCircleIds.add(id));
-    }
-
-    State.coloredShapesMap.clear();
-    if (Array.isArray(cfg.coloredShapesMap)) {
-      cfg.coloredShapesMap.forEach(([id, color]) => State.coloredShapesMap.set(id, color));
-    }
-
-    if (cfg.circleRainbow !== undefined) State.circleRainbow = cfg.circleRainbow;
-    if (cfg.ringSpectral !== undefined) State.ringSpectral = cfg.ringSpectral;
-    if (cfg.offsetPath !== undefined) State.offsetPath = { ...cfg.offsetPath };
-    if (cfg.fullScreenTiling !== undefined) State.fullScreenTiling = cfg.fullScreenTiling;
-    if (cfg.showSOHOE !== undefined) State.showSOHOE = cfg.showSOHOE;
-    if (cfg.showHexagramEyes !== undefined) State.showHexagramEyes = cfg.showHexagramEyes;
-    if (cfg.showGuides !== undefined) State.showGuides = cfg.showGuides;
-    if (cfg.showOuterRing !== undefined) State.showOuterRing = cfg.showOuterRing;
-    if (cfg.showCenterDots !== undefined) State.showCenterDots = cfg.showCenterDots;
-    State.sectionFills = (cfg.sectionFills && typeof cfg.sectionFills === 'object') ? { ...cfg.sectionFills } : {};
 
     // Sync UI elements
+    const auraScaleSlider = document.getElementById('sliderAuraScale');
+    const auraScaleBadge = document.getElementById('badgeAuraScale');
+    if (auraScaleSlider) auraScaleSlider.value = State.auraScale !== undefined ? State.auraScale : 1.95;
+    if (auraScaleBadge) {
+      const scale = State.auraScale !== undefined ? State.auraScale : 1.95;
+      const px = Math.round(scale * (State.r || 50));
+      auraScaleBadge.textContent = `${scale.toFixed(2)}r (${px}px)`;
+    }
+
+    const sliderAuraExpMaxSize = document.getElementById('sliderAuraExpMaxSize');
+    const badgeAuraExpMaxSize = document.getElementById('badgeAuraExpMaxSize');
+    if (sliderAuraExpMaxSize) sliderAuraExpMaxSize.value = State.auraExpansionMaxSize !== undefined ? State.auraExpansionMaxSize : 20.0;
+    if (badgeAuraExpMaxSize) badgeAuraExpMaxSize.textContent = `${Number(State.auraExpansionMaxSize || 20.0).toFixed(1)}r`;
+
+    const sliderAuraExpSpeed = document.getElementById('sliderAuraExpSpeed');
+    const badgeAuraExpSpeed = document.getElementById('badgeAuraExpSpeed');
+    if (sliderAuraExpSpeed) sliderAuraExpSpeed.value = State.auraExpansionSpeed !== undefined ? State.auraExpansionSpeed : 1.0;
+    if (badgeAuraExpSpeed) badgeAuraExpSpeed.textContent = `${Number(State.auraExpansionSpeed || 1.0).toFixed(1)}x`;
+
+    const sliderRainbowSpeed = document.getElementById('sliderRainbowSpeed');
+    const badgeRainbowSpeed = document.getElementById('badgeRainbowSpeed');
+    if (sliderRainbowSpeed) sliderRainbowSpeed.value = State.rainbowWaveSpeed !== undefined ? State.rainbowWaveSpeed : 1.0;
+    if (badgeRainbowSpeed) badgeRainbowSpeed.textContent = `${Number(State.rainbowWaveSpeed || 1.0).toFixed(1)}x`;
+
+    document.querySelectorAll('.pattern-tab, [data-pattern-switch]').forEach(t => {
+      const p = t.dataset.patternSwitch || t.dataset.pattern;
+      const isAct = p === State.activePattern;
+      t.classList.toggle('active', isAct);
+      t.setAttribute('aria-selected', isAct ? 'true' : 'false');
+    });
+
     const boundarySlider = document.getElementById('boundarySlider');
     if (boundarySlider) boundarySlider.value = State.boundaryRadius;
     const boundaryBadge = document.getElementById('boundaryBadge');
     if (boundaryBadge) boundaryBadge.textContent = `R_bound = ${State.boundaryRadius}px`;
 
     this.syncLayerControls();
-    this.bindPatternSwitcher();
     this.renderCustomPresets();
     this.updateSidebarStats();
+    this.updateAllRangeSliderFills();
+
+    // Re-render pattern with restored highlights and section fills
     App.renderAll();
-    this.showToast(`Applied preset: ${preset.title}`);
+
+    // Ensure DOM overlays are in sync with restored highlights
+    if (typeof SVGRenderer !== 'undefined' && SVGRenderer.updateHighlights) {
+      ['svgMain', 'svgLife', 'svgKryst'].forEach(svgId => {
+        if (typeof document !== 'undefined' && document.getElementById(svgId)) {
+          SVGRenderer.updateHighlights(svgId);
+        }
+      });
+    }
+    this.updateSelectedSectionDOM();
+
+    // Sync section count badge
+    const countBadge = document.getElementById('sectionColorCountBadge');
+    if (countBadge) {
+      const count = State.selectedSectionIds ? State.selectedSectionIds.size : 0;
+      countBadge.textContent = `${count} selected`;
+    }
+
+    this.showToast(`Applied preset: "${preset.title}"`);
+  },
+
+  applyCustomPreset(id) {
+    return this.applyPreset(id);
   },
 
   bindModals() {
@@ -7857,6 +9009,14 @@ const UI = {
     if (notesModal) {
       notesModal.addEventListener('click', (e) => {
         if (e.target === notesModal) notesModal.classList.remove('open');
+      });
+    }
+
+    // 3. Preset Config & Edit Modal
+    const presetModal = document.getElementById('presetConfigModal');
+    if (presetModal) {
+      presetModal.addEventListener('click', (e) => {
+        if (e.target === presetModal) presetModal.classList.remove('open');
       });
     }
 
@@ -8039,10 +9199,7 @@ const UI = {
     });
 
     document.getElementById('clearHighlightBtn')?.addEventListener('click', () => {
-      State.highlightedIds.clear();
-      SVGRenderer.updateHighlights('svgMain');
-      this.updateSidebarStats();
-      this.showToast('Cleared shape highlights.');
+      this.clearAllHighlights();
     });
   },
 
@@ -8085,6 +9242,7 @@ const UI = {
       } else if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
         State.highlightedIds.clear();
+        this.hideRemoveCirclesPopup();
         SVGRenderer.updateHighlights('svgMain');
         this.updateSidebarStats();
       }
@@ -8092,6 +9250,7 @@ const UI = {
   },
 
   showToast(text, duration = 2400) {
+    if (typeof document === 'undefined') return;
     const toast = document.getElementById('toastMessage');
     if (!toast) return;
     toast.textContent = text;
@@ -8124,23 +9283,55 @@ const UI = {
     App.renderAll();
   },
 
+  removeHighlightedCircles() {
+    if (!State.highlightedIds || State.highlightedIds.size === 0) {
+      this.showToast('No circles highlighted. Click circles to highlight them first.');
+      return;
+    }
+    const count = State.highlightedIds.size;
+    if (!State.disabledCircleIds) State.disabledCircleIds = new Set();
+    State.highlightedIds.forEach(id => State.disabledCircleIds.add(id));
+    State.highlightedIds.clear();
+    this.hideRemoveCirclesPopup();
+
+    const svgIds = ['svgMain', 'svgKryst', 'svgLife'];
+    svgIds.forEach(sid => {
+      if (typeof SVGRenderer !== 'undefined' && SVGRenderer.updateHighlights) {
+        SVGRenderer.updateHighlights(sid);
+      }
+    });
+    this.updateSidebarStats();
+    if (typeof App !== 'undefined' && App.renderAll) {
+      App.renderAll();
+    }
+    this.showToast(`Removed ${count} highlighted circle${count === 1 ? '' : 's'}.`);
+  },
+
+  // Alias for backward compatibility
+  toggleRemoveCirclesMode() {
+    return this.removeHighlightedCircles();
+  },
+
   updateSidebarStats() {
-    const boundEl = document.getElementById('sidebarBoundRad');
+    const boundEl = (typeof document !== 'undefined') ? document.getElementById('sidebarBoundRad') : null;
     if (boundEl) {
       boundEl.textContent = `${Math.round(State.boundaryRadius)}px (${(State.boundaryRadius / State.r).toFixed(1)}r)`;
     }
-    const hlEl = document.getElementById('sidebarHighlightCount');
+    const hlEl = (typeof document !== 'undefined') ? document.getElementById('sidebarHighlightCount') : null;
     if (hlEl) {
       hlEl.textContent = String(State.highlightedIds.size);
     }
-    const disEl = document.getElementById('sidebarDisabledCount');
+    const disEl = (typeof document !== 'undefined') ? document.getElementById('sidebarDisabledCount') : null;
     if (disEl) {
       disEl.textContent = String(State.disabledCircleIds.size);
     }
   }
 };
 
-window.UI = UI;
+if (typeof window !== 'undefined') {
+  window.UI = UI;
+  window.TutorialManager = TutorialManager;
+}
 
 
 
@@ -8211,6 +9402,9 @@ const App = {
     if (State.dimension === '3d') {
       Renderer3D.renderAll();
       return;
+    }
+    if (typeof UI !== 'undefined') {
+      UI._auraCircleElements = null;
     }
     if (document.getElementById('svgMain')) {
       const pattern = State.activePattern || 'kryst';

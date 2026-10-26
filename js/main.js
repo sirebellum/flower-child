@@ -66,6 +66,9 @@ const App = {
       Renderer3D.renderAll();
       return;
     }
+    if (typeof UI !== 'undefined') {
+      UI._auraCircleElements = null;
+    }
     if (document.getElementById('svgMain')) {
       const pattern = State.activePattern || 'kryst';
       SVGRenderer.render('svgMain', pattern, State.transforms[pattern] || State.transforms.kryst);

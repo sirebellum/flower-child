@@ -37,6 +37,9 @@ const Exporter = {
       if (!clone.getAttribute('height')) clone.setAttribute('height', String(vb.height));
     }
 
+    // Strip interactive hit-area helper circles from exported vector clone
+    clone.querySelectorAll('.body-circle-hit-area').forEach(el => el.remove());
+
     // Embed dark cosmic background rect behind all sacred geometry elements
     const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     bgRect.setAttribute('x', String(vb.x));

@@ -135,7 +135,7 @@ const SVGRenderer = {
 
     const pattern = patternType || State.activePattern || 'kryst';
     const r = State.r || 50;
-    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 2.0;
+    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 1.95;
     const boundaryRadius = State.boundaryRadius || (2 * State.N * r);
     const transform = transformState || State.transforms[pattern] || { panX: 0, panY: 0, scale: 0.38 };
     const idPrefix = svgId;
@@ -165,6 +165,9 @@ const SVGRenderer = {
     const mainGroup = this.createSvgElement('g', {
       class: `sacred-main-group ${State.enablePulse ? 'sacred-pulse' : ''}`
     });
+    if (State.gadgetBreathing && window._currentBreathingScale) {
+      mainGroup.setAttribute('transform', `scale(${window._currentBreathingScale.toFixed(4)})`);
+    }
 
     // Populate lookup map
     this.pointsMap.clear();
@@ -376,7 +379,7 @@ const SVGRenderer = {
 
     // Helper to compute stroke color based on active settings
     const resolveCircleStroke = (pt, defaultStroke) => {
-      if (State.highlightedIds.has(pt.id)) return '#ffffff';
+      if (State.highlightedIds.has(pt.id) || (pt.bodyId && State.highlightedIds.has(pt.bodyId))) return '#ffffff';
       if (State.circleRainbow) return `url(#${idPrefix}-rainbow-grad)`;
       if (State.ringSpectral) {
         const ringIdx = (pt.ring ? pt.ring - 1 : 0);
@@ -420,6 +423,11 @@ const SVGRenderer = {
           fillOpacity = '0.2';
         }
 
+        const unitGroup = this.createSvgElement('g', {
+          class: 'body-circle-unit',
+          'data-circle-id': pt.id
+        });
+
         const circle = this.createSvgElement('circle', {
           cx: pt.x,
           cy: pt.y,
@@ -436,8 +444,24 @@ const SVGRenderer = {
           'data-default-stroke': baseStroke,
           style: 'cursor: pointer;'
         });
+        unitGroup.appendChild(circle);
 
-        bodyFrag.appendChild(circle);
+        // Generous hover & click target threshold (20px thick transparent stroke hit-area)
+        const hitArea = this.createSvgElement('circle', {
+          cx: pt.x,
+          cy: pt.y,
+          r,
+          fill: 'none',
+          stroke: 'rgba(0, 0, 0, 0.001)',
+          'stroke-width': '20',
+          class: 'body-circle-hit-area',
+          'data-circle-id': pt.id,
+          'pointer-events': 'stroke',
+          style: 'cursor: pointer;'
+        });
+        unitGroup.appendChild(hitArea);
+
+        bodyFrag.appendChild(unitGroup);
       });
       bodyGroup.appendChild(bodyFrag);
       mainGroup.appendChild(bodyGroup);
@@ -454,7 +478,7 @@ const SVGRenderer = {
       });
       const auraFrag = document.createDocumentFragment();
       const defaultAuraColor = (pattern === 'life') ? State.colorLife : State.colorKryst;
-      const effectiveAuraR = (State.auraScale || 2.0) * r;
+      const effectiveAuraR = (State.auraScale !== undefined ? State.auraScale : 1.95) * r;
 
       auraPoints.forEach(apt => {
         const isHighlighted = State.highlightedIds.has(apt.bodyId);
@@ -466,12 +490,15 @@ const SVGRenderer = {
         if (State.coloredShapesMap.has(apt.id)) {
           fillColor = State.coloredShapesMap.get(apt.id);
           fillOpacity = '0.35';
+        } else if (isHighlighted) {
+          fillColor = 'rgba(255, 255, 255, 0.12)';
+          fillOpacity = '0.18';
         }
 
         const circle = this.createSvgElement('circle', {
           cx: apt.x,
           cy: apt.y,
-          r: apt.r || effectiveAuraR,
+          r: (apt.r !== undefined && !Number.isNaN(apt.r)) ? apt.r : effectiveAuraR,
           fill: fillColor,
           'fill-opacity': fillOpacity,
           stroke: strokeColor,
@@ -480,6 +507,7 @@ const SVGRenderer = {
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node aura-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'pointer-events': 'none',
+          style: 'transition: none !important;',
           'data-circle-id': apt.bodyId,
           'data-aura-id': apt.id,
           'data-pattern': pattern,
@@ -496,9 +524,9 @@ const SVGRenderer = {
     // 8b. Individual Aura / Body Intersection Sections (Venn-Diagram Interactive Highlighting)
     // -----------------------------------------------------------------------
     const activeSectionPoints = State.showAuraFlower ? auraPoints : (State.showBodyCircles ? points : auraPoints);
-    const effectiveSectionR = State.showAuraFlower ? ((State.auraScale || 2.0) * r) : r;
+    const effectiveSectionR = State.showAuraFlower ? ((State.auraScale !== undefined ? State.auraScale : 1.95) * r) : r;
 
-    if (activeSectionPoints && activeSectionPoints.length > 1) {
+    if (activeSectionPoints && activeSectionPoints.length > 1 && effectiveSectionR > 0) {
       const sectionsGroup = this.createSvgElement('g', {
         class: 'group-aura-sections',
         id: `${idPrefix}-aura-sections`
@@ -511,9 +539,10 @@ const SVGRenderer = {
       sections.forEach(sec => {
         const fillColor = (State.sectionFills && State.sectionFills[sec.id]) || null;
         const isColored = Boolean(fillColor);
+        const isSelected = Boolean(State.selectedSectionIds && State.selectedSectionIds.has(sec.id));
 
         // If neither aura nor body is visible, and section is not colored, skip rendering
-        if (!State.showAuraFlower && !State.showBodyCircles && !isColored) return;
+        if (!State.showAuraFlower && !State.showBodyCircles && !isColored && !isSelected) return;
 
         const pathEl = this.createSvgElement('path', {
           d: sec.d,
@@ -521,11 +550,11 @@ const SVGRenderer = {
           'fill-opacity': isColored ? '0.75' : '0.001',
           stroke: isColored ? 'rgba(255, 255, 255, 0.65)' : (isHighlightMode ? 'rgba(245, 158, 11, 0.22)' : 'none'),
           'stroke-width': isColored ? '1.5' : (isHighlightMode ? '0.9' : '0'),
-          class: `aura-intersection-section ${isColored ? 'colored-section' : ''} ${isHighlightMode ? 'highlight-mode-enabled' : ''}`,
+          class: `aura-intersection-section ${isColored ? 'colored-section' : ''} ${isHighlightMode ? 'highlight-mode-enabled' : ''} ${isSelected ? 'selected-section' : ''}`,
           'data-section-id': sec.id,
           'data-cx': String(sec.cx),
           'data-cy': String(sec.cy),
-          'pointer-events': (isHighlightMode || isColored) ? 'all' : 'none'
+          'pointer-events': (isHighlightMode || isColored || isSelected) ? 'all' : 'none'
         });
 
         sectionsFrag.appendChild(pathEl);
@@ -610,11 +639,12 @@ const SVGRenderer = {
    * @param {string} svgId
    */
   updateHighlights(svgId = 'svgMain') {
+    if (typeof document === 'undefined') return;
     const svg = document.getElementById(svgId);
     if (!svg) return;
 
     const r = State.r || 50;
-    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 2.0;
+    const auraScale = (State.auraScale !== undefined && State.auraScale !== null) ? Number(State.auraScale) : 1.95;
     const R = auraScale * r;
     const idPrefix = svgId;
 
@@ -632,6 +662,11 @@ const SVGRenderer = {
           el.setAttribute('stroke', '#ffffff');
           el.setAttribute('stroke-width', '3.0');
           el.setAttribute('filter', `url(#${idPrefix}-glow)`);
+        } else {
+          const defaultStroke = el.getAttribute('data-default-stroke') || (State.colorBody || '#3b82f6');
+          el.setAttribute('stroke', defaultStroke);
+          el.setAttribute('stroke-width', String(State.strokeBody || 1.0));
+          el.setAttribute('filter', State.enableGlow ? `url(#${idPrefix}-glow)` : 'none');
         }
       }
     });
