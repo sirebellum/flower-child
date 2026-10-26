@@ -13,9 +13,9 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="./css/variables.css">
-  <link rel="stylesheet" href="./css/layout.css">
-  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/variables.css?v=3.0">
+  <link rel="stylesheet" href="./css/layout.css?v=3.0">
+  <link rel="stylesheet" href="./css/components.css?v=3.0">
   <script type="importmap">
   {
     "imports": {
@@ -132,6 +132,15 @@
         <span>Theory &amp; Proof</span>
       </button>
 
+      <button class="btn" id="btnStartTutorial" aria-label="Open Interactive Interface Walkthrough"
+        title="Interactive Interface Walkthrough">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <polygon points="10 8 16 12 10 16 10 8" />
+        </svg>
+        <span>Tour</span>
+      </button>
+
       <button class="btn btn-primary" id="exportBtn" aria-label="Open High-Resolution Export Dialog"
         title="Export Vector SVG or Raster PNG">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -184,7 +193,7 @@
       <div class="sidebar-content">
 
         <!-- Section 1: Boundary & Expansion (E-05, R-B1, R-A7) -->
-        <div class="panel-section open">
+        <div class="panel-section open" id="sectionGeometry">
           <div class="section-header" role="button" tabindex="0" aria-expanded="true"
             aria-label="Toggle Boundary & Expansion Section">
             <span class="section-title">
@@ -221,15 +230,15 @@
                 aria-label="Body Radius in pixels">
             </div>
 
-            <!-- Aura Size Slider (2r to 6r) -->
+            <!-- Aura Size Slider (0r to 20r) -->
             <div class="slider-container">
               <div class="control-row">
                 <label for="sliderAuraScale" class="control-label">Aura Size</label>
-                <span class="control-val-badge" id="badgeAuraScale">2.0r (100px)</span>
+                <span class="control-val-badge" id="badgeAuraScale">1.95r (98px)</span>
               </div>
-              <input type="range" class="range-slider" id="sliderAuraScale" min="2.0" max="6.0" value="2.0" step="0.1"
-                aria-label="Aura Size Ratio from 2r to 6r">
-              <span style="font-size: 0.68rem; color: var(--text-faint);">Adjusts the aura petal circle size from 2r to 6r of the body circle.</span>
+              <input type="range" class="range-slider" id="sliderAuraScale" min="0.0" max="20.0" value="1.95" step="0.01"
+                aria-label="Aura Size Ratio from 0r to 20r">
+              <span style="font-size: 0.68rem; color: var(--text-faint);">Adjusts the aura petal circle size from 0r to 20r in 0.01 increments.</span>
             </div>
 
             <!-- Full-Screen Infinite Tiling Layout (R-A7) -->
@@ -244,17 +253,6 @@
               </div>
             </label>
 
-            <!-- Restore Removed Circles Button (E-05) -->
-            <button class="btn btn-secondary" id="btnRestoreCircles"
-              style="width: 100%; margin-top: 6px; font-size: 0.76rem; justify-content: center;"
-              title="Restore all circles removed via clicking">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                style="width: 13px; height: 13px; margin-right: 4px;">
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-              Restore All Removed Circles
-            </button>
 
             <!-- Interactive Circle Count Jump Box -->
             <div class="circle-count-jump-box"
@@ -283,16 +281,16 @@
           </div>
         </div>
 
-        <!-- Section 2: Custom Presets (R-A4, E-11) -->
-        <div class="panel-section open">
+        <!-- Section 2: Sacred Gadgets -->
+        <div class="panel-section open" id="sectionSacredGadgets">
           <div class="section-header" role="button" tabindex="0" aria-expanded="true"
-            aria-label="Toggle Custom Presets Section">
+            aria-label="Toggle Sacred Gadgets Section">
             <span class="section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polygon
                   points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
-              Sacred Shape Presets
+              Sacred Gadgets
             </span>
             <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               aria-hidden="true">
@@ -300,73 +298,177 @@
             </svg>
           </div>
           <div class="section-body">
-            <!-- Preset Toolbar -->
-            <div class="preset-toolbar">
-              <button class="btn btn-xs btn-primary" id="btnAddNewPreset"
-                aria-label="Save current highlighted shapes as custom preset"
-                title="Save shape preset (Pyramid, Dove, Shield, Pinecone, Face, etc.)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="width:12px;height:12px;" aria-hidden="true">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span>+ Save Preset</span>
-              </button>
-              <button class="btn btn-xs" id="btnManagePresets"
-                aria-label="Backup and JSON Import/Export"
-                title="Backup or Import presets as JSON">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  style="width:12px;height:12px;" aria-hidden="true">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span>Backup / JSON</span>
-              </button>
+            <!-- Gadgets Container with Overlay Support -->
+            <div class="sacred-gadgets-container" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                <span style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--accent-kryst, #10b981);">
+                  Live Gadgets &amp; Animations
+                </span>
+                <span class="gadget-overlay-badge" title="Gadgets can run and overlay at the same time">
+                  Overlay Active
+                </span>
+              </div>
+
+              <!-- Gadget 1: Aura Expansion -->
+              <!-- Gadget 1: Aura Expansion -->
+              <div class="gadget-card" id="cardAuraExpansion">
+                <label class="toggle-row" style="margin:0; padding:0; cursor:pointer;">
+                  <div class="toggle-info">
+                    <span class="toggle-title" style="display:flex; align-items:center; gap:6px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px; color:var(--accent-kryst);">
+                        <circle cx="12" cy="12" r="3" />
+                        <circle cx="12" cy="12" r="8" stroke-dasharray="2 2" />
+                        <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+                      </svg>
+                      Aura Expansion
+                    </span>
+                    <span class="toggle-desc">Progressively expands aura from 0r up to max size and recedes back</span>
+                  </div>
+                  <div class="switch">
+                    <input type="checkbox" id="toggleAuraExpansion" aria-label="Toggle Aura Expansion Animation">
+                    <span class="slider-switch"></span>
+                  </div>
+                </label>
+
+                <!-- Aura Expansion Sub-Controls (Max Size & Speed Sliders) -->
+                <div class="gadget-subcontrols" id="auraExpSubcontrols" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; gap:8px;">
+                  <div class="slider-container" style="margin:0;">
+                    <div class="control-row">
+                      <label for="sliderAuraExpMaxSize" class="control-label" style="font-size:0.72rem;">Max Aura Size (0r to 20r)</label>
+                      <span class="control-val-badge" id="badgeAuraExpMaxSize">20.0r</span>
+                    </div>
+                    <input type="range" class="range-slider" id="sliderAuraExpMaxSize" min="0.0" max="20.0" value="20.0" step="0.1"
+                      aria-label="Aura Expansion Maximum Size up to 20r">
+                  </div>
+
+                  <div class="slider-container" style="margin:0;">
+                    <div class="control-row">
+                      <label for="sliderAuraExpSpeed" class="control-label" style="font-size:0.72rem;">Expansion Speed</label>
+                      <span class="control-val-badge" id="badgeAuraExpSpeed">1.0x</span>
+                    </div>
+                    <input type="range" class="range-slider" id="sliderAuraExpSpeed" min="0.1" max="3.0" value="1.0" step="0.1"
+                      aria-label="Aura Expansion Speed">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gadget 2: Rainbow Aura Wave -->
+              <div class="gadget-card" id="cardRainbowAura">
+                <label class="toggle-row" style="margin:0; padding:0; cursor:pointer;">
+                  <div class="toggle-info">
+                    <span class="toggle-title" style="display:flex; align-items:center; gap:6px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px; color:#f59e0b;">
+                        <path d="M4 18a8 8 0 0 1 16 0" />
+                        <path d="M7 18a5 5 0 0 1 10 0" />
+                        <path d="M10 18a2 2 0 0 1 4 0" />
+                      </svg>
+                      Rainbow Aura Wave
+                    </span>
+                    <span class="toggle-desc">Cycles aura through rainbow spectrum from center to outside</span>
+                  </div>
+                  <div class="switch">
+                    <input type="checkbox" id="toggleRainbowAura" aria-label="Toggle Rainbow Aura Wave Animation">
+                    <span class="slider-switch"></span>
+                  </div>
+                </label>
+                <div class="rainbow-indicator-bar" aria-hidden="true"></div>
+
+                <!-- Rainbow Aura Wave Sub-Controls (Wave Speed Slider) -->
+                <div class="gadget-subcontrols" id="rainbowSubcontrols" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; gap:8px;">
+                  <div class="slider-container" style="margin:0;">
+                    <div class="control-row">
+                      <label for="sliderRainbowSpeed" class="control-label" style="font-size:0.72rem;">Wave Speed</label>
+                      <span class="control-val-badge" id="badgeRainbowSpeed">1.0x</span>
+                    </div>
+                    <input type="range" class="range-slider" id="sliderRainbowSpeed" min="0.1" max="3.0" value="1.0" step="0.1"
+                      aria-label="Rainbow Aura Wave Speed">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gadget 3: Sacred Breathing -->
+              <div class="gadget-card" id="cardBreathing">
+                <label class="toggle-row" style="margin:0; padding:0; cursor:pointer;">
+                  <div class="toggle-info">
+                    <span class="toggle-title" style="display:flex; align-items:center; gap:6px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px; color:var(--accent-cyan, #06b6d4);">
+                        <path d="M12 3v18M12 7a5 5 0 0 0-5 5c0 4 3 6 5 6M12 7a5 5 0 0 1 5 5c0 4-3 6-5 6" />
+                      </svg>
+                      Sacred Breathing
+                    </span>
+                    <span class="toggle-desc">Pattern breathes steadily from center up to max size and back to 1.0</span>
+                  </div>
+                  <div class="switch">
+                    <input type="checkbox" id="toggleBreathing" aria-label="Toggle Sacred Breathing Animation">
+                    <span class="slider-switch"></span>
+                  </div>
+                </label>
+
+                <!-- Breathing Sub-Controls (Size & Speed Sliders) -->
+                <div class="gadget-subcontrols" id="breathingSubcontrols" style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; gap:8px;">
+                  <div class="slider-container" style="margin:0;">
+                    <div class="control-row">
+                      <label for="sliderBreathingSize" class="control-label" style="font-size:0.72rem;">Max Size (up to 2.0)</label>
+                      <span class="control-val-badge" id="badgeBreathingSize">2.00x</span>
+                    </div>
+                    <input type="range" class="range-slider" id="sliderBreathingSize" min="1.05" max="2.00" value="2.00" step="0.05"
+                      aria-label="Breathing Maximum Size Ratio up to 2.0">
+                  </div>
+
+                  <div class="slider-container" style="margin:0;">
+                    <div class="control-row">
+                      <label for="sliderBreathingSpeed" class="control-label" style="font-size:0.72rem;">Breathing Pace / Speed</label>
+                      <span class="control-val-badge" id="badgeBreathingSpeed">1.0x</span>
+                    </div>
+                    <input type="range" class="range-slider" id="sliderBreathingSpeed" min="0.2" max="3.0" value="1.0" step="0.1"
+                      aria-label="Breathing Speed">
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <span style="font-size:0.68rem; color:var(--text-faint); margin-bottom: 6px; display:block;">
-              Tip: Shift+Click circles in the view to highlight sections, then click <strong>+ Save Preset</strong> (e.g. Pyramid, Dove, Shield, Pinecone, Face, Triveca).
-            </span>
+            <!-- Separator: Shape Presets -->
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px; margin-top: 6px;">
+              <span style="font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); display:block; margin-bottom:8px;">
+                Shape Presets &amp; Venn Highlights
+              </span>
+              <!-- Preset Toolbar -->
+              <div class="preset-toolbar">
+                <button class="btn btn-xs btn-primary" id="btnAddNewPreset"
+                  aria-label="Save current highlighted shapes as custom preset"
+                  title="Save shape preset (Pyramid, Dove, Shield, Pinecone, Face, etc.)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width:12px;height:12px;" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Save Preset</span>
+                </button>
+                <button class="btn btn-xs" id="btnManagePresets"
+                  aria-label="Backup and JSON Import/Export"
+                  title="Backup or Import presets as JSON">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width:12px;height:12px;" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  <span>Backup / JSON</span>
+                </button>
+              </div>
 
-            <!-- Dynamic Custom Presets Grid -->
-            <div class="preset-grid" id="presetGrid" role="region" aria-label="User Presets Selection">
-              <!-- Rendered dynamically by PresetsManager -->
+              <span style="font-size:0.68rem; color:var(--text-faint); margin-bottom: 6px; display:block;">
+                Tip: Shift+Click circles in the view to highlight sections, then click <strong>Save Preset</strong> (e.g. Pyramid, Dove, Shield, Pinecone, Face, Triveca).
+              </span>
+
+              <!-- Dynamic Custom Presets Grid -->
+              <div class="preset-grid" id="presetGrid" role="region" aria-label="User Presets Selection">
+                <!-- Rendered dynamically by PresetsManager -->
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Section 3: Sacred Art & Visualizers (Open for further development) -->
-        <div class="panel-section open" id="sectionSacredArt">
-          <div class="section-header" role="button" tabindex="0" aria-expanded="true"
-            aria-label="Toggle Sacred Art & Visualizers Section">
-            <span class="section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" />
-                <line x1="15" y1="9" x2="15.01" y2="9" />
-              </svg>
-              Sacred Art &amp; Visualizers
-            </span>
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              aria-hidden="true">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-          <div class="section-body">
-            <div class="dev-placeholder-card" style="padding: 14px 12px; border: 1px dashed rgba(255, 255, 255, 0.16); border-radius: var(--radius-sm, 6px); background: rgba(255, 255, 255, 0.02); text-align: center; margin: 4px 0;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 24px; height: 24px; color: var(--accent-gold, #f59e0b); opacity: 0.85; margin: 0 auto 6px auto; display: block;" aria-hidden="true">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              <div style="font-size: 0.78rem; font-weight: 500; color: var(--text-primary, #e2e8f0); margin-bottom: 3px;">Open for Further Development</div>
-              <p style="font-size: 0.70rem; color: var(--text-muted, #94a3b8); margin: 0; line-height: 1.35;">
-                Sacred art visualizer modules and overlays will be configured here.
-              </p>
-            </div>
-          </div>
-        </div>
 
         <!-- Section 4: Aesthetics & Geometric Elements -->
         <div class="panel-section open dim-2d-only" id="section2dLayers">
@@ -422,7 +524,7 @@
                 <span class="toggle-desc">Concentric rim bounding circle at R_bound</span>
               </div>
               <div class="switch">
-                <input type="checkbox" id="toggleOuterRing" checked>
+                <input type="checkbox" id="toggleOuterRing">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -456,17 +558,6 @@
               </div>
               <div class="switch">
                 <input type="checkbox" id="toggleGlow" checked>
-                <span class="slider-switch"></span>
-              </div>
-            </label>
-
-            <label class="toggle-row">
-              <div class="toggle-info">
-                <span class="toggle-title">Sacred Pulse (Breathing)</span>
-                <span class="toggle-desc">Gentle sinusoidal kinetic respiration</span>
-              </div>
-              <div class="switch">
-                <input type="checkbox" id="togglePulse">
                 <span class="slider-switch"></span>
               </div>
             </label>
@@ -649,10 +740,80 @@
         <div class="pane-webgl-wrapper" id="webglWrapperMain" style="display: none;">
           <canvas class="geometry-canvas-3d" id="canvasKryst3D"></canvas>
         </div>
+
+        <!-- Floating Section Color Palette Popup (Docked Upper Right of View Pane) -->
+        <div id="sectionColorPickerPopup" class="section-color-popup" style="display: none;" role="dialog" aria-label="Color Intersection Sections">
+          <div class="color-popup-header">
+            <span class="color-popup-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"/>
+              </svg>
+              <span>Color Intersections</span>
+            </span>
+            <span class="section-count-badge" id="sectionColorCountBadge">0 selected</span>
+            <button class="color-popup-close" id="btnCloseColorPopup" title="Close Color Picker" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="color-popup-palette">
+            <button class="color-swatch-btn" data-color="#f59e0b" style="background:#f59e0b;" title="Radiant Gold" type="button"></button>
+            <button class="color-swatch-btn" data-color="#ef4444" style="background:#ef4444;" title="Ruby Red" type="button"></button>
+            <button class="color-swatch-btn" data-color="#ec4899" style="background:#ec4899;" title="Rose Magenta" type="button"></button>
+            <button class="color-swatch-btn" data-color="#a855f7" style="background:#a855f7;" title="Amethyst Violet" type="button"></button>
+            <button class="color-swatch-btn" data-color="#3b82f6" style="background:#3b82f6;" title="Sapphire Blue" type="button"></button>
+            <button class="color-swatch-btn" data-color="#06b6d4" style="background:#06b6d4;" title="Cyan Turquoise" type="button"></button>
+            <button class="color-swatch-btn" data-color="#10b981" style="background:#10b981;" title="Emerald Green" type="button"></button>
+            <button class="color-swatch-btn" data-color="#f97316" style="background:#f97316;" title="Solar Amber" type="button"></button>
+            <button class="color-swatch-btn" data-color="#ffffff" style="background:#ffffff; border:1px solid rgba(0,0,0,0.25);" title="Pure Pearl" type="button"></button>
+            <label class="color-swatch-custom" title="Custom Color Picker">
+              <input type="color" id="inputCustomSectionColor" value="#f59e0b" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </label>
+          </div>
+          <div class="color-popup-actions">
+            <button class="btn btn-xs" id="btnClearSectionColor" type="button" title="Clear fill from selected sections" style="flex:1; justify-content:center; gap:4px; font-size:0.70rem; color:#f87171;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Clear Fill
+            </button>
+            <button class="btn btn-xs btn-danger-subtle" id="btnClearAllHighlights" type="button" title="Clear all highlights and colored sections" style="flex:1; justify-content:center; gap:4px; font-size:0.70rem; color:#fca5a5; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Clear All
+            </button>
+            <button class="btn btn-xs" id="btnDeselectSections" type="button" title="Done / Deselect all sections" style="flex:1; justify-content:center; gap:4px; font-size:0.70rem;">
+              Done
+            </button>
+          </div>
+        </div>
+
+        <!-- Floating "Remove Circles" Context Popup -->
+        <div id="removeCirclesPopup" class="remove-circles-popup" style="display: none;" role="dialog" aria-label="Remove Circles">
+          <button type="button" class="btn-remove-circles-action" id="btnPopupRemoveCircles" title="Remove highlighted circles">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px; margin-right: 5px;" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            <span>Remove Circles</span>
+          </button>
+          <button type="button" class="remove-circles-close-btn" id="btnCloseRemoveCirclesPopup" title="Dismiss" aria-label="Close">&times;</button>
+        </div>
       </div>
 
       <!-- Independent Body & Aura Layer Visibility & Opacity Bar -->
-      <div class="bottom-fader-bar bottom-layer-bar dim-2d-only" role="toolbar" aria-label="Body and Aura Layer Visibility and Opacity Controls">
+      <div class="bottom-fader-bar bottom-layer-bar dim-2d-only" id="bottomLayerToolbar" role="toolbar" aria-label="Body and Aura Layer Visibility and Opacity Controls">
         <!-- Body Layer Control Unit -->
         <div class="layer-control-unit" id="unitBodyControl">
           <label class="layer-pill-toggle" title="Toggle Full Body Visibility">
@@ -684,12 +845,30 @@
         </div>
         <div class="layer-bar-separator"></div>
 
-        <!-- Section Highlight Mode Toggle -->
+        <!-- Section Highlight Mode & Restore Circles Unit -->
         <div class="layer-control-unit" id="unitSectionHighlight">
-          <button class="layer-pill-toggle" id="btnBottomHighlightMode" title="Toggle Intersection Highlighting Mode (H)">
+          <button class="layer-pill-toggle" id="btnBottomHighlightMode" title="Toggle Intersection Highlighting Mode (H)" type="button">
             <span class="layer-toggle-btn highlight-pill">
               <span class="pill-dot highlight-dot"></span>
               <span class="pill-text">Highlight Mode</span>
+            </span>
+          </button>
+          <button class="layer-pill-toggle highlight-clear-pill" id="btnBottomClearHighlights" title="Clear all highlights" type="button">
+            <span class="layer-toggle-btn highlight-clear-btn-inner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              <span class="pill-text">Clear All</span>
+            </span>
+          </button>
+          <button class="layer-pill-toggle restore-circles-pill" id="btnRestoreCircles" title="Restore all removed circles" type="button">
+            <span class="layer-toggle-btn restore-pill">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              <span class="pill-text">Restore Circles</span>
             </span>
           </button>
         </div>
@@ -977,57 +1156,96 @@
     </div>
   </div>
 
-  <!-- Floating Section Color Picker Popup -->
-  <div id="sectionColorPickerPopup" class="section-color-popup" style="display: none;" role="dialog" aria-label="Color Intersection Section">
-    <div class="color-popup-header">
-      <span class="color-popup-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:4px;">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 2a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"/>
-        </svg>
-        Color Intersection
-      </span>
-      <button class="color-popup-close" id="btnCloseColorPopup" title="Close Color Picker" type="button" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-    <div class="color-popup-palette">
-      <button class="color-swatch-btn" data-color="#f59e0b" style="background:#f59e0b;" title="Radiant Gold" type="button"></button>
-      <button class="color-swatch-btn" data-color="#ef4444" style="background:#ef4444;" title="Ruby Red" type="button"></button>
-      <button class="color-swatch-btn" data-color="#ec4899" style="background:#ec4899;" title="Rose Magenta" type="button"></button>
-      <button class="color-swatch-btn" data-color="#a855f7" style="background:#a855f7;" title="Amethyst Violet" type="button"></button>
-      <button class="color-swatch-btn" data-color="#3b82f6" style="background:#3b82f6;" title="Sapphire Blue" type="button"></button>
-      <button class="color-swatch-btn" data-color="#06b6d4" style="background:#06b6d4;" title="Cyan Turquoise" type="button"></button>
-      <button class="color-swatch-btn" data-color="#10b981" style="background:#10b981;" title="Emerald Green" type="button"></button>
-      <button class="color-swatch-btn" data-color="#f97316" style="background:#f97316;" title="Solar Amber" type="button"></button>
-      <button class="color-swatch-btn" data-color="#ffffff" style="background:#ffffff; border:1px solid rgba(0,0,0,0.25);" title="Pure Pearl" type="button"></button>
-      <label class="color-swatch-custom" title="Custom Color Picker">
-        <input type="color" id="inputCustomSectionColor" value="#f59e0b" />
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </label>
-    </div>
-    <div class="color-popup-actions">
-      <button class="btn btn-xs" id="btnClearSectionColor" type="button" title="Clear color from this section" style="width:100%; justify-content:center; gap:4px; font-size:0.70rem; color:#f87171;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
-        Clear Fill
-      </button>
+  <!-- Edit Preset Modal -->
+  <div class="modal-overlay" id="presetConfigModal" role="dialog" aria-modal="true" aria-labelledby="presetModalTitle">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title" id="presetModalTitle" style="display:flex; align-items:center; gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--accent-cyan,#06b6d4);" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Preset
+        </div>
+        <button class="modal-close-btn" id="closePresetConfigModalBtn" aria-label="Close Preset Dialog">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 14px;">
+        <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+          <label for="presetInputName" class="control-label" style="font-size:0.76rem;">Preset Title</label>
+          <input type="text" id="presetInputName" class="custom-input" placeholder="e.g. Pyramid of Kryst"
+            style="width:100%; padding:8px 10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff;" />
+        </div>
+
+        <div class="control-row" style="flex-direction:column; align-items:flex-start; gap:6px;">
+          <label for="presetInputSubtitle" class="control-label" style="font-size:0.76rem;">Subtitle / Description</label>
+          <input type="text" id="presetInputSubtitle" class="custom-input" placeholder="e.g. Flower of Kryst · Custom Venn Highlights"
+            style="width:100%; padding:8px 10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff;" />
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 6px; padding: 12px; display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:0.74rem; color:var(--text-muted); line-height:1.4;">
+            Overwrite preset geometry with what is currently on your canvas?
+          </div>
+          <button type="button" class="btn btn-xs" id="btnPresetCaptureCurrentCanvas" style="justify-content:center; gap:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;" aria-hidden="true">
+              <path d="M23 4v6h-6"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Capture Current Canvas Highlights &amp; Settings
+          </button>
+          <span id="labelPresetCaptureStatus" style="font-size:0.68rem; color:var(--accent-kryst,#10b981); display:none;">
+            ✓ Captured current canvas geometry and highlights! Click Save to commit.
+          </span>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" id="btnCancelPresetConfig">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btnSavePresetConfig">Save Changes</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Notification Toast -->
+  <!-- Interactive Interface Tutorial Tour Overlay -->
+  <div id="tutorialTourOverlay" class="tutorial-overlay" style="display: none;" role="dialog" aria-modal="true" aria-label="Sacred Geometry Studio Walkthrough">
+    <div id="tutorialBackdrop" class="tutorial-backdrop" aria-hidden="true">
+      <div class="tutorial-curtain tutorial-curtain-top" id="tutorialCurtainTop"></div>
+      <div class="tutorial-curtain tutorial-curtain-bottom" id="tutorialCurtainBottom"></div>
+      <div class="tutorial-curtain tutorial-curtain-left" id="tutorialCurtainLeft"></div>
+      <div class="tutorial-curtain tutorial-curtain-right" id="tutorialCurtainRight"></div>
+    </div>
+    <div id="tutorialSpotlight" class="tutorial-spotlight" aria-hidden="true"></div>
+    <div id="tutorialCard" class="tutorial-card" style="width: 420px; max-width: min(420px, calc(100vw - 32px)); box-sizing: border-box;">
+      <div class="tutorial-card-header">
+        <span class="tutorial-step-badge" id="tutorialStepBadge">Step 1 of 7</span>
+        <button type="button" class="tutorial-close-btn" id="btnTutorialClose" aria-label="Close Tour">&times;</button>
+      </div>
+
+      <div class="tutorial-card-body">
+        <div class="tutorial-icon-box" id="tutorialIconBox"></div>
+        <div class="tutorial-content-text">
+          <h3 class="tutorial-title" id="tutorialTitle">Welcome to Sacred Geometry Studio</h3>
+          <p class="tutorial-desc" id="tutorialDesc">
+            Explore the mathematics and living patterns of the Flower of Kryst and Flower of Life.
+          </p>
+        </div>
+      </div>
+
+      <div class="tutorial-dots" id="tutorialDots"></div>
+
+      <div class="tutorial-card-footer">
+        <button type="button" class="btn btn-xs btn-ghost" id="btnTutorialSkip">Skip Tour</button>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn btn-xs btn-secondary" id="btnTutorialPrev">Back</button>
+          <button type="button" class="btn btn-xs btn-primary" id="btnTutorialNext">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="toast" id="toastMessage">Action completed successfully</div>
 
   <!-- Universal Script Loader: Loads ES Module or Standalone Bundle seamlessly -->
-  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/main.js?v=3.0"></script>
   <script>
     // Fallback for file:/// protocol if ES module blocked by browser local origin policy
     window.addEventListener('error', function (e) {
