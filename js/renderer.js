@@ -147,7 +147,7 @@ const SVGRenderer = {
 
     // Save statistics in State for HUD consumption
     State.currentGeometryStats = geomData;
-    if (window.UI?.updatePatternHUD) {
+    if (typeof window !== 'undefined' && window.UI?.updatePatternHUD) {
       window.UI.updatePatternHUD(geomData);
     }
 
@@ -165,7 +165,7 @@ const SVGRenderer = {
     const mainGroup = this.createSvgElement('g', {
       class: `sacred-main-group ${State.enablePulse ? 'sacred-pulse' : ''}`
     });
-    if (State.gadgetBreathing && window._currentBreathingScale) {
+    if (State.gadgetBreathing && typeof window !== 'undefined' && window._currentBreathingScale) {
       mainGroup.setAttribute('transform', `scale(${window._currentBreathingScale.toFixed(4)})`);
     }
 
@@ -435,7 +435,7 @@ const SVGRenderer = {
           fill: fillColor,
           'fill-opacity': fillOpacity,
           stroke: strokeColor,
-          'stroke-width': isHighlighted ? 2.8 : (State.strokeBody || 1.0),
+          'stroke-width': String(State.strokeBody || 1.0),
           opacity: isHighlighted ? '1.0' : '0.9',
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node body-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
@@ -502,7 +502,7 @@ const SVGRenderer = {
           fill: fillColor,
           'fill-opacity': fillOpacity,
           stroke: strokeColor,
-          'stroke-width': isHighlighted ? 3.0 : (State.strokeAura || 1.5),
+          'stroke-width': String(State.strokeAura || 1.5),
           opacity: isHighlighted ? '1.0' : '0.9',
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node aura-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
@@ -519,6 +519,15 @@ const SVGRenderer = {
       auraGroup.appendChild(auraFrag);
       mainGroup.appendChild(auraGroup);
     }
+
+    // -----------------------------------------------------------------------
+    // 8a. Lightweight Highlight Overlay Group (Beneath sections so intersection sections remain visible on top)
+    // -----------------------------------------------------------------------
+    const highlightGroup = this.createSvgElement('g', {
+      class: 'group-highlights',
+      'pointer-events': 'none'
+    });
+    mainGroup.appendChild(highlightGroup);
 
     // -----------------------------------------------------------------------
     // 8b. Individual Aura / Body Intersection Sections (Venn-Diagram Interactive Highlighting)
@@ -621,12 +630,6 @@ const SVGRenderer = {
       mainGroup.appendChild(centersGroup);
     }
 
-    // -----------------------------------------------------------------------
-    // 11. Lightweight Highlight Overlay Group
-    // -----------------------------------------------------------------------
-    const highlightGroup = this.createSvgElement('g', { class: 'group-highlights' });
-    mainGroup.appendChild(highlightGroup);
-
     svg.appendChild(mainGroup);
 
     this.updateHighlights(svgId);
@@ -658,14 +661,16 @@ const SVGRenderer = {
         el.setAttribute('fill', isHl ? '#ffffff' : (State.colorOuter || '#f59e0b'));
       } else if (el.classList.contains('circle-node')) {
         el.classList.toggle('highlighted-circle', isHl);
+        const isAura = el.classList.contains('aura-circle');
+        const strokeW = isAura ? (State.strokeAura || 1.5) : (State.strokeBody || 1.0);
         if (isHl) {
           el.setAttribute('stroke', '#ffffff');
-          el.setAttribute('stroke-width', '3.0');
+          el.setAttribute('stroke-width', String(strokeW));
           el.setAttribute('filter', `url(#${idPrefix}-glow)`);
         } else {
-          const defaultStroke = el.getAttribute('data-default-stroke') || (State.colorBody || '#3b82f6');
+          const defaultStroke = el.getAttribute('data-default-stroke') || (isAura ? ((State.activePattern === 'life') ? State.colorLife : State.colorKryst) : (State.colorBody || '#3b82f6'));
           el.setAttribute('stroke', defaultStroke);
-          el.setAttribute('stroke-width', String(State.strokeBody || 1.0));
+          el.setAttribute('stroke-width', String(strokeW));
           el.setAttribute('filter', State.enableGlow ? `url(#${idPrefix}-glow)` : 'none');
         }
       }
@@ -686,20 +691,25 @@ const SVGRenderer = {
             r,
             fill: 'none',
             stroke: '#ffffff',
-            'stroke-width': '2.2',
+            'stroke-width': String(State.strokeBody || 1.0),
             'stroke-dasharray': '3 3',
-            opacity: '0.9'
+            opacity: '0.9',
+            'pointer-events': 'none'
           }));
 
-          hlFrag.appendChild(this.createSvgElement('circle', {
-            cx: pt.x,
-            cy: pt.y,
-            r: R,
-            fill: 'none',
-            stroke: '#ffffff',
-            'stroke-width': '2.8',
-            filter: `url(#${idPrefix}-glow)`
-          }));
+          const showAura = State.showAuraFlower && (State.auraOpacity === undefined || State.auraOpacity > 0.01);
+          if (showAura) {
+            hlFrag.appendChild(this.createSvgElement('circle', {
+              cx: pt.x,
+              cy: pt.y,
+              r: R,
+              fill: 'none',
+              stroke: '#ffffff',
+              'stroke-width': String(State.strokeAura || 1.5),
+              filter: `url(#${idPrefix}-glow)`,
+              'pointer-events': 'none'
+            }));
+          }
         });
         hlGroup.appendChild(hlFrag);
       }
@@ -713,8 +723,8 @@ const SVGRenderer = {
    */
   updateViewBox(svg, transform) {
     if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const parentRect = svg.parentElement?.getBoundingClientRect();
+    const rect = svg.getBoundingClientRect?.();
+    const parentRect = svg.parentElement?.getBoundingClientRect?.();
     const width = (rect && rect.width > 0) ? rect.width : (parentRect?.width || svg.clientWidth || 800);
     const height = (rect && rect.height > 0) ? rect.height : (parentRect?.height || svg.clientHeight || 800);
     const scale = transform.scale || 1.0;

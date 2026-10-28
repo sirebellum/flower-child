@@ -1425,7 +1425,6 @@ dialog.scad-export-dialog::backdrop {
 
 .highlighted-circle {
   stroke: #ffffff !important;
-  stroke-width: 3.5px !important;
   filter: drop-shadow(0 0 10px #f59e0b) drop-shadow(0 0 20px #f59e0b);
 }
 

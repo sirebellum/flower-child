@@ -29,6 +29,7 @@ import {
 import { State, PresetsManager, PresetDialog, Spectral12Colors } from '../js/state.js';
 import { TutorialManager, UI } from '../js/interactions.js';
 import { Exporter, exportOpenSCAD } from '../js/export.js';
+import { SVGRenderer } from '../js/renderer.js';
 
 console.log('--- 1. Testing Boundary Radius Expansion (E-05 & R-B1) ---');
 const r = 50;
@@ -753,6 +754,175 @@ const customOuterDiameter = (customMaxDist + customOuterRadius) * 2;
 assert(Math.abs(customOuterDiameter - 150) < 0.05, `Custom bounding diameter (${customOuterDiameter}) must match 150mm`);
 
 console.log('OpenSCAD CAD export (UI, event handlers, generator engine, and manifold safeguards) verified successfully.');
+
+console.log('--- 19. Testing Aura & Body Stroke Width Independence & Highlighting Fidelity ---');
+
+// 19.1 Verify CSS does not contain hardcoded stroke-width: 3.5px !important on .highlighted-circle
+const cssContent = fs.readFileSync(path.join(__dirname, '../css/components.css'), 'utf8');
+assert(!cssContent.match(/\.highlighted-circle\s*\{[^}]*stroke-width:[^;]+!important/i), 'CSS .highlighted-circle must not force stroke-width !important');
+
+// 19.2 Verify state stroke independence
+State.strokeBody = 1.0;
+State.strokeAura = 1.5;
+assert.strictEqual(State.strokeBody, 1.0, 'Initial strokeBody must be 1.0');
+assert.strictEqual(State.strokeAura, 1.5, 'Initial strokeAura must be 1.5');
+
+// Adjusting body stroke must not alter aura stroke
+State.strokeBody = 3.5;
+assert.strictEqual(State.strokeBody, 3.5, 'strokeBody updated to 3.5');
+assert.strictEqual(State.strokeAura, 1.5, 'strokeAura remains independent at 1.5 when strokeBody changes');
+
+// Adjusting aura stroke must not alter body stroke
+State.strokeAura = 0.75;
+assert.strictEqual(State.strokeAura, 0.75, 'strokeAura updated to 0.75');
+assert.strictEqual(State.strokeBody, 3.5, 'strokeBody remains independent at 3.5 when strokeAura changes');
+
+// 19.3 Mock DOM and test SVGRenderer.updateHighlights and render behavior
+class MockElement {
+  constructor(tag) {
+    this.tagName = tag;
+    this.attributes = new Map();
+    this.classList = {
+      _classes: new Set(),
+      add: (c) => this.classList._classes.add(c),
+      remove: (c) => this.classList._classes.delete(c),
+      contains: (c) => this.classList._classes.has(c),
+      has: (c) => this.classList._classes.has(c),
+      toggle: (c, force) => {
+        if (force === undefined) {
+          if (this.classList._classes.has(c)) this.classList._classes.delete(c);
+          else this.classList._classes.add(c);
+        } else if (force) {
+          this.classList._classes.add(c);
+        } else {
+          this.classList._classes.delete(c);
+        }
+      }
+    };
+    this.children = [];
+    this.dataset = {};
+    this.innerHTML = '';
+  }
+  setAttribute(k, v) {
+    this.attributes.set(k, String(v));
+    if (k === 'class') {
+      this.classList._classes.clear();
+      String(v).split(/\s+/).filter(Boolean).forEach(c => this.classList._classes.add(c));
+    }
+    if (k.startsWith('data-')) {
+      const camel = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      this.dataset[camel] = String(v);
+    }
+  }
+  getAttribute(k) { return this.attributes.get(k) || null; }
+  hasAttribute(k) { return this.attributes.has(k); }
+  removeAttribute(k) { this.attributes.delete(k); }
+  appendChild(child) {
+    if (child.tagName === 'fragment') {
+      while (child.children.length > 0) {
+        this.children.push(child.children.shift());
+      }
+      return child;
+    }
+    this.children.push(child);
+    return child;
+  }
+  querySelector(sel) {
+    if (sel.startsWith('.')) {
+      const cls = sel.slice(1);
+      return this._find(el => el.classList.has(cls));
+    }
+    return null;
+  }
+  querySelectorAll(sel) {
+    const res = [];
+    this._findAll(el => {
+      if (sel === '[data-circle-id]') return el.attributes.has('data-circle-id');
+      if (sel.startsWith('.')) return el.classList.has(sel.slice(1));
+      if (sel === 'circle') return el.tagName === 'circle';
+      return false;
+    }, res);
+    return res;
+  }
+  _find(predicate) {
+    for (const child of this.children) {
+      if (predicate(child)) return child;
+      const found = child._find ? child._find(predicate) : null;
+      if (found) return found;
+    }
+    return null;
+  }
+  _findAll(predicate, acc) {
+    for (const child of this.children) {
+      if (predicate(child)) acc.push(child);
+      if (child._findAll) child._findAll(predicate, acc);
+    }
+  }
+}
+
+// Setup mock document
+const mockSvg = new MockElement('svg');
+mockSvg.id = 'svgMain';
+const mockElements = { svgMain: mockSvg };
+global.document = {
+  getElementById: (id) => mockElements[id] || null,
+  createElementNS: (ns, tag) => new MockElement(tag),
+  createDocumentFragment: () => new MockElement('fragment'),
+  querySelectorAll: () => []
+};
+
+// Render geometry into mock SVG
+State.activePattern = 'kryst';
+State.strokeBody = 2.0;
+State.strokeAura = 0.5;
+State.highlightedIds = new Set();
+SVGRenderer.render('svgMain', 'kryst');
+
+// Verify initial rendered stroke widths
+const allBodyCircles = mockSvg.querySelectorAll('.body-circle');
+const allAuraCircles = mockSvg.querySelectorAll('.aura-circle');
+assert(allBodyCircles.length > 0, 'Should have rendered body circles');
+assert(allAuraCircles.length > 0, 'Should have rendered aura circles');
+
+allBodyCircles.forEach(c => {
+  assert.strictEqual(c.getAttribute('stroke-width'), '2', 'Body circle stroke-width must be State.strokeBody (2.0)');
+});
+allAuraCircles.forEach(c => {
+  assert.strictEqual(c.getAttribute('stroke-width'), '0.5', 'Aura circle stroke-width must strictly be State.strokeAura (0.5), not body slider!');
+});
+
+// 19.4 Test Highlighting Obeying Aura Stroke Width
+const testCircleId = allBodyCircles[0].getAttribute('data-circle-id');
+State.highlightedIds.add(testCircleId);
+SVGRenderer.updateHighlights('svgMain');
+
+const highlightedAuraCircle = allAuraCircles.find(c => c.getAttribute('data-circle-id') === testCircleId);
+assert(highlightedAuraCircle, 'Should locate highlighted aura circle');
+assert.strictEqual(highlightedAuraCircle.getAttribute('stroke-width'), '0.5', 'Highlighted aura circle must strictly obey aura stroke width (0.5px), preventing sections from disappearing!');
+
+// Highlight overlay in hlGroup must also obey State.strokeAura
+const hlGroup = mockSvg.querySelector('.group-highlights');
+assert(hlGroup, 'hlGroup must exist');
+const hlOverlayCircles = hlGroup.querySelectorAll('circle');
+const auraHlOverlay = hlOverlayCircles.find(c => c.getAttribute('r') !== '50');
+assert(auraHlOverlay, 'hlGroup must contain aura overlay circle');
+assert.strictEqual(auraHlOverlay.getAttribute('stroke-width'), '0.5', 'Aura highlight overlay circle must obey State.strokeAura (0.5px)');
+
+// 19.5 Test Dynamic Slider Updates & Highlighting Restoration
+State.strokeAura = 4.0;
+State.strokeBody = 1.0;
+SVGRenderer.updateHighlights('svgMain');
+
+assert.strictEqual(highlightedAuraCircle.getAttribute('stroke-width'), '4', 'Highlighted aura circle must update to 4.0 when aura slider changes');
+const nonHighlightedAura = allAuraCircles.find(c => c.getAttribute('data-circle-id') !== testCircleId);
+assert.strictEqual(nonHighlightedAura.getAttribute('stroke-width'), '4', 'Non-highlighted aura circles must strictly obey aura stroke width (4.0), not body slider (1.0)');
+
+// Unhighlighting must preserve aura stroke width without resetting to body slider
+State.highlightedIds.clear();
+SVGRenderer.updateHighlights('svgMain');
+assert.strictEqual(highlightedAuraCircle.getAttribute('stroke-width'), '4', 'Unhighlighted aura circle must retain aura stroke width (4.0) and not reset to body stroke width (1.0)');
+
+console.log('Aura & Body stroke width independence and highlighting fidelity verified successfully.');
 
 console.log('\n========================================');
 console.log('ALL FEATURE TESTS PASSED SUCCESSFULLY!');

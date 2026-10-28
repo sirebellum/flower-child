@@ -64,7 +64,7 @@ const Exporter = {
       .center-dot, .intersection-node { cursor: pointer; }
       .flower-section { fill: transparent; stroke: transparent; }
       .flower-section.highlighted-section { fill: rgba(255, 255, 255, 0.45); stroke: #ffffff; stroke-width: 1.5px; }
-      .highlighted-circle { stroke: #ffffff !important; stroke-width: 3.5px !important; }
+      .highlighted-circle { stroke: #ffffff !important; }
       .highlighted-dot { fill: #ffffff !important; r: 6px !important; }
       .sacred-pulse { transform-origin: center; animation: sacredBreath 6s ease-in-out infinite; }
       @keyframes sacredBreath {

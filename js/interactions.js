@@ -1334,6 +1334,36 @@ const UI = {
     }
     if (badgeAura) badgeAura.textContent = isAuraVisible ? `${auraVal}%` : 'Off';
 
+    const strokeAuraSlider = document.getElementById('strokeAuraSlider');
+    const strokeAuraBadge = document.getElementById('strokeAuraBadge');
+    if (strokeAuraSlider) {
+      strokeAuraSlider.value = State.strokeAura !== undefined ? State.strokeAura : 1.5;
+      this.updateRangeSliderFill(strokeAuraSlider);
+    }
+    if (strokeAuraBadge) {
+      strokeAuraBadge.textContent = `${State.strokeAura !== undefined ? State.strokeAura : 1.5}px`;
+    }
+
+    const strokeBodySlider = document.getElementById('strokeBodySlider');
+    const strokeBodyBadge = document.getElementById('strokeBodyBadge');
+    if (strokeBodySlider) {
+      strokeBodySlider.value = State.strokeBody !== undefined ? State.strokeBody : 1.0;
+      this.updateRangeSliderFill(strokeBodySlider);
+    }
+    if (strokeBodyBadge) {
+      strokeBodyBadge.textContent = `${State.strokeBody !== undefined ? State.strokeBody : 1.0}px`;
+    }
+
+    const strokeGuideSlider = document.getElementById('strokeGuideSlider');
+    const strokeGuideBadge = document.getElementById('strokeGuideBadge');
+    if (strokeGuideSlider) {
+      strokeGuideSlider.value = State.strokeGuide !== undefined ? State.strokeGuide : 2.0;
+      this.updateRangeSliderFill(strokeGuideSlider);
+    }
+    if (strokeGuideBadge) {
+      strokeGuideBadge.textContent = `${State.strokeGuide !== undefined ? State.strokeGuide : 2.0}px`;
+    }
+
     const btnBottomHighlight = document.getElementById('btnBottomHighlightMode');
     if (btnBottomHighlight) {
       btnBottomHighlight.classList.toggle('active', !!State.sectionHighlightMode);
