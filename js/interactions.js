@@ -8,7 +8,7 @@
 import { State, PresetsManager, PresetDialog, clampNumber, Spectral12Colors } from './state.js';
 import { SacredMath, KRYST_STAGE_NAMES, LIFE_STAGE_NAMES, KRYST_STORY_DATA, RING_NOTES_DATA } from './geometry.js';
 import { SVGRenderer } from './renderer.js';
-import { Exporter } from './export.js';
+import { Exporter, exportOpenSCAD } from './export.js';
 
 /* =========================================================================
    PAN/ZOOM CONTROLLER (RAF-THROTTLED)
@@ -2239,6 +2239,106 @@ const UI = {
       Exporter.downloadPNG3D();
       exportModal?.classList.remove('open');
     });
+
+    // OpenSCAD 3D Export Dialog (Native <dialog> element)
+    const scadDialog = document.getElementById('scadExportDialog');
+    const exportScadBtn = document.getElementById('exportScadBtn');
+    const closeScadBtn = document.getElementById('closeScadDialogBtn');
+    const cancelScadBtn = document.getElementById('scadCancelBtn');
+    const generateScadBtn = document.getElementById('scadGenerateBtn');
+    const scadForm = document.getElementById('scadExportForm');
+
+    exportScadBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.openScadDialog();
+    });
+    closeScadBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.closeScadDialog();
+    });
+    cancelScadBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.closeScadDialog();
+    });
+    generateScadBtn?.addEventListener('click', (e) => {
+      this.handleScadGenerate(e);
+    });
+    scadForm?.addEventListener('submit', (e) => {
+      this.handleScadGenerate(e);
+    });
+
+    if (scadDialog) {
+      scadDialog.addEventListener('click', (e) => {
+        const rect = scadDialog.getBoundingClientRect();
+        const clickedInDialog = (
+          rect.top <= e.clientY && e.clientY <= rect.bottom &&
+          rect.left <= e.clientX && e.clientX <= rect.right
+        );
+        if (!clickedInDialog) {
+          this.closeScadDialog();
+        }
+      });
+    }
+
+    // Document-level event delegation ensures clicks always work regardless of timing or child targets
+    document.addEventListener('click', (e) => {
+      const trigger = e.target?.closest?.('#exportScadBtn, [data-action="export-openscad"]');
+      if (trigger) {
+        e.preventDefault();
+        this.openScadDialog();
+      }
+    });
+  },
+
+  openScadDialog() {
+    const exportModal = document.getElementById('exportModal');
+    if (exportModal) exportModal.classList.remove('open');
+    const scadDialog = document.getElementById('scadExportDialog');
+    if (scadDialog) {
+      if (typeof scadDialog.showModal === 'function') {
+        try {
+          if (!scadDialog.open) {
+            scadDialog.showModal();
+          }
+        } catch (_) {
+          scadDialog.setAttribute('open', '');
+        }
+      } else {
+        scadDialog.setAttribute('open', '');
+      }
+    }
+  },
+
+  closeScadDialog() {
+    const scadDialog = document.getElementById('scadExportDialog');
+    if (scadDialog) {
+      if (typeof scadDialog.close === 'function') {
+        try { scadDialog.close(); } catch (_) {}
+      } else {
+        scadDialog.removeAttribute('open');
+      }
+    }
+  },
+
+  handleScadGenerate(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const diameterInput = document.getElementById('scadTargetDiameter');
+    const depthInput = document.getElementById('scadZDepth');
+    const wallInput = document.getElementById('scadWallThickness');
+
+    const targetDiameter = diameterInput ? parseFloat(diameterInput.value) : 100;
+    const zDepth = depthInput ? parseFloat(depthInput.value) : 3.0;
+    const wallThickness = wallInput ? parseFloat(wallInput.value) : 1.2;
+
+    if (typeof exportOpenSCAD === 'function') {
+      exportOpenSCAD(targetDiameter, zDepth, wallThickness);
+    } else if (typeof Exporter?.exportOpenSCAD === 'function') {
+      Exporter.exportOpenSCAD(targetDiameter, zDepth, wallThickness);
+    } else if (typeof window !== 'undefined' && typeof window.exportOpenSCAD === 'function') {
+      window.exportOpenSCAD(targetDiameter, zDepth, wallThickness);
+    }
+
+    this.closeScadDialog();
   },
 
   populateStoryTimeline() {

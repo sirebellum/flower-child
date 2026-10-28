@@ -2207,7 +2207,7 @@ const computeCircleSections = (circles, R) => SacredMath.computeCircleSections(c
 /* =========================================================================
    1. CORE 3D FCC & VOLUMETRIC KRYST CONSTANTS
    ========================================================================= */
-/* const */ SQRT3 = Math.sqrt(3);
+/* duplicate const SQRT3 */ // const SQRT3 = Math.sqrt(3);
 const SQRT6 = Math.sqrt(6);
 
 // Exact vertical height of regular 3D tetrahedron of tangent spheres with edge 2r:
@@ -2222,11 +2222,11 @@ const FCC_POCKET_R = OCTANT_CORNER_DIST;
 
 // 2D Kryst Stamp Constants extended into 3D
 const DIST_HEX = 2;                   // 2r
-/* const */ DIST_TRI_INNER = 2 + SQRT3;     // (2 + √3)r ≈ 3.7320508 * r
-/* const */ DIST_TRI_APEX = 2 + 2 * SQRT3; // (2 + 2√3)r ≈ 5.4641016 * r
-/* const */ STAMP_STEP = 4 + 2 * SQRT3;     // (4 + 2√3)r ≈ 7.4641016 * r
-/* const */ DIST_BRIDGE_BASE = 4 + 3 * SQRT3; // (4 + 3√3)r ≈ 9.1961524 * r
-/* const */ EPSILON = 1e-3;
+/* duplicate const DIST_TRI_INNER */ // const DIST_TRI_INNER = 2 + SQRT3;     // (2 + √3)r ≈ 3.7320508 * r
+/* duplicate const DIST_TRI_APEX */ // const DIST_TRI_APEX = 2 + 2 * SQRT3; // (2 + 2√3)r ≈ 5.4641016 * r
+/* duplicate const STAMP_STEP */ // const STAMP_STEP = 4 + 2 * SQRT3;     // (4 + 2√3)r ≈ 7.4641016 * r
+/* duplicate const DIST_BRIDGE_BASE */ // const DIST_BRIDGE_BASE = 4 + 3 * SQRT3; // (4 + 3√3)r ≈ 9.1961524 * r
+/* duplicate const EPSILON */ // const EPSILON = 1e-3;
 
 /* =========================================================================
    2. FCC LATTICE HELPERS & 12 BASIS VECTORS
@@ -5180,8 +5180,8 @@ const SVGRenderer = {
 
 
 
-let THREE = (typeof window !== 'undefined' && window.THREE) ? window.THREE : THREE_IMPORT;
-let OrbitControls = (typeof window !== 'undefined' && window.OrbitControls) ? window.OrbitControls : OrbitControls_IMPORT;
+let THREE = (typeof window !== 'undefined' && window.THREE) ? window.THREE : (typeof THREE_IMPORT !== 'undefined' ? THREE_IMPORT : null);
+let OrbitControls = (typeof window !== 'undefined' && window.OrbitControls) ? window.OrbitControls : (typeof OrbitControls_IMPORT !== 'undefined' ? OrbitControls_IMPORT : null);
 
 /* =========================================================================
    GEOMETRY MERGING HELPERS (Self-contained, zero external dependencies)
@@ -6604,6 +6604,7 @@ const Renderer3D = {
  * background geometry, guaranteed object URL revocation, and memory safety.
  */
 
+
 const Exporter = {
   /**
    * Prepares a self-contained SVG clone with all essential styles, dimensions,
@@ -6831,9 +6832,142 @@ const Exporter = {
         }
       }
     }
-    if (window.UI?.showToast) window.UI.showToast('Error exporting 3D OBJ model', 3000);
+  },
+
+  /**
+   * Exports the active Flower of Kryst pattern as a programmatic 3D OpenSCAD (.scad) file.
+   *
+   * @param {number} [targetDiameter=100] - Total outer bounding diameter in millimeters.
+   * @param {number} [zDepth=3.0] - Vertical height of the 3D model in millimeters.
+   * @param {number} [wallThickness=1.2] - Width of the petal walls in millimeters.
+   * @returns {string} Generated OpenSCAD procedural script.
+   */
+  exportOpenSCAD(targetDiameter = 100, zDepth = 3.0, wallThickness = 1.2) {
+    return exportOpenSCAD(targetDiameter, zDepth, wallThickness);
   }
 };
+
+/**
+ * Programmatic OpenSCAD Generator Engine for the Flower of Kryst
+ * Fetches active geometry, calculates real-world millimeter scale factor,
+ * and outputs a parameterized .scad script using overlapping hollow cylinder unions.
+ *
+ * @param {number} [targetDiameter=100] - Outer bounding diameter in mm.
+ * @param {number} [zDepth=3.0] - Extrusion height in mm.
+ * @param {number} [wallThickness=1.2] - Petal wall thickness in mm.
+ * @returns {string} Procedural OpenSCAD code.
+ */
+function exportOpenSCAD(targetDiameter = 100, zDepth = 3.0, wallThickness = 1.2) {
+  const diameter = Number(targetDiameter) || 100;
+  const depth = Number(zDepth) || 3.0;
+  const wall = Number(wallThickness) || 1.2;
+
+  const currentN = (typeof window !== 'undefined' ? (window.AppState?.N ?? window.State?.N) : undefined)
+    ?? (typeof State !== 'undefined' ? State?.N : undefined)
+    ?? 2;
+
+  // Retrieve active geometry: prefer window.AppGeometry if populated, otherwise generate from active state
+  let geom = (typeof window !== 'undefined' && window.AppGeometry && Array.isArray(window.AppGeometry.circles))
+    ? window.AppGeometry
+    : null;
+
+  if (!geom || !geom.circles || geom.circles.length === 0) {
+    if (typeof SacredMath !== 'undefined' && SacredMath.getKrystGeometry) {
+      geom = SacredMath.getKrystGeometry(currentN, 1.0);
+    } else if (typeof State !== 'undefined' && State.currentGeometryStats?.circles) {
+      geom = State.currentGeometryStats;
+    } else {
+      geom = { circles: [] };
+    }
+  }
+
+  let circles = geom.circles || [];
+
+  // Filter disabled circles if configured in state
+  if (typeof State !== 'undefined' && State.disabledCircleIds && State.disabledCircleIds.size > 0) {
+    circles = circles.filter(c => {
+      const id = c.id || `fok_${Math.round(c.x * 100)}_${Math.round(c.y * 100)}`;
+      return !State.disabledCircleIds.has(id);
+    });
+  }
+
+  // Base radius: if circles are unit coordinates (r=1.0), R_actual is 2.0.
+  // If coordinates are in pixel space (r > 1.0), baseR normalizes the calculation.
+  const baseR = (circles.length > 0 && circles[0].r && circles[0].r > 1.0) ? circles[0].r : 1.0;
+  const R_actual = 2.0 * baseR;
+
+  // Calculate bounding radius to normalize to target size
+  let maxDist = 0;
+  circles.forEach(c => {
+    const d = Math.hypot(c.x, c.y);
+    if (d > maxDist) maxDist = d;
+  });
+  const rBound = (maxDist > 0) ? (maxDist + R_actual) : R_actual;
+  const scale = (diameter / 2) / rBound;
+
+  // Scale the aura radius and wall thickness
+  const scaledOuterRadius = R_actual * scale;
+
+  // Build SCAD script
+  let scad = `// Flower of Kryst - OpenSCAD Generator
+// Layers: ${currentN}
+// Target Diameter: ${diameter}mm, Depth: ${depth}mm, Wall: ${wall}mm
+
+$fn = 90; // High resolution for smooth curves
+
+module kryst_petal(cx, cy, r_outer, wall, h) {
+    translate([cx, cy, 0])
+    difference() {
+        cylinder(h=h, r=r_outer + wall/2, center=false);
+        // Translate Z slightly to ensure clean boolean manifold cuts
+        translate([0, 0, -1]) 
+            cylinder(h=h+2, r=r_outer - wall/2, center=false);
+    }
+}
+
+union() {
+`;
+
+  // Append each circle call
+  circles.forEach(c => {
+    const scaledX = (c.x * scale).toFixed(4);
+    const scaledY = (c.y * scale).toFixed(4);
+    scad += `    kryst_petal(${scaledX}, ${scaledY}, ${scaledOuterRadius.toFixed(4)}, ${wall}, ${depth});\n`;
+  });
+
+  scad += `}\n`;
+
+  // Trigger download if running in browser
+  if (typeof document !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+    const blob = new Blob([scad], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `flower_of_kryst_N${currentN}_${diameter}mm.scad`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        try {
+          if (link.parentNode) link.parentNode.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (_) {}
+      }, 2000);
+      if (typeof window !== 'undefined' && window.UI?.showToast) {
+        window.UI.showToast(`Exported OpenSCAD model (${diameter}mm)`);
+      }
+    } catch (err) {
+      console.error('OpenSCAD download error:', err);
+    }
+  }
+
+  return scad;
+}
+
+if (typeof window !== 'undefined') {
+  window.exportOpenSCAD = exportOpenSCAD;
+}
 
 
 
@@ -9078,6 +9212,106 @@ const UI = {
       Exporter.downloadPNG3D();
       exportModal?.classList.remove('open');
     });
+
+    // OpenSCAD 3D Export Dialog (Native <dialog> element)
+    const scadDialog = document.getElementById('scadExportDialog');
+    const exportScadBtn = document.getElementById('exportScadBtn');
+    const closeScadBtn = document.getElementById('closeScadDialogBtn');
+    const cancelScadBtn = document.getElementById('scadCancelBtn');
+    const generateScadBtn = document.getElementById('scadGenerateBtn');
+    const scadForm = document.getElementById('scadExportForm');
+
+    exportScadBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.openScadDialog();
+    });
+    closeScadBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.closeScadDialog();
+    });
+    cancelScadBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.closeScadDialog();
+    });
+    generateScadBtn?.addEventListener('click', (e) => {
+      this.handleScadGenerate(e);
+    });
+    scadForm?.addEventListener('submit', (e) => {
+      this.handleScadGenerate(e);
+    });
+
+    if (scadDialog) {
+      scadDialog.addEventListener('click', (e) => {
+        const rect = scadDialog.getBoundingClientRect();
+        const clickedInDialog = (
+          rect.top <= e.clientY && e.clientY <= rect.bottom &&
+          rect.left <= e.clientX && e.clientX <= rect.right
+        );
+        if (!clickedInDialog) {
+          this.closeScadDialog();
+        }
+      });
+    }
+
+    // Document-level event delegation ensures clicks always work regardless of timing or child targets
+    document.addEventListener('click', (e) => {
+      const trigger = e.target?.closest?.('#exportScadBtn, [data-action="export-openscad"]');
+      if (trigger) {
+        e.preventDefault();
+        this.openScadDialog();
+      }
+    });
+  },
+
+  openScadDialog() {
+    const exportModal = document.getElementById('exportModal');
+    if (exportModal) exportModal.classList.remove('open');
+    const scadDialog = document.getElementById('scadExportDialog');
+    if (scadDialog) {
+      if (typeof scadDialog.showModal === 'function') {
+        try {
+          if (!scadDialog.open) {
+            scadDialog.showModal();
+          }
+        } catch (_) {
+          scadDialog.setAttribute('open', '');
+        }
+      } else {
+        scadDialog.setAttribute('open', '');
+      }
+    }
+  },
+
+  closeScadDialog() {
+    const scadDialog = document.getElementById('scadExportDialog');
+    if (scadDialog) {
+      if (typeof scadDialog.close === 'function') {
+        try { scadDialog.close(); } catch (_) {}
+      } else {
+        scadDialog.removeAttribute('open');
+      }
+    }
+  },
+
+  handleScadGenerate(e) {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const diameterInput = document.getElementById('scadTargetDiameter');
+    const depthInput = document.getElementById('scadZDepth');
+    const wallInput = document.getElementById('scadWallThickness');
+
+    const targetDiameter = diameterInput ? parseFloat(diameterInput.value) : 100;
+    const zDepth = depthInput ? parseFloat(depthInput.value) : 3.0;
+    const wallThickness = wallInput ? parseFloat(wallInput.value) : 1.2;
+
+    if (typeof exportOpenSCAD === 'function') {
+      exportOpenSCAD(targetDiameter, zDepth, wallThickness);
+    } else if (typeof Exporter?.exportOpenSCAD === 'function') {
+      Exporter.exportOpenSCAD(targetDiameter, zDepth, wallThickness);
+    } else if (typeof window !== 'undefined' && typeof window.exportOpenSCAD === 'function') {
+      window.exportOpenSCAD(targetDiameter, zDepth, wallThickness);
+    }
+
+    this.closeScadDialog();
   },
 
   populateStoryTimeline() {
@@ -9355,6 +9589,8 @@ const App = {
     // Expose globally for developer console debugging & backward compatibility
     window.App = App;
     window.State = State;
+    window.AppState = State;
+    window.AppGeometry = SacredMath.getKrystGeometry(State.N || 2, 1.0);
     window.SacredMath = SacredMath;
     window.SacredMath3D = SacredMath3D;
     window.SVGRenderer = SVGRenderer;
@@ -9362,6 +9598,9 @@ const App = {
     window.UI = UI;
     window.PresetsManager = PresetsManager;
     window.Exporter = Exporter;
+    window.exportOpenSCAD = exportOpenSCAD;
+    window.openOpenSCADDialog = () => UI.openScadDialog();
+    window.closeOpenSCADDialog = () => UI.closeScadDialog();
 
     UI.init();
 
@@ -9399,6 +9638,9 @@ const App = {
   },
 
   renderAll() {
+    if (typeof SacredMath !== 'undefined' && SacredMath.getKrystGeometry) {
+      window.AppGeometry = SacredMath.getKrystGeometry(State.N || 2, 1.0);
+    }
     if (State.dimension === '3d') {
       Renderer3D.renderAll();
       return;
@@ -9445,5 +9687,7 @@ if (document.readyState === 'loading') {
   window.SVGRenderer = SVGRenderer;
   window.PresetsManager = PresetsManager;
   window.Exporter = Exporter;
+  window.exportOpenSCAD = exportOpenSCAD;
+  window.AppState = State;
 
 })(window, document);

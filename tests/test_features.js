@@ -28,6 +28,7 @@ import {
 } from '../js/geometry.js';
 import { State, PresetsManager, PresetDialog, Spectral12Colors } from '../js/state.js';
 import { TutorialManager, UI } from '../js/interactions.js';
+import { Exporter, exportOpenSCAD } from '../js/export.js';
 
 console.log('--- 1. Testing Boundary Radius Expansion (E-05 & R-B1) ---');
 const r = 50;
@@ -669,6 +670,89 @@ assert(!indexHtml.includes('id="togglePulse"'), 'Sacred Pulse (Breathing) toggle
 assert(!indexHtml.includes('Sacred Pulse (Breathing)'), 'Sacred Pulse label text should be removed from index.html');
 
 console.log('Click-to-highlight, direct "Remove Circles", and restoration without in-between mode verified successfully.');
+
+console.log('--- 18. Testing OpenSCAD CAD Export for Flower of Kryst ---');
+const componentsCss = fs.readFileSync(path.join(__dirname, '..', 'css', 'components.css'), 'utf8');
+
+// 18.1 UI Elements in index.html
+assert(indexHtml.includes('id="exportScadBtn"'), 'Export to OpenSCAD button must exist with id="exportScadBtn"');
+assert(indexHtml.includes('Export to OpenSCAD'), 'Button must contain text "Export to OpenSCAD"');
+assert(indexHtml.includes('<dialog class="modal-dialog-native scad-export-dialog" id="scadExportDialog"'), 'Native <dialog> element must exist with id="scadExportDialog"');
+assert(indexHtml.includes('id="scadTargetDiameter"'), 'Numeric input for Target Diameter must exist');
+assert(indexHtml.includes('Target Diameter (X/Y)'), 'Label for Target Diameter must exist');
+assert(indexHtml.includes('value="100"'), 'Default Target Diameter must be 100mm');
+assert(indexHtml.includes('id="scadZDepth"'), 'Numeric input for Extrusion Depth must exist');
+assert(indexHtml.includes('Extrusion Depth (Z)'), 'Label for Extrusion Depth must exist');
+assert(indexHtml.includes('value="3.0"'), 'Default Extrusion Depth must be 3.0mm');
+assert(indexHtml.includes('id="scadWallThickness"'), 'Numeric input for Wall Thickness must exist');
+assert(indexHtml.includes('Wall Thickness'), 'Label for Wall Thickness must exist');
+assert(indexHtml.includes('value="1.2"'), 'Default Wall Thickness must be 1.2mm');
+assert(indexHtml.includes('id="scadCancelBtn"'), 'Cancel button must exist');
+assert(indexHtml.includes('id="scadGenerateBtn"'), 'Generate button must exist');
+assert(indexHtml.includes('Generate .SCAD'), 'Generate button must have text "Generate .SCAD"');
+
+// 18.2 CSS Styling in components.css
+assert(componentsCss.includes('dialog.scad-export-dialog'), 'CSS must include styling for dialog.scad-export-dialog');
+assert(componentsCss.includes('dialog.scad-export-dialog::backdrop'), 'CSS must style dialog backdrop');
+
+// 18.3 Function availability
+assert(typeof exportOpenSCAD === 'function', 'exportOpenSCAD must be exported as a function');
+assert(typeof Exporter.exportOpenSCAD === 'function', 'Exporter.exportOpenSCAD must be a function on Exporter');
+assert(typeof UI.openScadDialog === 'function', 'UI.openScadDialog must be a function on UI');
+assert(typeof UI.closeScadDialog === 'function', 'UI.closeScadDialog must be a function on UI');
+assert(typeof UI.handleScadGenerate === 'function', 'UI.handleScadGenerate must be a function on UI');
+
+// 18.4 OpenSCAD Script Generation & Syntax Check
+State.N = 2;
+const scadCode = exportOpenSCAD(100, 3.0, 1.2);
+assert(typeof scadCode === 'string', 'exportOpenSCAD must return a string');
+assert(scadCode.includes('// Flower of Kryst - OpenSCAD Generator'), 'Script must have header comment');
+assert(scadCode.includes('// Layers: 2'), 'Script header must state layer count');
+assert(scadCode.includes('Target Diameter: 100mm, Depth: 3mm, Wall: 1.2mm') || scadCode.includes('Target Diameter: 100mm, Depth: 3.0mm, Wall: 1.2mm'), 'Script header must declare dimensions');
+assert(scadCode.includes('$fn = 90;'), 'Script must specify $fn = 90 for smooth curves');
+assert(scadCode.includes('module kryst_petal(cx, cy, r_outer, wall, h)'), 'Script must define module kryst_petal');
+assert(scadCode.includes('cylinder(h=h, r=r_outer + wall/2, center=false);'), 'Petal must create outer cylinder with wall/2 buffer');
+assert(scadCode.includes('translate([0, 0, -1])'), 'Petal must translate inner cylinder by [0, 0, -1] for manifold boolean cuts');
+assert(scadCode.includes('cylinder(h=h+2, r=r_outer - wall/2, center=false);'), 'Petal must cut inner cylinder with h+2 height');
+assert(scadCode.includes('union() {'), 'Script must execute a single union() over coordinates');
+
+// 18.5 Scale and Geometry Math Validation
+const petalRegex = /kryst_petal\(\s*([\d.-]+),\s*([\d.-]+),\s*([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\);/g;
+let match;
+let maxPetalDist = 0;
+let parsedOuterRadius = 0;
+let petalCount = 0;
+
+while ((match = petalRegex.exec(scadCode)) !== null) {
+  petalCount++;
+  const cx = parseFloat(match[1]);
+  const cy = parseFloat(match[2]);
+  parsedOuterRadius = parseFloat(match[3]);
+  const dist = Math.hypot(cx, cy);
+  if (dist > maxPetalDist) maxPetalDist = dist;
+}
+
+assert(petalCount > 0, 'Generated SCAD must include petal calls');
+const calculatedOuterDiameter = (maxPetalDist + parsedOuterRadius) * 2;
+assert(Math.abs(calculatedOuterDiameter - 100) < 0.05, `Total bounding diameter (${calculatedOuterDiameter}) must match target diameter (100mm) within precision`);
+
+// 18.6 Custom Target Dimensions Test
+const customScad = exportOpenSCAD(150, 5.0, 2.0);
+assert(customScad.includes('Target Diameter: 150mm, Depth: 5mm, Wall: 2mm') || customScad.includes('Target Diameter: 150mm, Depth: 5.0mm, Wall: 2.0mm'), 'Custom dimensions must appear in header');
+let customMatch;
+let customMaxDist = 0;
+let customOuterRadius = 0;
+while ((customMatch = petalRegex.exec(customScad)) !== null) {
+  const cx = parseFloat(customMatch[1]);
+  const cy = parseFloat(customMatch[2]);
+  customOuterRadius = parseFloat(customMatch[3]);
+  const dist = Math.hypot(cx, cy);
+  if (dist > customMaxDist) customMaxDist = dist;
+}
+const customOuterDiameter = (customMaxDist + customOuterRadius) * 2;
+assert(Math.abs(customOuterDiameter - 150) < 0.05, `Custom bounding diameter (${customOuterDiameter}) must match 150mm`);
+
+console.log('OpenSCAD CAD export (UI, event handlers, generator engine, and manifold safeguards) verified successfully.');
 
 console.log('\n========================================');
 console.log('ALL FEATURE TESTS PASSED SUCCESSFULLY!');

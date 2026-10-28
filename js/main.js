@@ -8,7 +8,7 @@ import { SacredMath3D } from './geometry3d.js';
 import { SVGRenderer } from './renderer.js';
 import { Renderer3D } from './renderer3d.js';
 import { PanZoomController, UI } from './interactions.js';
-import { Exporter } from './export.js';
+import { Exporter, exportOpenSCAD } from './export.js';
 
 const App = {
   panZoomControllers: [],
@@ -18,6 +18,8 @@ const App = {
     // Expose globally for developer console debugging & backward compatibility
     window.App = App;
     window.State = State;
+    window.AppState = State;
+    window.AppGeometry = SacredMath.getKrystGeometry(State.N || 2, 1.0);
     window.SacredMath = SacredMath;
     window.SacredMath3D = SacredMath3D;
     window.SVGRenderer = SVGRenderer;
@@ -25,6 +27,9 @@ const App = {
     window.UI = UI;
     window.PresetsManager = PresetsManager;
     window.Exporter = Exporter;
+    window.exportOpenSCAD = exportOpenSCAD;
+    window.openOpenSCADDialog = () => UI.openScadDialog();
+    window.closeOpenSCADDialog = () => UI.closeScadDialog();
 
     UI.init();
 
@@ -62,6 +67,9 @@ const App = {
   },
 
   renderAll() {
+    if (typeof SacredMath !== 'undefined' && SacredMath.getKrystGeometry) {
+      window.AppGeometry = SacredMath.getKrystGeometry(State.N || 2, 1.0);
+    }
     if (State.dimension === '3d') {
       Renderer3D.renderAll();
       return;

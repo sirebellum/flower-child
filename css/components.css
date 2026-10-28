@@ -1196,6 +1196,39 @@ input:checked + .slider-switch:before {
   opacity: 1;
 }
 
+/* Native HTML <dialog> styling */
+dialog.modal-dialog-native:not([open]),
+dialog.scad-export-dialog:not([open]) {
+  display: none !important;
+}
+
+dialog.modal-dialog-native,
+dialog.scad-export-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #0d121d;
+  color: var(--text-main);
+  border-radius: var(--radius-lg);
+  max-width: 480px;
+  width: min(480px, calc(100vw - 32px));
+  height: fit-content;
+  max-height: 90vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
+  z-index: 10000;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+dialog.modal-dialog-native::backdrop,
+dialog.scad-export-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 .modal-container {
   background: #0d121d;
   border: 1px solid rgba(255, 255, 255, 0.16);

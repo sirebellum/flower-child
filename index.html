@@ -15,7 +15,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="./css/variables.css?v=3.0">
   <link rel="stylesheet" href="./css/layout.css?v=3.0">
-  <link rel="stylesheet" href="./css/components.css?v=3.0">
+  <link rel="stylesheet" href="./css/components.css?v=3.3">
   <script type="importmap">
   {
     "imports": {
@@ -1089,10 +1089,72 @@
               <div style="font-size:0.72rem; opacity:0.8;">Master archival resolution suitable for art printing</div>
             </div>
           </button>
+
+          <button type="button" class="btn" id="exportScadBtn" data-action="export-openscad" onclick="if(window.UI?.openScadDialog){window.UI.openScadDialog();}else{const d=document.getElementById('scadExportDialog');if(d){document.getElementById('exportModal')?.classList.remove('open');if(typeof d.showModal==='function')d.showModal();else d.setAttribute('open','');}}" style="padding:12px; justify-content:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;" aria-hidden="true">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            <div style="text-align:left;">
+              <div style="font-weight:600;">Export to OpenSCAD (.scad)</div>
+              <div style="font-size:0.72rem; opacity:0.8;">Parametric 3D solid model script for 3D printing &amp; CAD</div>
+            </div>
+          </button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- OpenSCAD 3D Export Dialog (Native HTML <dialog>) -->
+  <dialog class="modal-dialog-native scad-export-dialog" id="scadExportDialog" aria-labelledby="scadExportModalTitle">
+    <div class="modal-container" style="max-width: 480px; width: 100%; border: none; box-shadow: none; background: transparent;">
+      <div class="modal-header">
+        <div class="modal-title" id="scadExportModalTitle">Export to OpenSCAD</div>
+        <button type="button" class="modal-close-btn" id="closeScadDialogBtn" onclick="if(window.UI?.closeScadDialog){window.UI.closeScadDialog();}else{document.getElementById('scadExportDialog')?.close();}" aria-label="Close OpenSCAD Export Dialog">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 16px;">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+          Export the active Flower of Kryst pattern as a programmatic 3D OpenSCAD (.scad) file with watertight overlapping hollow cylinder unions.
+        </p>
+
+        <form id="scadExportForm" method="dialog" style="display:flex; flex-direction:column; gap:16px;">
+          <div class="form-group">
+            <label for="scadTargetDiameter" class="form-label">
+              <span>Target Diameter (X/Y)</span>
+              <span class="control-badge">mm</span>
+            </label>
+            <input type="number" id="scadTargetDiameter" name="scadTargetDiameter" class="form-input" min="1" max="5000" step="any" value="100" required>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Defines the total outer bounding diameter of the 3D print/model.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="scadZDepth" class="form-label">
+              <span>Extrusion Depth (Z)</span>
+              <span class="control-badge">mm</span>
+            </label>
+            <input type="number" id="scadZDepth" name="scadZDepth" class="form-input" min="0.1" max="1000" step="any" value="3.0" required>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Defines the vertical height of the model.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="scadWallThickness" class="form-label">
+              <span>Wall Thickness</span>
+              <span class="control-badge">mm</span>
+            </label>
+            <input type="number" id="scadWallThickness" name="scadWallThickness" class="form-input" min="0.1" max="100" step="any" value="1.2" required>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Defines the width of the petal walls.</span>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+            <button type="button" class="btn" id="scadCancelBtn" onclick="if(window.UI?.closeScadDialog){window.UI.closeScadDialog();}else{document.getElementById('scadExportDialog')?.close();}">Cancel</button>
+            <button type="button" class="btn btn-primary" id="scadGenerateBtn" onclick="if(window.UI?.handleScadGenerate){window.UI.handleScadGenerate();}else{const d=parseFloat(document.getElementById('scadTargetDiameter')?.value)||100,z=parseFloat(document.getElementById('scadZDepth')?.value)||3,w=parseFloat(document.getElementById('scadWallThickness')?.value)||1.2;if(window.exportOpenSCAD)window.exportOpenSCAD(d,z,w);document.getElementById('scadExportDialog')?.close();}">Generate .SCAD</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
 
   <!-- Preset Management & JSON Export/Import Modal -->
   <div class="modal-overlay" id="presetManageModal" role="dialog" aria-modal="true" aria-labelledby="manageModalTitle">
@@ -1245,17 +1307,24 @@
   <div class="toast" id="toastMessage">Action completed successfully</div>
 
   <!-- Universal Script Loader: Loads ES Module or Standalone Bundle seamlessly -->
-  <script type="module" src="./js/main.js?v=3.0"></script>
+  <script type="module" src="./js/main.js?v=3.3"></script>
   <script>
-    // Fallback for file:/// protocol if ES module blocked by browser local origin policy
-    window.addEventListener('error', function (e) {
+    function loadBundleFallback() {
       if (!window.App && !window.__bundle_loaded__) {
         window.__bundle_loaded__ = true;
         const script = document.createElement('script');
         script.src = './js/bundle.js?v=' + Date.now();
         document.body.appendChild(script);
       }
+    }
+    // Fallback for file:/// protocol if ES module blocked by browser local origin policy
+    window.addEventListener('error', function (e) {
+      loadBundleFallback();
     });
+    // Watchdog fallback in case module loading fails silently (e.g. offline Three.js esm.sh failure)
+    setTimeout(function () {
+      loadBundleFallback();
+    }, 400);
   </script>
 </body>
 

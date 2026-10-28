@@ -10,8 +10,8 @@ import { OrbitControls as OrbitControls_IMPORT } from 'https://esm.sh/three@0.16
 import { State, LayerColors } from './state.js';
 import { SacredMath3D } from './geometry3d.js';
 
-let THREE = (typeof window !== 'undefined' && window.THREE) ? window.THREE : THREE_IMPORT;
-let OrbitControls = (typeof window !== 'undefined' && window.OrbitControls) ? window.OrbitControls : OrbitControls_IMPORT;
+let THREE = (typeof window !== 'undefined' && window.THREE) ? window.THREE : (typeof THREE_IMPORT !== 'undefined' ? THREE_IMPORT : null);
+let OrbitControls = (typeof window !== 'undefined' && window.OrbitControls) ? window.OrbitControls : (typeof OrbitControls_IMPORT !== 'undefined' ? OrbitControls_IMPORT : null);
 
 /* =========================================================================
    GEOMETRY MERGING HELPERS (Self-contained, zero external dependencies)

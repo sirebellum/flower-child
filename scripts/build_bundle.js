@@ -44,6 +44,9 @@ for (const relPath of files) {
   // Deduplicate top-level const / let / var / function / class declarations across files
   content = content.replace(/^(const|let|var)\s+([A-Za-z0-9_]+)\s*=/gm, (match, type, name) => {
     if (declaredTopLevel.has(name)) {
+      if (type === 'const') {
+        return `/* duplicate const ${name} */ // const ${name} =`;
+      }
       return `/* ${type} */ ${name} =`;
     }
     declaredTopLevel.add(name);
@@ -91,6 +94,8 @@ ${bundleBody}
   window.SVGRenderer = SVGRenderer;
   window.PresetsManager = PresetsManager;
   window.Exporter = Exporter;
+  window.exportOpenSCAD = exportOpenSCAD;
+  window.AppState = State;
 
 })(window, document);
 `;
