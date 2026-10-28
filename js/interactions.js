@@ -1337,11 +1337,11 @@ const UI = {
     const strokeAuraSlider = document.getElementById('strokeAuraSlider');
     const strokeAuraBadge = document.getElementById('strokeAuraBadge');
     if (strokeAuraSlider) {
-      strokeAuraSlider.value = State.strokeAura !== undefined ? State.strokeAura : 1.5;
+      strokeAuraSlider.value = State.strokeAura !== undefined ? State.strokeAura : 5.0;
       this.updateRangeSliderFill(strokeAuraSlider);
     }
     if (strokeAuraBadge) {
-      strokeAuraBadge.textContent = `${State.strokeAura !== undefined ? State.strokeAura : 1.5}px`;
+      strokeAuraBadge.textContent = `${State.strokeAura !== undefined ? State.strokeAura : 5.0}px`;
     }
 
     const strokeBodySlider = document.getElementById('strokeBodySlider');
@@ -1558,10 +1558,10 @@ const UI = {
     const strokeAuraSlider = document.getElementById('strokeAuraSlider');
     const strokeAuraBadge = document.getElementById('strokeAuraBadge');
     if (strokeAuraSlider && strokeAuraBadge) {
-      strokeAuraSlider.value = State.strokeAura || 1.5;
-      strokeAuraBadge.textContent = `${State.strokeAura}px`;
+      strokeAuraSlider.value = State.strokeAura || 5.0;
+      strokeAuraBadge.textContent = `${State.strokeAura || 5.0}px`;
       strokeAuraSlider.addEventListener('input', (e) => {
-        State.strokeAura = clampNumber(e.target.value, 0.25, 8.0, 1.5);
+        State.strokeAura = clampNumber(e.target.value, 0.5, 10.0, 5.0);
         strokeAuraBadge.textContent = `${State.strokeAura}px`;
         App.renderAll();
       });

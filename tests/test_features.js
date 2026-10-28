@@ -761,16 +761,33 @@ console.log('--- 19. Testing Aura & Body Stroke Width Independence & Highlightin
 const cssContent = fs.readFileSync(path.join(__dirname, '../css/components.css'), 'utf8');
 assert(!cssContent.match(/\.highlighted-circle\s*\{[^}]*stroke-width:[^;]+!important/i), 'CSS .highlighted-circle must not force stroke-width !important');
 
-// 19.2 Verify state stroke independence
+// 19.2 Verify index.html slider attributes for Aura Stroke Width (min 0.5, max 10, default 5)
+const htmlContent = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+assert(htmlContent.includes('id="strokeAuraSlider" min="0.5" max="10.0" value="5.0"'), 'index.html strokeAuraSlider must have min 0.5, max 10.0, and default 5.0');
+assert(htmlContent.includes('id="strokeAuraBadge">5.0px</span>'), 'index.html strokeAuraBadge must default to 5.0px');
+
+// 19.3 Verify state stroke default (5.0px) and clamp range (0.5px to 10.0px)
+assert.strictEqual(State.strokeAura, 5.0, 'Default strokeAura in State must be 5.0px');
+
+State.applyConfig({ strokeAura: 0.1 });
+assert.strictEqual(State.strokeAura, 0.5, 'strokeAura must clamp down to min 0.5px');
+
+State.applyConfig({ strokeAura: 15.0 });
+assert.strictEqual(State.strokeAura, 10.0, 'strokeAura must clamp up to max 10.0px');
+
+State.applyConfig({ strokeAura: 5.0 });
+assert.strictEqual(State.strokeAura, 5.0, 'strokeAura restored to default 5.0px');
+
+// 19.4 Verify state stroke independence
 State.strokeBody = 1.0;
-State.strokeAura = 1.5;
+State.strokeAura = 5.0;
 assert.strictEqual(State.strokeBody, 1.0, 'Initial strokeBody must be 1.0');
-assert.strictEqual(State.strokeAura, 1.5, 'Initial strokeAura must be 1.5');
+assert.strictEqual(State.strokeAura, 5.0, 'Initial strokeAura must be 5.0');
 
 // Adjusting body stroke must not alter aura stroke
 State.strokeBody = 3.5;
 assert.strictEqual(State.strokeBody, 3.5, 'strokeBody updated to 3.5');
-assert.strictEqual(State.strokeAura, 1.5, 'strokeAura remains independent at 1.5 when strokeBody changes');
+assert.strictEqual(State.strokeAura, 5.0, 'strokeAura remains independent at 5.0 when strokeBody changes');
 
 // Adjusting aura stroke must not alter body stroke
 State.strokeAura = 0.75;

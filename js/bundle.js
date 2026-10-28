@@ -3585,7 +3585,7 @@ const State = {
   colorBg: '#07090e',
 
   // Strokes & Opacities
-  strokeAura: 1.5,
+  strokeAura: 5.0,
   get strokeFlower() { return this.strokeAura; },
   set strokeFlower(v) { this.strokeAura = Number(v); },
   strokeBody: 1.0,
@@ -3715,8 +3715,8 @@ const State = {
     if (cfg.showBodyCircles !== undefined) this.showBodyCircles = cfg.showBodyCircles;
     if (cfg.showAuraFlower !== undefined) this.showAuraFlower = cfg.showAuraFlower;
     if (cfg.bodyAuraMix !== undefined) this.bodyAuraMix = cfg.bodyAuraMix;
-    if (cfg.strokeAura !== undefined) this.strokeAura = clampNumber(cfg.strokeAura, 0.25, 8.0, 1.5);
-    if (cfg.strokeFlower !== undefined) this.strokeAura = clampNumber(cfg.strokeFlower, 0.25, 8.0, 1.5);
+    if (cfg.strokeAura !== undefined) this.strokeAura = clampNumber(cfg.strokeAura, 0.5, 10.0, 5.0);
+    if (cfg.strokeFlower !== undefined) this.strokeAura = clampNumber(cfg.strokeFlower, 0.5, 10.0, 5.0);
     if (cfg.strokeBody !== undefined) this.strokeBody = clampNumber(cfg.strokeBody, 0.25, 6.0, 1.0);
     if (cfg.strokeBase !== undefined) this.strokeBody = clampNumber(cfg.strokeBase, 0.25, 6.0, 1.0);
     if (cfg.strokeGuide !== undefined) this.strokeGuide = clampNumber(cfg.strokeGuide, 0.25, 8.0, 1.8);
@@ -4943,7 +4943,7 @@ const SVGRenderer = {
           fill: fillColor,
           'fill-opacity': fillOpacity,
           stroke: strokeColor,
-          'stroke-width': String(State.strokeAura || 1.5),
+          'stroke-width': String(State.strokeAura || 5.0),
           opacity: isHighlighted ? '1.0' : '0.9',
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node aura-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
@@ -5103,7 +5103,7 @@ const SVGRenderer = {
       } else if (el.classList.contains('circle-node')) {
         el.classList.toggle('highlighted-circle', isHl);
         const isAura = el.classList.contains('aura-circle');
-        const strokeW = isAura ? (State.strokeAura || 1.5) : (State.strokeBody || 1.0);
+        const strokeW = isAura ? (State.strokeAura || 5.0) : (State.strokeBody || 1.0);
         if (isHl) {
           el.setAttribute('stroke', '#ffffff');
           el.setAttribute('stroke-width', String(strokeW));
@@ -5146,7 +5146,7 @@ const SVGRenderer = {
               r: R,
               fill: 'none',
               stroke: '#ffffff',
-              'stroke-width': String(State.strokeAura || 1.5),
+              'stroke-width': String(State.strokeAura || 5.0),
               filter: `url(#${idPrefix}-glow)`,
               'pointer-events': 'none'
             }));
@@ -8326,11 +8326,11 @@ const UI = {
     const strokeAuraSlider = document.getElementById('strokeAuraSlider');
     const strokeAuraBadge = document.getElementById('strokeAuraBadge');
     if (strokeAuraSlider) {
-      strokeAuraSlider.value = State.strokeAura !== undefined ? State.strokeAura : 1.5;
+      strokeAuraSlider.value = State.strokeAura !== undefined ? State.strokeAura : 5.0;
       this.updateRangeSliderFill(strokeAuraSlider);
     }
     if (strokeAuraBadge) {
-      strokeAuraBadge.textContent = `${State.strokeAura !== undefined ? State.strokeAura : 1.5}px`;
+      strokeAuraBadge.textContent = `${State.strokeAura !== undefined ? State.strokeAura : 5.0}px`;
     }
 
     const strokeBodySlider = document.getElementById('strokeBodySlider');
@@ -8547,10 +8547,10 @@ const UI = {
     const strokeAuraSlider = document.getElementById('strokeAuraSlider');
     const strokeAuraBadge = document.getElementById('strokeAuraBadge');
     if (strokeAuraSlider && strokeAuraBadge) {
-      strokeAuraSlider.value = State.strokeAura || 1.5;
-      strokeAuraBadge.textContent = `${State.strokeAura}px`;
+      strokeAuraSlider.value = State.strokeAura || 5.0;
+      strokeAuraBadge.textContent = `${State.strokeAura || 5.0}px`;
       strokeAuraSlider.addEventListener('input', (e) => {
-        State.strokeAura = clampNumber(e.target.value, 0.25, 8.0, 1.5);
+        State.strokeAura = clampNumber(e.target.value, 0.5, 10.0, 5.0);
         strokeAuraBadge.textContent = `${State.strokeAura}px`;
         App.renderAll();
       });

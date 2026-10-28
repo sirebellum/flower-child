@@ -155,7 +155,7 @@ const State = {
   colorBg: '#07090e',
 
   // Strokes & Opacities
-  strokeAura: 1.5,
+  strokeAura: 5.0,
   get strokeFlower() { return this.strokeAura; },
   set strokeFlower(v) { this.strokeAura = Number(v); },
   strokeBody: 1.0,
@@ -285,8 +285,8 @@ const State = {
     if (cfg.showBodyCircles !== undefined) this.showBodyCircles = cfg.showBodyCircles;
     if (cfg.showAuraFlower !== undefined) this.showAuraFlower = cfg.showAuraFlower;
     if (cfg.bodyAuraMix !== undefined) this.bodyAuraMix = cfg.bodyAuraMix;
-    if (cfg.strokeAura !== undefined) this.strokeAura = clampNumber(cfg.strokeAura, 0.25, 8.0, 1.5);
-    if (cfg.strokeFlower !== undefined) this.strokeAura = clampNumber(cfg.strokeFlower, 0.25, 8.0, 1.5);
+    if (cfg.strokeAura !== undefined) this.strokeAura = clampNumber(cfg.strokeAura, 0.5, 10.0, 5.0);
+    if (cfg.strokeFlower !== undefined) this.strokeAura = clampNumber(cfg.strokeFlower, 0.5, 10.0, 5.0);
     if (cfg.strokeBody !== undefined) this.strokeBody = clampNumber(cfg.strokeBody, 0.25, 6.0, 1.0);
     if (cfg.strokeBase !== undefined) this.strokeBody = clampNumber(cfg.strokeBase, 0.25, 6.0, 1.0);
     if (cfg.strokeGuide !== undefined) this.strokeGuide = clampNumber(cfg.strokeGuide, 0.25, 8.0, 1.8);

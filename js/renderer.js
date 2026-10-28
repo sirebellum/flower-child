@@ -502,7 +502,7 @@ const SVGRenderer = {
           fill: fillColor,
           'fill-opacity': fillOpacity,
           stroke: strokeColor,
-          'stroke-width': String(State.strokeAura || 1.5),
+          'stroke-width': String(State.strokeAura || 5.0),
           opacity: isHighlighted ? '1.0' : '0.9',
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node aura-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
@@ -662,7 +662,7 @@ const SVGRenderer = {
       } else if (el.classList.contains('circle-node')) {
         el.classList.toggle('highlighted-circle', isHl);
         const isAura = el.classList.contains('aura-circle');
-        const strokeW = isAura ? (State.strokeAura || 1.5) : (State.strokeBody || 1.0);
+        const strokeW = isAura ? (State.strokeAura || 5.0) : (State.strokeBody || 1.0);
         if (isHl) {
           el.setAttribute('stroke', '#ffffff');
           el.setAttribute('stroke-width', String(strokeW));
@@ -705,7 +705,7 @@ const SVGRenderer = {
               r: R,
               fill: 'none',
               stroke: '#ffffff',
-              'stroke-width': String(State.strokeAura || 1.5),
+              'stroke-width': String(State.strokeAura || 5.0),
               filter: `url(#${idPrefix}-glow)`,
               'pointer-events': 'none'
             }));
