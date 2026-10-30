@@ -2352,6 +2352,10 @@ const UI = {
 
   handleScadGenerate(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (this._isScadGenerating) return;
+    this._isScadGenerating = true;
+    setTimeout(() => { this._isScadGenerating = false; }, 800);
+
     const diameterInput = document.getElementById('scadTargetDiameter');
     const depthInput = document.getElementById('scadZDepth');
     const wallInput = document.getElementById('scadWallThickness');

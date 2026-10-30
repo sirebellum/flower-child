@@ -1147,8 +1147,8 @@
           </div>
 
           <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
-            <button type="button" class="btn" id="scadCancelBtn" onclick="if(window.UI?.closeScadDialog){window.UI.closeScadDialog();}else{document.getElementById('scadExportDialog')?.close();}">Cancel</button>
-            <button type="button" class="btn btn-primary" id="scadGenerateBtn" onclick="if(window.UI?.handleScadGenerate){window.UI.handleScadGenerate();}else{const d=parseFloat(document.getElementById('scadTargetDiameter')?.value)||100,z=parseFloat(document.getElementById('scadZDepth')?.value)||3,w=parseFloat(document.getElementById('scadWallThickness')?.value)||1.2;if(window.exportOpenSCAD)window.exportOpenSCAD(d,z,w);document.getElementById('scadExportDialog')?.close();}">Generate .SCAD</button>
+            <button type="button" class="btn" id="scadCancelBtn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="scadGenerateBtn">Generate .SCAD</button>
           </div>
         </form>
       </div>

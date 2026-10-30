@@ -6863,10 +6863,13 @@ const Exporter = {
   }
 };
 
+let _lastScadDownloadTime = 0;
+
 /**
- * Programmatic OpenSCAD Generator Engine for the Flower of Kryst
- * Fetches active geometry, calculates real-world millimeter scale factor,
- * and outputs a parameterized .scad script using overlapping hollow cylinder unions.
+ * Programmatic OpenSCAD Generator Engine for Sacred Geometry Studio
+ * Fetches the active geometry matching the current pattern view, calculates
+ * real-world millimeter scale factor, and outputs a parameterized .scad script
+ * using overlapping hollow cylinder boolean unions.
  *
  * @param {number} [targetDiameter=100] - Outer bounding diameter in mm.
  * @param {number} [zDepth=3.0] - Extrusion height in mm.
@@ -6878,39 +6881,86 @@ function exportOpenSCAD(targetDiameter = 100, zDepth = 3.0, wallThickness = 1.2)
   const depth = Number(zDepth) || 3.0;
   const wall = Number(wallThickness) || 1.2;
 
+  // 1. Identify active pattern from current view state
+  const pattern = (typeof State !== 'undefined' && State.activePattern) ? State.activePattern : 'kryst';
+  const isKryst = pattern !== 'life';
+  const patternTitle = isKryst ? 'Flower of Kryst' : 'Flower of Life';
+  const filePrefix = isKryst ? 'flower_of_kryst' : 'flower_of_life';
+
+  const r = (typeof State !== 'undefined' && State.r) ? State.r : 50;
   const currentN = (typeof window !== 'undefined' ? (window.AppState?.N ?? window.State?.N) : undefined)
     ?? (typeof State !== 'undefined' ? State?.N : undefined)
     ?? 2;
+  const boundaryRadius = (typeof State !== 'undefined' && State.boundaryRadius)
+    ? State.boundaryRadius
+    : (2 * currentN * r);
 
-  // Retrieve active geometry: prefer window.AppGeometry if populated, otherwise generate from active state
-  let geom = (typeof window !== 'undefined' && window.AppGeometry && Array.isArray(window.AppGeometry.circles))
-    ? window.AppGeometry
-    : null;
+  // 2. Retrieve active geometry matching the current view
+  // Prefer State.currentGeometryStats if populated and fresh, otherwise window.AppGeometry
+  let geom = (typeof State !== 'undefined' && State.currentGeometryStats?.circles?.length > 0)
+    ? State.currentGeometryStats
+    : ((typeof window !== 'undefined' && window.AppGeometry?.circles?.length > 0) ? window.AppGeometry : null);
 
+  const statsMatch = geom
+    && (!geom.pattern || geom.pattern === pattern)
+    && (geom.outerRingRadius === undefined || Math.abs(geom.outerRingRadius - boundaryRadius) < 1.0);
+
+  if (!statsMatch) {
+    geom = null;
+  }
+
+  // If not yet computed or stale, generate dynamically from active State
   if (!geom || !geom.circles || geom.circles.length === 0) {
-    if (typeof SacredMath !== 'undefined' && SacredMath.getKrystGeometry) {
-      geom = SacredMath.getKrystGeometry(currentN, 1.0);
-    } else if (typeof State !== 'undefined' && State.currentGeometryStats?.circles) {
-      geom = State.currentGeometryStats;
-    } else {
-      geom = { circles: [] };
+    const disabledIds = (typeof State !== 'undefined' && State.disabledCircleIds)
+      ? State.disabledCircleIds
+      : new Set();
+    const auraScale = (typeof State !== 'undefined' && State.auraScale !== undefined && State.auraScale !== null)
+      ? Number(State.auraScale)
+      : 1.95;
+    const fullScreen = (typeof State !== 'undefined' && State.fullScreenTiling)
+      ? Boolean(State.fullScreenTiling)
+      : false;
+
+    if (typeof SacredMath !== 'undefined') {
+      if (pattern === 'life' && SacredMath.getFlowerOfLifeGeometryByRadius) {
+        geom = SacredMath.getFlowerOfLifeGeometryByRadius(boundaryRadius, r, disabledIds, fullScreen, auraScale);
+      } else if (SacredMath.getKrystGeometryByRadius) {
+        geom = SacredMath.getKrystGeometryByRadius(boundaryRadius, r, disabledIds, fullScreen, auraScale);
+      } else if (SacredMath.getKrystGeometry) {
+        geom = SacredMath.getKrystGeometry(currentN, 1.0);
+      }
     }
   }
 
-  let circles = geom.circles || [];
+  let circles = (geom && geom.circles) ? [...geom.circles] : [];
 
   // Filter disabled circles if configured in state
   if (typeof State !== 'undefined' && State.disabledCircleIds && State.disabledCircleIds.size > 0) {
     circles = circles.filter(c => {
       const id = c.id || `fok_${Math.round(c.x * 100)}_${Math.round(c.y * 100)}`;
-      return !State.disabledCircleIds.has(id);
+      const semId = c.semanticId;
+      return !State.disabledCircleIds.has(id) && (!semId || !State.disabledCircleIds.has(semId));
     });
   }
 
-  // Base radius: if circles are unit coordinates (r=1.0), R_actual is 2.0.
-  // If coordinates are in pixel space (r > 1.0), baseR normalizes the calculation.
-  const baseR = (circles.length > 0 && circles[0].r && circles[0].r > 1.0) ? circles[0].r : 1.0;
-  const R_actual = 2.0 * baseR;
+  // Base radius: if circles are unit coordinates (r <= 1.05), baseR is normalized.
+  const baseR = (circles.length > 0 && circles[0].r && circles[0].r > 0) ? circles[0].r : 1.0;
+  const isUnitCoord = baseR <= 1.05;
+
+  // Petal radius: in Flower of Kryst and Flower of Life, petals are governed by auraScale (default ~1.95-2.0r)
+  // If user disabled aura in view (showAuraFlower === false) and only body circles are shown, use baseR.
+  const showAura = (typeof State === 'undefined' || State.showAuraFlower !== false);
+  const auraScale = (typeof State !== 'undefined' && State.auraScale !== undefined && State.auraScale !== null)
+    ? Number(State.auraScale)
+    : 1.95;
+
+  let R_actual;
+  if (isUnitCoord) {
+    R_actual = showAura ? (auraScale > 1.2 ? auraScale * baseR : 2.0 * baseR) : baseR;
+  } else {
+    const auraR = geom?.auraCircles?.[0]?.r;
+    R_actual = (showAura && auraR && auraR > 0) ? auraR : (showAura ? auraScale * baseR : baseR);
+  }
 
   // Calculate bounding radius to normalize to target size
   let maxDist = 0;
@@ -6921,12 +6971,14 @@ function exportOpenSCAD(targetDiameter = 100, zDepth = 3.0, wallThickness = 1.2)
   const rBound = (maxDist > 0) ? (maxDist + R_actual) : R_actual;
   const scale = (diameter / 2) / rBound;
 
-  // Scale the aura radius and wall thickness
+  // Scale the petal radius
   const scaledOuterRadius = R_actual * scale;
 
+  const currentLayers = geom?.maxLayer ?? geom?.currentRing ?? (typeof State !== 'undefined' ? State.N : 2);
+
   // Build SCAD script
-  let scad = `// Flower of Kryst - OpenSCAD Generator
-// Layers: ${currentN}
+  let scad = `// ${patternTitle} - OpenSCAD Generator
+// Layers: ${currentLayers}
 // Target Diameter: ${diameter}mm, Depth: ${depth}mm, Wall: ${wall}mm
 
 $fn = 90; // High resolution for smooth curves
@@ -6953,14 +7005,21 @@ union() {
 
   scad += `}\n`;
 
-  // Trigger download if running in browser
-  if (typeof document !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+  // Trigger download if running in browser with debouncing
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+    const now = Date.now();
+    if (now - _lastScadDownloadTime < 800) {
+      // Debounce duplicate download triggers within 800ms
+      return scad;
+    }
+    _lastScadDownloadTime = now;
+
     const blob = new Blob([scad], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     try {
       const link = document.createElement('a');
       link.href = url;
-      link.download = `flower_of_kryst_N${currentN}_${diameter}mm.scad`;
+      link.download = `${filePrefix}_N${currentLayers}_${diameter}mm.scad`;
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
@@ -6971,7 +7030,7 @@ union() {
         } catch (_) {}
       }, 2000);
       if (typeof window !== 'undefined' && window.UI?.showToast) {
-        window.UI.showToast(`Exported OpenSCAD model (${diameter}mm)`);
+        window.UI.showToast(`Exported ${patternTitle} OpenSCAD model (${diameter}mm)`);
       }
     } catch (err) {
       console.error('OpenSCAD download error:', err);
@@ -9341,6 +9400,10 @@ const UI = {
 
   handleScadGenerate(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (this._isScadGenerating) return;
+    this._isScadGenerating = true;
+    setTimeout(() => { this._isScadGenerating = false; }, 800);
+
     const diameterInput = document.getElementById('scadTargetDiameter');
     const depthInput = document.getElementById('scadZDepth');
     const wallInput = document.getElementById('scadWallThickness');
@@ -9684,11 +9747,11 @@ const App = {
   },
 
   renderAll() {
-    if (typeof SacredMath !== 'undefined' && SacredMath.getKrystGeometry) {
-      window.AppGeometry = SacredMath.getKrystGeometry(State.N || 2, 1.0);
-    }
     if (State.dimension === '3d') {
       Renderer3D.renderAll();
+      if (typeof State !== 'undefined' && State.currentGeometryStats) {
+        window.AppGeometry = State.currentGeometryStats;
+      }
       return;
     }
     if (typeof UI !== 'undefined') {
@@ -9700,6 +9763,9 @@ const App = {
     } else {
       SVGRenderer.render('svgLife', 'life', State.transforms.life);
       SVGRenderer.render('svgKryst', 'kryst', State.transforms.kryst);
+    }
+    if (typeof State !== 'undefined' && State.currentGeometryStats) {
+      window.AppGeometry = State.currentGeometryStats;
     }
   }
 };

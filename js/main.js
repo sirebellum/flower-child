@@ -67,11 +67,11 @@ const App = {
   },
 
   renderAll() {
-    if (typeof SacredMath !== 'undefined' && SacredMath.getKrystGeometry) {
-      window.AppGeometry = SacredMath.getKrystGeometry(State.N || 2, 1.0);
-    }
     if (State.dimension === '3d') {
       Renderer3D.renderAll();
+      if (typeof State !== 'undefined' && State.currentGeometryStats) {
+        window.AppGeometry = State.currentGeometryStats;
+      }
       return;
     }
     if (typeof UI !== 'undefined') {
@@ -83,6 +83,9 @@ const App = {
     } else {
       SVGRenderer.render('svgLife', 'life', State.transforms.life);
       SVGRenderer.render('svgKryst', 'kryst', State.transforms.kryst);
+    }
+    if (typeof State !== 'undefined' && State.currentGeometryStats) {
+      window.AppGeometry = State.currentGeometryStats;
     }
   }
 };

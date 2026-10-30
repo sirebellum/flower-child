@@ -941,6 +941,95 @@ assert.strictEqual(highlightedAuraCircle.getAttribute('stroke-width'), '4', 'Unh
 
 console.log('Aura & Body stroke width independence and highlighting fidelity verified successfully.');
 
+console.log('--- 20. Testing OpenSCAD Active View Pattern Fidelity & Single Download Guarantee ---');
+
+// 20.1 Verify index.html does NOT contain duplicate inline onclick on scadGenerateBtn
+const freshIndexHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+assert(!freshIndexHtml.includes('id="scadGenerateBtn" onclick='), 'scadGenerateBtn must not have an inline onclick that duplicates event listeners');
+
+// 20.2 Test OpenSCAD export with Flower of Life active pattern
+State.activePattern = 'life';
+State.N = 2;
+State.boundaryRadius = 220;
+State.r = 50;
+State.disabledCircleIds = new Set();
+const lifeScad = exportOpenSCAD(100, 3.0, 1.2);
+
+assert(lifeScad.includes('// Flower of Life - OpenSCAD Generator'), 'When activePattern is "life", header must indicate Flower of Life');
+const lifePetalCalls = [...lifeScad.matchAll(/kryst_petal\(\s*[\d.-]+,\s*[\d.-]+/g)];
+assert.strictEqual(lifePetalCalls.length, 19, 'Flower of Life at radius 220px must export exactly 19 petal cylinders (matching active view)');
+
+// 20.3 Test OpenSCAD export with expanded boundary radius (Fruit of Kryst, 30 circles, Layer 3)
+State.activePattern = 'kryst';
+State.boundaryRadius = 320;
+const expandedScad = exportOpenSCAD(120, 4.0, 1.5);
+
+assert(expandedScad.includes('// Layers: 3'), 'Expanded boundary radius (320px) must export Layer 3 in header');
+const expandedPetalCalls = [...expandedScad.matchAll(/kryst_petal\(\s*[\d.-]+,\s*[\d.-]+/g)];
+assert.strictEqual(expandedPetalCalls.length, 30, 'Fruit of Kryst at radius 320px must export exactly 30 petal cylinders (matching active view)');
+
+// 20.4 Test OpenSCAD export with disabled/removed circles
+State.boundaryRadius = 220; // 18 circles normally
+State.disabledCircleIds = new Set(['fok_200_0']);
+const disabledScad = exportOpenSCAD(100, 3.0, 1.2);
+const disabledPetalCalls = [...disabledScad.matchAll(/kryst_petal\(\s*[\d.-]+,\s*[\d.-]+/g)];
+assert.strictEqual(disabledPetalCalls.length, 17, 'Disabling one circle must result in 17 petal cylinders in OpenSCAD export');
+
+// 20.5 Test OpenSCAD export uses State.currentGeometryStats directly when populated
+State.disabledCircleIds = new Set();
+State.currentGeometryStats = {
+  circles: [
+    { x: 0, y: 0, r: 50 },
+    { x: 100, y: 0, r: 50 },
+    { x: 50, y: 86.6, r: 50 }
+  ],
+  maxLayer: 1,
+  pattern: 'kryst',
+  outerRingRadius: 220
+};
+const customStatsScad = exportOpenSCAD(60, 2.0, 1.0);
+const customStatsPetalCalls = [...customStatsScad.matchAll(/kryst_petal\(\s*[\d.-]+,\s*[\d.-]+/g)];
+assert.strictEqual(customStatsPetalCalls.length, 3, 'When State.currentGeometryStats is populated, exportOpenSCAD must export matching composition');
+
+// Reset state
+State.activePattern = 'kryst';
+State.N = 2;
+State.boundaryRadius = 220;
+State.r = 50;
+State.disabledCircleIds = new Set();
+delete State.currentGeometryStats;
+
+// 20.6 Test Single Download Guarantee (Browser Mock)
+let downloadClickCount = 0;
+global.window = global;
+global.Blob = class { constructor(parts) { this.content = parts.join(''); } };
+global.URL = {
+  createObjectURL: () => 'blob:mock-url',
+  revokeObjectURL: () => {}
+};
+global.document = {
+  createElement: (tag) => ({
+    tagName: tag.toUpperCase(),
+    style: {},
+    click: () => { downloadClickCount++; }
+  }),
+  body: {
+    appendChild: () => {},
+    removeChild: () => {}
+  }
+};
+
+downloadClickCount = 0;
+// First call should download
+exportOpenSCAD(100, 3.0, 1.2);
+assert.strictEqual(downloadClickCount, 1, 'First exportOpenSCAD call must trigger one download');
+
+// Immediate second call (within debounce window) must NOT trigger a second download
+exportOpenSCAD(100, 3.0, 1.2);
+assert.strictEqual(downloadClickCount, 1, 'Rapid second exportOpenSCAD call must be debounced to prevent duplicate downloads');
+
+console.log('OpenSCAD active view pattern fidelity & single download guarantee verified successfully.');
+
 console.log('\n========================================');
 console.log('ALL FEATURE TESTS PASSED SUCCESSFULLY!');
 console.log('========================================');
