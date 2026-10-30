@@ -132,6 +132,9 @@ class PanZoomController {
 const TutorialManager = {
   currentStep: 0,
   _eventsBound: false,
+  _isProgrammaticScroll: false,
+  _scrollDebounceTimer: null,
+  _resizeDebounceTimer: null,
   steps: [
     {
       target: null, // Full screen welcome
@@ -191,6 +194,8 @@ const TutorialManager = {
     if (typeof document !== 'undefined') {
       const overlay = document.getElementById('tutorialTourOverlay');
       if (overlay) overlay.style.display = 'none';
+      const spotlight = document.getElementById('tutorialSpotlight');
+      if (spotlight) spotlight.style.display = 'none';
       const backdrop = document.getElementById('tutorialBackdrop');
       if (backdrop) {
         backdrop.style.clipPath = 'none';
@@ -320,28 +325,66 @@ const TutorialManager = {
           parentSection.classList.add('open');
         }
 
+        // Resolve the entire component element to highlight and de-blur
+        let compEl = targetEl;
+        if (step.target === '#presetGrid') {
+          // Shape Presets step: highlight the entire presets component including toolbar and header
+          compEl = targetEl.closest('.presets-section-container') || targetEl.closest('#sectionShapePresets') || targetEl.parentElement || targetEl;
+        }
+
+        // Scroll target smoothly into view inside scrollable sidebar
         const sidebarContent = targetEl.closest('.sidebar-content');
         if (sidebarContent && sidebarContent.contains(targetEl)) {
-          const targetOffsetTop = targetEl.offsetTop;
-          sidebarContent.scrollTo({ top: Math.max(0, targetOffsetTop - 20), behavior: 'auto' });
+          this._isProgrammaticScroll = true;
+          const prevScrollBehavior = sidebarContent.style.scrollBehavior;
+          sidebarContent.style.scrollBehavior = 'auto';
+
+          const scrollTarget = (step.target === '#presetGrid') ? compEl : targetEl;
+          const contentRect = sidebarContent.getBoundingClientRect();
+          const targetRect = scrollTarget.getBoundingClientRect();
+          const offsetTop = targetRect.top - contentRect.top + sidebarContent.scrollTop;
+
+          sidebarContent.scrollTop = Math.max(0, offsetTop - 12);
+          sidebarContent.style.scrollBehavior = prevScrollBehavior;
+          this._isProgrammaticScroll = false;
         }
 
-        const rect = targetEl.getBoundingClientRect();
+        // Compute exact bounding coordinates for the whole component being explained
+        let compTop, compLeft, compWidth, compHeight;
 
-        let spotTop = Math.max(10, rect.top - 6);
-        let spotLeft = Math.max(10, rect.left - 6);
-        let spotWidth = Math.min(viewportW - spotLeft - 20, rect.width + 12);
-        let spotHeight = Math.min(viewportH - spotTop - 20, rect.height + 12);
-
-        if (step.target === '#viewportContainer') {
-          // Bounded canvas spotlight rather than taking over the entire screen
-          const canvasW = Math.min(rect.width - 60, 680);
-          const canvasH = Math.min(rect.height - 60, 420);
-          spotLeft = rect.left + Math.max(0, (rect.width - canvasW) / 2);
-          spotTop = rect.top + Math.max(0, (rect.height - canvasH) / 2);
-          spotWidth = canvasW;
-          spotHeight = canvasH;
+        if (step.target === '#sectionSacredGadgets') {
+          // Sacred Gadgets component: header + live gadgets container (excluding presets below)
+          const sectionHeader = targetEl.querySelector('.section-header');
+          const gadgetsContainer = targetEl.querySelector('.sacred-gadgets-container');
+          if (sectionHeader && gadgetsContainer) {
+            const hRect = sectionHeader.getBoundingClientRect();
+            const gRect = gadgetsContainer.getBoundingClientRect();
+            compTop = hRect.top;
+            compLeft = Math.min(hRect.left, gRect.left);
+            const compRight = Math.max(hRect.right, gRect.right);
+            compWidth = compRight - compLeft;
+            compHeight = gRect.bottom - hRect.top;
+          } else {
+            const rect = targetEl.getBoundingClientRect();
+            compTop = rect.top;
+            compLeft = rect.left;
+            compWidth = rect.width;
+            compHeight = rect.height;
+          }
+        } else {
+          const rect = (compEl || targetEl).getBoundingClientRect();
+          compTop = rect.top;
+          compLeft = rect.left;
+          compWidth = rect.width;
+          compHeight = rect.height;
         }
+
+        // Padding around spotlight: 0 for full viewport canvas, 6px for UI components
+        const pad = (step.target === '#viewportContainer') ? 0 : 6;
+        let spotTop = Math.max(0, compTop - pad);
+        let spotLeft = Math.max(0, compLeft - pad);
+        let spotWidth = Math.min(viewportW - spotLeft, compWidth + pad * 2);
+        let spotHeight = Math.min(viewportH - spotTop, compHeight + pad * 2);
 
         if (spotlight) {
           spotlight.style.display = 'block';
@@ -379,19 +422,43 @@ const TutorialManager = {
         card.style.position = 'fixed';
         card.style.width = `${cardWidth}px`;
 
-        let cardTop = spotTop + spotHeight + 14;
-        let cardLeft = spotLeft + (spotWidth / 2) - (cardWidth / 2);
+        let cardTop = 0;
+        let cardLeft = 0;
 
-        // If target is in the right half of the screen (e.g. sidebar), place card to the left
-        if (spotLeft > viewportW * 0.5) {
-          cardLeft = Math.max(20, spotLeft - cardWidth - 18);
-          cardTop = Math.max(20, Math.min(viewportH - cardHeight - 20, spotTop));
-        } else if (spotTop + spotHeight > viewportH * 0.65 || cardTop + cardHeight > viewportH - 20) {
-          // If target is in bottom half or card overflows bottom, place above
-          cardTop = Math.max(20, spotTop - cardHeight - 14);
+        if (step.target === '#viewportContainer') {
+          // Canvas step: Float card cleanly near top-center of the viewport
+          cardTop = Math.max(20, spotTop + 24);
+          cardLeft = spotLeft + (spotWidth - cardWidth) / 2;
+        } else if (step.target === '#bottomLayerToolbar' || spotTop + spotHeight > viewportH - 140) {
+          // Bottom toolbar: Place card directly ABOVE target, centered horizontally
+          cardTop = Math.max(20, spotTop - cardHeight - 16);
+          cardLeft = spotLeft + (spotWidth - cardWidth) / 2;
+        } else if (sidebar && sidebar.contains(targetEl)) {
+          // Sidebar components (on left side of screen):
+          // Place card to the RIGHT of the sidebar in the canvas if room, else above/below
+          if (spotLeft + spotWidth + cardWidth + 30 <= viewportW) {
+            cardLeft = spotLeft + spotWidth + 20;
+            cardTop = Math.max(20, Math.min(viewportH - cardHeight - 20, spotTop));
+          } else {
+            cardLeft = Math.max(16, (viewportW - cardWidth) / 2);
+            cardTop = (spotTop + spotHeight + cardHeight + 20 <= viewportH)
+              ? spotTop + spotHeight + 14
+              : Math.max(20, spotTop - cardHeight - 14);
+          }
+        } else if (spotTop < 100) {
+          // Header components (e.g. patternSwitcher at top): Place card directly BELOW target
+          cardTop = spotTop + spotHeight + 14;
+          cardLeft = spotLeft + (spotWidth - cardWidth) / 2;
+        } else {
+          // Default fallback
+          cardTop = spotTop + spotHeight + 14;
+          cardLeft = spotLeft + (spotWidth - cardWidth) / 2;
+          if (cardTop + cardHeight > viewportH - 20) {
+            cardTop = Math.max(20, spotTop - cardHeight - 14);
+          }
         }
 
-        // Bounded within screen
+        // Bounded within screen margins
         cardLeft = Math.max(16, Math.min(viewportW - cardWidth - 16, cardLeft));
         cardTop = Math.max(16, Math.min(viewportH - cardHeight - 16, cardTop));
 
@@ -473,19 +540,26 @@ const TutorialManager = {
       }
     });
 
-    // Smooth reposition on window resize or sidebar scroll
+    // Smooth reposition on window resize or sidebar scroll (debounced to avoid jitter)
     window.addEventListener('resize', () => {
-      const overlay = document.getElementById('tutorialTourOverlay');
-      if (overlay && overlay.style.display !== 'none') {
-        this.renderStep();
-      }
+      clearTimeout(this._resizeDebounceTimer);
+      this._resizeDebounceTimer = setTimeout(() => {
+        const overlay = document.getElementById('tutorialTourOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+          this.renderStep();
+        }
+      }, 50);
     });
 
     document.querySelector('.sidebar-content')?.addEventListener('scroll', () => {
-      const overlay = document.getElementById('tutorialTourOverlay');
-      if (overlay && overlay.style.display !== 'none') {
-        this.renderStep();
-      }
+      if (this._isProgrammaticScroll) return;
+      clearTimeout(this._scrollDebounceTimer);
+      this._scrollDebounceTimer = setTimeout(() => {
+        const overlay = document.getElementById('tutorialTourOverlay');
+        if (overlay && overlay.style.display !== 'none') {
+          this.renderStep();
+        }
+      }, 50);
     });
   }
 };

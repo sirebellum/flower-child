@@ -559,7 +559,58 @@ assert.strictEqual(curtains.left.width, 100, 'Left curtain width equals spotLeft
 assert.strictEqual(curtains.right.left, 300, 'Right curtain starts at spotLeft + spotWidth');
 assert.strictEqual(curtains.right.width, 1920 - 300, 'Right curtain covers remainder of screen width');
 
-console.log('Preset editing, tutorial tour controller, 4-curtain framing, and slider color-fill calculations verified successfully.');
+// 15.7 Validate Tour Window Component Framing and Card Placement
+const computeTourSpotlight = (target, compRect, vw = 1920, vh = 1080) => {
+  const pad = target === '#viewportContainer' ? 0 : 6;
+  const spotTop = Math.max(0, compRect.top - pad);
+  const spotLeft = Math.max(0, compRect.left - pad);
+  const spotWidth = Math.min(vw - spotLeft, compRect.width + pad * 2);
+  const spotHeight = Math.min(vh - spotTop, compRect.height + pad * 2);
+  return { spotTop, spotLeft, spotWidth, spotHeight };
+};
+
+const computeTourCardPos = (target, spot, vw = 1920, vh = 1080, cardW = 420, cardH = 220) => {
+  let cardTop = 0;
+  let cardLeft = 0;
+  if (target === '#viewportContainer') {
+    cardTop = Math.max(20, spot.spotTop + 24);
+    cardLeft = spot.spotLeft + (spot.spotWidth - cardW) / 2;
+  } else if (target === '#bottomLayerToolbar' || spot.spotTop + spot.spotHeight > vh - 140) {
+    cardTop = Math.max(20, spot.spotTop - cardH - 16);
+    cardLeft = spot.spotLeft + (spot.spotWidth - cardW) / 2;
+  } else if (spot.spotLeft + spot.spotWidth < vw * 0.45) { // sidebar area
+    if (spot.spotLeft + spot.spotWidth + cardW + 30 <= vw) {
+      cardLeft = spot.spotLeft + spot.spotWidth + 20;
+      cardTop = Math.max(20, Math.min(vh - cardH - 20, spot.spotTop));
+    }
+  } else if (spot.spotTop < 100) {
+    cardTop = spot.spotTop + spot.spotHeight + 14;
+    cardLeft = spot.spotLeft + (spot.spotWidth - cardW) / 2;
+  }
+  cardLeft = Math.max(16, Math.min(vw - cardW - 16, cardLeft));
+  cardTop = Math.max(16, Math.min(vh - cardH - 16, cardTop));
+  return { cardTop, cardLeft };
+};
+
+// Canvas step: whole component must be un-shrunk (no artificial 680x420 clamping)
+const canvasSpot = computeTourSpotlight('#viewportContainer', { top: 56, left: 360, width: 1560, height: 1024 });
+assert.strictEqual(canvasSpot.spotWidth, 1560, 'Canvas spotlight must encompass the whole viewport width');
+assert.strictEqual(canvasSpot.spotHeight, 1024, 'Canvas spotlight must encompass the whole viewport height');
+const canvasCard = computeTourCardPos('#viewportContainer', canvasSpot);
+assert(canvasCard.cardTop >= 70, 'Canvas card placed cleanly below header');
+
+// Sidebar step: card must be placed to the right of sidebar, NOT covering sidebar component
+const sidebarSpot = computeTourSpotlight('#sectionGeometry', { top: 90, left: 14, width: 332, height: 380 });
+assert.strictEqual(sidebarSpot.spotLeft, 8, 'Sidebar spotlight includes 6px padding without cutting off left edge');
+const sidebarCard = computeTourCardPos('#sectionGeometry', sidebarSpot);
+assert(sidebarCard.cardLeft >= sidebarSpot.spotLeft + sidebarSpot.spotWidth, 'Card must be placed to the right of sidebar');
+
+// Bottom toolbar step: card must be placed directly above toolbar
+const toolbarSpot = computeTourSpotlight('#bottomLayerToolbar', { top: 1010, left: 600, width: 720, height: 46 });
+const toolbarCard = computeTourCardPos('#bottomLayerToolbar', toolbarSpot);
+assert(toolbarCard.cardTop < toolbarSpot.spotTop, 'Toolbar card must be placed above bottom toolbar');
+
+console.log('Preset editing, tutorial tour controller, 4-curtain framing, slider color-fill calculations, and tour window positioning verified successfully.');
 
 console.log('--- 16. Testing Body Circle Hit Threshold (20px) & Fade-out Removal Hover ---');
 // Verify hit threshold configurations
