@@ -368,6 +368,49 @@
   white-space: nowrap;
 }
 
+.boundary-val-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 3px 1px 7px;
+}
+
+.boundary-badge-label {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--accent-kryst);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.boundary-num-input {
+  width: 62px;
+  padding: 2px 4px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--bg-panel-border);
+  border-radius: var(--radius-sm, 4px);
+  text-align: right;
+  outline: none;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.boundary-num-input:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.boundary-num-input:focus {
+  border-color: var(--accent-kryst, #10b981);
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.35);
+}
+
 .slider-container {
   display: flex;
   flex-direction: column;

@@ -23,9 +23,13 @@ function clampNumber(val, min, max, defaultVal) {
 }
 
 /* =========================================================================
-   GLOBAL APPLICATION STATE
+   GLOBAL APPLICATION STATE SINGLETON
    ========================================================================= */
-const State = {
+const _globalScope = (typeof globalThis !== 'undefined')
+  ? globalThis
+  : ((typeof window !== 'undefined') ? window : ((typeof global !== 'undefined') ? global : {}));
+
+const defaultInitialState = {
   viewportMode: 'single-kryst', // 'single-kryst' | 'single-life'
   activePreset: null,
   activePattern: 'kryst', // 'kryst' | 'life'
@@ -337,6 +341,11 @@ const State = {
     if (cfg.sectionHighlightMode !== undefined) this.sectionHighlightMode = Boolean(cfg.sectionHighlightMode);
   }
 };
+
+if (!_globalScope.__SACRED_STATE__) {
+  _globalScope.__SACRED_STATE__ = defaultInitialState;
+}
+const State = _globalScope.__SACRED_STATE__;
 
 // Harmonic Color Palettes for "Color by Layer"
 const LayerColors = [

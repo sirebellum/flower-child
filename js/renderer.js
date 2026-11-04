@@ -440,6 +440,7 @@ const SVGRenderer = {
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node body-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'data-circle-id': pt.id,
+          'data-ring': String(pt.ring || 1),
           'data-pattern': pattern,
           'data-default-stroke': baseStroke,
           style: 'cursor: pointer;'
@@ -510,6 +511,7 @@ const SVGRenderer = {
           style: 'transition: none !important;',
           'data-circle-id': apt.bodyId,
           'data-aura-id': apt.id,
+          'data-ring': String(apt.ring || 1),
           'data-pattern': pattern,
           'data-default-stroke': defaultAuraColor
         });

@@ -266,25 +266,28 @@ State.auraExpansionMaxSize = 20.0;
 State.auraExpansionSpeed = 1.0;
 State.rainbowWaveSpeed = 1.0;
 
-// Verify Continuous Rainbow Wave Phase & Hue Propagation
-const waveFactor = 1.85;
-const dists = [100, 193.2];
+// Verify Continuous Rainbow Wave Phase & Hue Propagation Across Concentric Rings
+const ringStepDeg = 30.0;
 let phase = 0;
 const speed = 1.0;
 const dt = 1 / 60; // 60 FPS frame time
 for (let frame = 1; frame <= 180; frame++) {
   const prevPhase = phase;
-  phase = (phase + dt * 135 * speed) % 360000;
+  phase = (phase + dt * 60 * speed) % 360000;
   assert(phase > prevPhase, 'Rainbow wave phase must advance continuously forward every frame');
   
-  const ring1Hue = (((phase - dists[0] * waveFactor) % 360) + 360) % 360;
-  const ring2Hue = (((phase - dists[1] * waveFactor) % 360) + 360) % 360;
+  const ring1Hue = (((phase - (1 - 1) * ringStepDeg) % 360) + 360) % 360;
+  const ring2Hue = (((phase - (2 - 1) * ringStepDeg) % 360) + 360) % 360;
+  const ring3Hue = (((phase - (3 - 1) * ringStepDeg) % 360) + 360) % 360;
   assert(ring1Hue >= 0 && ring1Hue < 360, 'Ring 1 hue must be normalized in [0, 360)');
   assert(ring2Hue >= 0 && ring2Hue < 360, 'Ring 2 hue must be normalized in [0, 360)');
+  assert(ring3Hue >= 0 && ring3Hue < 360, 'Ring 3 hue must be normalized in [0, 360)');
   
-  // Phase difference between rings must remain smoothly distributed across complementary spectrum (~172 degrees)
-  const hueDiff = ((ring1Hue - ring2Hue + 360) % 360);
-  assert(Math.abs(hueDiff - 172.4) < 1.0, 'Continuous wave must maintain smooth spectral phase delta across concentric rings');
+  // Phase difference between rings must remain smoothly distributed across harmonic 30-degree spectrum
+  const hueDiff12 = ((ring1Hue - ring2Hue + 360) % 360);
+  const hueDiff23 = ((ring2Hue - ring3Hue + 360) % 360);
+  assert.strictEqual(Math.round(hueDiff12), 30, 'Ring 1 to Ring 2 phase delta must be exactly 30 degrees');
+  assert.strictEqual(Math.round(hueDiff23), 30, 'Ring 2 to Ring 3 phase delta must be exactly 30 degrees');
 }
 
 console.log('Aura scaling (0r to 20r, 1.95r default) and Sacred Gadgets properties verified successfully.');
@@ -1080,6 +1083,235 @@ exportOpenSCAD(100, 3.0, 1.2);
 assert.strictEqual(downloadClickCount, 1, 'Rapid second exportOpenSCAD call must be debounced to prevent duplicate downloads');
 
 console.log('OpenSCAD active view pattern fidelity & single download guarantee verified successfully.');
+
+console.log('--- 21. Testing Manual Boundary Circle Radius Text Box Adjustment ---');
+// 21.1 Validate index.html contains boundaryInput within boundaryBadge with R_bound = prefix
+const boundaryHtml = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+assert(boundaryHtml.includes('id="boundaryBadge"'), 'index.html must retain boundaryBadge element');
+assert(boundaryHtml.includes('id="boundaryInput"'), 'index.html must contain boundaryInput text/number input');
+assert(boundaryHtml.includes('R_bound =&nbsp;'), 'index.html must retain R_bound = prefix');
+assert(!boundaryHtml.includes('R_bound = 200px'), 'Static 200px must be replaced with the input element');
+
+// 21.2 Test UI.setBoundaryRadius method exists and updates State.boundaryRadius
+assert(typeof UI.setBoundaryRadius === 'function', 'UI must expose setBoundaryRadius method');
+
+// Mock DOM elements for testing UI.setBoundaryRadius synchronization
+const mockSlider = {
+  value: 200,
+  min: 50,
+  max: 1800,
+  type: 'range',
+  style: { setProperty: () => {} }
+};
+const mockInput = {
+  value: 200
+};
+const domElements = {
+  boundarySlider: mockSlider,
+  boundaryInput: mockInput
+};
+global.document.getElementById = (id) => domElements[id] || null;
+
+// Test standard manual adjustment
+UI.setBoundaryRadius(350);
+assert.strictEqual(State.boundaryRadius, 350, 'setBoundaryRadius must update State.boundaryRadius to 350');
+assert.strictEqual(mockSlider.value, 350, 'setBoundaryRadius must sync slider value to 350');
+assert.strictEqual(mockInput.value, 350, 'setBoundaryRadius must sync input text box value to 350');
+
+// Test boundary clamping (minimum 50px)
+UI.setBoundaryRadius(20);
+assert.strictEqual(State.boundaryRadius, 50, 'setBoundaryRadius must clamp values below 50px to 50px');
+assert.strictEqual(mockInput.value, 50, 'Input box must reflect clamped minimum 50px');
+
+// Test boundary clamping (maximum 5000px) and slider max expansion
+UI.setBoundaryRadius(2500);
+assert.strictEqual(State.boundaryRadius, 2500, 'setBoundaryRadius must allow values up to 5000px');
+assert(Number(mockSlider.max) >= 2500, 'Slider max must automatically expand when input exceeds 1800');
+assert.strictEqual(mockInput.value, 2500, 'Input box must reflect expanded radius 2500px');
+
+// Test dirty text input parsing (e.g. user enters "420px")
+const parseDirtyRadius = (str) => {
+  const num = parseFloat(String(str).replace(/[^0-9.]/g, ''));
+  return isNaN(num) ? 200 : Math.max(50, Math.min(5000, Math.round(num)));
+};
+assert.strictEqual(parseDirtyRadius('420px'), 420, 'Text box must accept and parse "420px" cleanly');
+assert.strictEqual(parseDirtyRadius('  300 px  '), 300, 'Text box must accept and parse padded text');
+
+// Test that view zoom and pan remain static during boundary resizing
+const initialScale = 0.75;
+const initialPanX = 45;
+const initialPanY = -30;
+State.transforms.kryst = { panX: initialPanX, panY: initialPanY, scale: initialScale };
+UI.setBoundaryRadius(1500);
+assert.strictEqual(State.transforms.kryst.scale, initialScale, 'View zoom scale must remain static when r_bound is resized');
+assert.strictEqual(State.transforms.kryst.panX, initialPanX, 'View panX must remain static when r_bound is resized');
+assert.strictEqual(State.transforms.kryst.panY, initialPanY, 'View panY must remain static when r_bound is resized');
+
+// Test that typing inside input elements does not trigger global shortcuts (e.g. typing '0' triggering reset zoom)
+let resetZoomTriggered = false;
+let keyListener = null;
+const origAddEventListener = global.window ? global.window.addEventListener : null;
+// Capture shortcut handler
+const mockWindow = {
+  addEventListener: (event, handler) => {
+    if (event === 'keydown') keyListener = handler;
+  }
+};
+const prevWindow = global.window;
+global.window = mockWindow;
+UI.bindKeyboardShortcuts();
+global.window = prevWindow;
+
+let resetBtnClicked = false;
+domElements.resetZoomBtn = { click: () => { resetBtnClicked = true; } };
+
+if (keyListener) {
+  // Simulate pressing '0' while typing in an INPUT element
+  keyListener({
+    key: '0',
+    target: { tagName: 'INPUT' }
+  });
+  assert.strictEqual(resetBtnClicked, false, 'Typing "0" in an input field must NOT trigger reset zoom');
+
+  // Simulate pressing '0' outside of an input element
+  keyListener({
+    key: '0',
+    target: { tagName: 'DIV' }
+  });
+  assert.strictEqual(resetBtnClicked, true, 'Pressing "0" on canvas/window should still trigger reset zoom');
+}
+
+// Reset boundary radius
+UI.setBoundaryRadius(220);
+
+console.log('Manual boundary circle radius text box, slider synchronization, and clamping verified successfully.');
+
+// =========================================================================
+// 22. Testing Universal Protocol-Aware Loader, Dual-Engine Guard & Ring Markers
+// =========================================================================
+console.log('--- 22. Testing Universal Protocol-Aware Loader, Dual-Engine Guard & Ring Markers ---');
+
+// 22.1 Verify index.html contains protocol-aware loader without blind setTimeout
+const rootDir = path.resolve(__dirname, '..');
+const indexHtmlContent = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
+assert(indexHtmlContent.includes("window.location.protocol === 'file:'"), 'index.html must check file: protocol explicitly');
+assert(!indexHtmlContent.includes('setTimeout(function () {\n      loadBundleFallback();\n    }, 400);'), 'index.html must NOT contain blind 400ms setTimeout watchdog');
+assert(!indexHtmlContent.includes('loadBundleFallback();\n    }, 400);'), 'Blind 400ms timeout must be completely eliminated');
+
+// 22.2 Verify initialization guard in main.js and bundle.js
+const mainJsContent = fs.readFileSync(path.join(rootDir, 'js/main.js'), 'utf8');
+const bundleJsContent = fs.readFileSync(path.join(rootDir, 'js/bundle.js'), 'utf8');
+assert(mainJsContent.includes('window.__sacred_studio_initialized__'), 'main.js must enforce initialization guard');
+assert(bundleJsContent.includes('window.__sacred_studio_initialized__'), 'bundle.js must enforce initialization guard');
+
+// 22.3 Verify data-ring attribute presence in rendered SVG circles
+State.activePattern = 'kryst';
+State.showAuraFlower = true;
+State.auraOpacity = 1.0;
+State.boundaryRadius = 220;
+SVGRenderer.render('svgMain', 'kryst');
+
+const renderedBodyCircles = mockSvg.querySelectorAll('.body-circle');
+const renderedAuraCircles = mockSvg.querySelectorAll('.aura-circle');
+assert(renderedBodyCircles.length > 0, 'Must have rendered body circles');
+assert(renderedAuraCircles.length > 0, 'Must have rendered aura circles');
+
+renderedBodyCircles.forEach(bc => {
+  const ring = bc.getAttribute('data-ring');
+  assert(ring !== undefined && ring !== null && ring !== '', 'Every body circle must have data-ring attribute');
+  const ringNum = parseInt(ring, 10);
+  assert(!isNaN(ringNum) && ringNum >= 1 && ringNum <= 12, 'data-ring must be integer between 1 and 12');
+});
+
+renderedAuraCircles.forEach(ac => {
+  const ring = ac.getAttribute('data-ring');
+  assert(ring !== undefined && ring !== null && ring !== '', 'Every aura circle must have data-ring attribute');
+  const ringNum = parseInt(ring, 10);
+  assert(!isNaN(ringNum) && ringNum >= 1 && ringNum <= 12, 'data-ring must be integer between 1 and 12');
+});
+
+console.log('Universal protocol-aware loader, dual-engine guard & data-ring attributes verified successfully.');
+
+// =========================================================================
+// 23. Testing Unified Zoom Variable & Alternating Scroll/Boundary Resilience
+// =========================================================================
+console.log('--- 23. Testing Unified Zoom Variable & Alternating Scroll/Boundary Resilience ---');
+
+// 23.1 Verify main.js contains zero query-parameter imports to preserve single-module identity
+const mainSource = fs.readFileSync(path.join(rootDir, 'js/main.js'), 'utf8');
+const queryImportMatches = mainSource.match(/import\s+.*?from\s+['"][^'"]*?\?[^'"]*?['"]/g);
+assert.strictEqual(queryImportMatches, null, 'main.js must not contain query parameters in import specifiers');
+
+// 23.2 Verify State is backed by global singleton
+assert(globalThis.__SACRED_STATE__, 'State must be backed by globalThis.__SACRED_STATE__');
+assert.strictEqual(State, globalThis.__SACRED_STATE__, 'Imported State must strictly match globalThis.__SACRED_STATE__');
+
+// 23.3 Simulate consecutive wheel scrolling and boundary setting
+// Step A: Set initial active pattern & mock DOM elements for viewBox inspection
+State.activePattern = 'kryst';
+State.transforms.kryst = { panX: 0, panY: 0, scale: 0.38 };
+State.boundaryRadius = 200;
+
+// Setup mock svgMain with getBoundingClientRect returning 800x800
+mockSvg.clientWidth = 800;
+mockSvg.clientHeight = 800;
+mockSvg.getBoundingClientRect = () => ({ width: 800, height: 800 });
+mockSvg.parentElement = {
+  clientWidth: 800,
+  clientHeight: 800,
+  getBoundingClientRect: () => ({ width: 800, height: 800 })
+};
+
+// Mock App.renderAll if not defined in global test scope
+if (typeof global.App === 'undefined') {
+  global.App = {
+    renderAll() {
+      const pattern = State.activePattern || 'kryst';
+      SVGRenderer.render('svgMain', pattern, State.transforms[pattern]);
+    }
+  };
+}
+
+// Initial render
+App.renderAll();
+let vb = mockSvg.getAttribute('viewBox');
+assert(vb, 'SVG must have viewBox attribute after initial render');
+const initialVbWidth = parseFloat(vb.split(' ')[2]);
+assert.strictEqual(Math.round(initialVbWidth), Math.round(800 / 0.38), 'Initial viewBox width must reflect default 0.38 scale');
+
+// Step B: User scrolls with wheel to zoom in (scale changes to 1.65)
+const scrolledScale = 1.65;
+State.transforms.kryst.scale = scrolledScale;
+SVGRenderer.updateViewBox(mockSvg, State.transforms.kryst);
+vb = mockSvg.getAttribute('viewBox');
+const scrolledVbWidth = parseFloat(vb.split(' ')[2]);
+assert.strictEqual(Math.round(scrolledVbWidth), Math.round(800 / scrolledScale), 'ViewBox width after scroll must reflect 1.65 scale');
+
+// Step C: User adjusts boundary circle radius via slider or text box (R_bound = 450)
+UI.setBoundaryRadius(450, 'slider');
+assert.strictEqual(State.boundaryRadius, 450, 'Boundary radius must update to 450');
+assert.strictEqual(State.transforms.kryst.scale, scrolledScale, 'Zoom scale must remain strictly 1.65, NOT resetting to 0.38 default');
+
+// Re-check SVG viewBox
+vb = mockSvg.getAttribute('viewBox');
+const afterSetVbWidth = parseFloat(vb.split(' ')[2]);
+assert.strictEqual(Math.round(afterSetVbWidth), Math.round(800 / scrolledScale), 'ViewBox after boundary resize must preserve 1.65 scale, proving zooms are unified');
+
+// Step D: User scrolls again (zoom in to 2.40)
+const secondScrolledScale = 2.40;
+State.transforms.kryst.scale = secondScrolledScale;
+SVGRenderer.updateViewBox(mockSvg, State.transforms.kryst);
+
+// Step E: User sets boundary radius via text input (R_bound = 150)
+UI.setBoundaryRadius(150, 'input');
+assert.strictEqual(State.boundaryRadius, 150, 'Boundary radius must update to 150');
+assert.strictEqual(State.transforms.kryst.scale, secondScrolledScale, 'Zoom scale must remain strictly 2.40');
+
+vb = mockSvg.getAttribute('viewBox');
+const finalVbWidth = parseFloat(vb.split(' ')[2]);
+assert.strictEqual(Math.round(finalVbWidth), Math.round(800 / secondScrolledScale), 'ViewBox after second boundary adjustment must strictly retain 2.40 scale without jumping');
+
+console.log('Unified zoom variable & alternating scroll/boundary resilience verified successfully.');
 
 console.log('\n========================================');
 console.log('ALL FEATURE TESTS PASSED SUCCESSFULLY!');

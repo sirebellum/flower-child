@@ -6,6 +6,12 @@
 (function(window, document) {
   'use strict';
 
+  if (typeof window !== 'undefined' && window.__sacred_studio_initialized__) {
+    console.warn('Sacred Geometry Studio already initialized by ' + window.__sacred_studio_initialized__ + '. Aborting duplicate bundle execution.');
+    return;
+  }
+  var __IS_STANDALONE_BUNDLE__ = true;
+
 
 /* --- js/geometry.js --- */
 /**
@@ -3453,9 +3459,13 @@ function clampNumber(val, min, max, defaultVal) {
 }
 
 /* =========================================================================
-   GLOBAL APPLICATION STATE
+   GLOBAL APPLICATION STATE SINGLETON
    ========================================================================= */
-const State = {
+const _globalScope = (typeof globalThis !== 'undefined')
+  ? globalThis
+  : ((typeof window !== 'undefined') ? window : ((typeof global !== 'undefined') ? global : {}));
+
+const defaultInitialState = {
   viewportMode: 'single-kryst', // 'single-kryst' | 'single-life'
   activePreset: null,
   activePattern: 'kryst', // 'kryst' | 'life'
@@ -3767,6 +3777,11 @@ const State = {
     if (cfg.sectionHighlightMode !== undefined) this.sectionHighlightMode = Boolean(cfg.sectionHighlightMode);
   }
 };
+
+if (!_globalScope.__SACRED_STATE__) {
+  _globalScope.__SACRED_STATE__ = defaultInitialState;
+}
+const State = _globalScope.__SACRED_STATE__;
 
 // Harmonic Color Palettes for "Color by Layer"
 const LayerColors = [
@@ -4881,6 +4896,7 @@ const SVGRenderer = {
           filter: (State.enableGlow || isHighlighted) ? `url(#${idPrefix}-glow)` : 'none',
           class: `circle-node body-circle ${isHighlighted ? 'highlighted-circle' : ''}`,
           'data-circle-id': pt.id,
+          'data-ring': String(pt.ring || 1),
           'data-pattern': pattern,
           'data-default-stroke': baseStroke,
           style: 'cursor: pointer;'
@@ -4951,6 +4967,7 @@ const SVGRenderer = {
           style: 'transition: none !important;',
           'data-circle-id': apt.bodyId,
           'data-aura-id': apt.id,
+          'data-ring': String(apt.ring || 1),
           'data-pattern': pattern,
           'data-default-stroke': defaultAuraColor
         });
@@ -8169,38 +8186,7 @@ const UI = {
     );
 
     const newRad = result.radius;
-    State.boundaryRadius = newRad;
-
-    const boundarySlider = document.getElementById('boundarySlider');
-    if (boundarySlider) {
-      if (newRad > Number(boundarySlider.max)) {
-        boundarySlider.max = Math.ceil(newRad * 1.2);
-      }
-      boundarySlider.value = newRad;
-    }
-
-    const boundaryBadge = document.getElementById('boundaryBadge');
-    if (boundaryBadge) {
-      boundaryBadge.textContent = `R_bound = ${newRad}px`;
-    }
-
-    // R-B1: One-way viewport zoom out if boundary expands beyond viewport
-    const pane = document.getElementById('paneMain') || document.querySelector('.viewport-pane');
-    const rect = pane?.getBoundingClientRect();
-    const width = (rect && rect.width > 0) ? rect.width : (pane?.clientWidth || 800);
-    const height = (rect && rect.height > 0) ? rect.height : (pane?.clientHeight || 800);
-    const minDim = Math.min(width, height) * 0.85;
-    const requiredScale = minDim / (2 * newRad);
-    const activeKey = State.activePattern || 'kryst';
-    const transform = State.transforms[activeKey];
-    if (transform && transform.scale > requiredScale) {
-      transform.scale = clampNumber(requiredScale, 0.04, 25.0, 0.38);
-      transform.panX = 0;
-      transform.panY = 0;
-    }
-
-    this.updateSidebarStats();
-    App.renderAll();
+    this.setBoundaryRadius(newRad, 'jump');
 
     const inputCircleCount = document.getElementById('inputCircleCount');
     if (inputCircleCount) {
@@ -8218,40 +8204,106 @@ const UI = {
     this.showToast(`Boundary jumped to ${newRad}px (${result.circleCount} circles)`);
   },
 
+  /**
+   * Sets boundary radius safely across state, slider, and text input without changing view zoom/pan
+   * @param {number} newRad
+   * @param {'slider'|'input'|'jump'|'preset'|'code'} [source='code']
+   */
+  setBoundaryRadius(newRad, source = 'code') {
+    newRad = Math.max(50, Math.min(5000, Math.round(newRad)));
+    State.boundaryRadius = newRad;
+
+    const boundarySlider = document.getElementById('boundarySlider');
+    if (boundarySlider && source !== 'slider') {
+      if (newRad > Number(boundarySlider.max)) {
+        boundarySlider.max = Math.ceil(newRad * 1.2);
+      }
+      if (newRad < Number(boundarySlider.min)) {
+        boundarySlider.min = Math.floor(newRad);
+      }
+      boundarySlider.value = newRad;
+      this.updateRangeSliderFill(boundarySlider);
+    } else if (boundarySlider && source === 'slider') {
+      this.updateRangeSliderFill(boundarySlider);
+    }
+
+    const boundaryInput = document.getElementById('boundaryInput');
+    if (boundaryInput && source !== 'input') {
+      boundaryInput.value = newRad;
+    }
+
+    if (typeof this.updateSidebarStats === 'function') {
+      this.updateSidebarStats();
+    }
+    if (typeof App !== 'undefined' && typeof App.renderAll === 'function') {
+      App.renderAll();
+    }
+  },
+
   bindBoundaryControls() {
     const boundarySlider = document.getElementById('boundarySlider');
-    const boundaryBadge = document.getElementById('boundaryBadge');
+    const boundaryInput = document.getElementById('boundaryInput');
+
     if (boundarySlider) {
       boundarySlider.value = State.boundaryRadius || 200;
-      if (boundaryBadge) boundaryBadge.textContent = `R_bound = ${State.boundaryRadius || 200}px`;
+      this.updateRangeSliderFill(boundarySlider);
 
       boundarySlider.addEventListener('input', (e) => {
         const newRad = Number(e.target.value);
-        State.boundaryRadius = newRad;
-        if (boundaryBadge) {
-          boundaryBadge.textContent = `R_bound = ${newRad}px`;
-        }
+        this.setBoundaryRadius(newRad, 'slider');
+      });
+    }
 
-        // R-B1: One-way viewport zoom out.
-        // If boundary circle expands beyond the current viewport, zoom out.
-        // If boundary slider is reduced, do NOT zoom in (preserves user zoom level).
-        const pane = document.getElementById('paneMain') || document.querySelector('.viewport-pane');
-        const rect = pane?.getBoundingClientRect();
-        const width = (rect && rect.width > 0) ? rect.width : (pane?.clientWidth || 800);
-        const height = (rect && rect.height > 0) ? rect.height : (pane?.clientHeight || 800);
-        const minDim = Math.min(width, height) * 0.85;
-        const requiredScale = minDim / (2 * newRad);
-        const activeKey = State.activePattern || 'kryst';
-        const transform = State.transforms[activeKey];
-        if (transform && transform.scale > requiredScale) {
-          transform.scale = clampNumber(requiredScale, 0.04, 25.0, 0.38);
-          // Lock pattern center strictly at origin (0, 0) during boundary expansion
-          transform.panX = 0;
-          transform.panY = 0;
-        }
+    if (boundaryInput) {
+      boundaryInput.value = State.boundaryRadius || 200;
 
-        this.updateSidebarStats();
-        App.renderAll();
+      // Real-time update as user types valid numbers
+      boundaryInput.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val) && val >= 50 && val <= 5000) {
+          this.setBoundaryRadius(val, 'input');
+        }
+      });
+
+      // Clamping and normalization on blur or change
+      boundaryInput.addEventListener('change', (e) => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val)) {
+          val = State.boundaryRadius || 200;
+        } else {
+          val = Math.max(50, Math.min(5000, Math.round(val)));
+        }
+        this.setBoundaryRadius(val);
+      });
+
+      // Enter key commits and blurs; Shift+Up/Down steps by 25px
+      boundaryInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          boundaryInput.blur();
+        } else if (e.key === 'ArrowUp' && e.shiftKey) {
+          e.preventDefault();
+          const cur = parseFloat(boundaryInput.value) || State.boundaryRadius || 200;
+          this.setBoundaryRadius(cur + 25);
+        } else if (e.key === 'ArrowDown' && e.shiftKey) {
+          e.preventDefault();
+          const cur = parseFloat(boundaryInput.value) || State.boundaryRadius || 200;
+          this.setBoundaryRadius(cur - 25);
+        }
+      });
+
+      // Support pasting values like "250px" or "500"
+      boundaryInput.addEventListener('paste', (e) => {
+        const text = (e.clipboardData || window.clipboardData)?.getData('text');
+        if (text) {
+          const num = parseFloat(text.replace(/[^0-9.]/g, ''));
+          if (!isNaN(num)) {
+            e.preventDefault();
+            boundaryInput.value = num;
+            this.setBoundaryRadius(num);
+          }
+        }
       });
     }
 
@@ -9036,13 +9088,14 @@ const UI = {
       });
     }
 
-    // --- 2. Rainbow Aura Wave (Continuous Center to Outside Spectrum) ---
+    // --- 2. Rainbow Aura Wave (Smooth Concentric Ring Progression from Center Outward) ---
     if (State.gadgetRainbowAura) {
       const speed = State.rainbowWaveSpeed || 1.0;
       const lastTime = this._lastRainbowTime || nowSec;
       const dt = Math.min(Math.max(nowSec - lastTime, 0), 0.1);
       this._lastRainbowTime = nowSec;
-      this._rainbowPhase = ((this._rainbowPhase || 0) + dt * 135 * speed) % 360000;
+      // 60 deg/sec at 1.0x speed = 6 seconds for a full 360° rainbow cycle
+      this._rainbowPhase = ((this._rainbowPhase || 0) + dt * 60 * speed) % 360000;
 
       let auraCircles = this._auraCircleElements;
       if (!auraCircles || auraCircles.length === 0 || !auraCircles[0]?.isConnected) {
@@ -9050,21 +9103,35 @@ const UI = {
         this._auraCircleElements = auraCircles;
       }
 
-      // Wave factor 1.85 creates a continuous, unbroken chromatic wave across concentric rings
-      const waveFactor = 1.85;
+      // Smooth 30° phase shift per ring (12 rings = 360° full chromatic cycle)
+      const ringStepDeg = 30.0;
       const phase = this._rainbowPhase;
 
       for (let i = 0; i < auraCircles.length; i++) {
         const circle = auraCircles[i];
-        let dist = circle._patternDist;
-        if (dist === undefined) {
-          const cx = parseFloat(circle.getAttribute('cx')) || 0;
-          const cy = parseFloat(circle.getAttribute('cy')) || 0;
-          dist = Math.hypot(cx, cy);
-          circle._patternDist = dist;
+        let ring = circle._patternRing;
+        if (ring === undefined) {
+          const rawRing = circle.getAttribute('data-ring');
+          if (rawRing) {
+            ring = parseInt(rawRing, 10);
+          } else {
+            const cx = parseFloat(circle.getAttribute('cx')) || 0;
+            const cy = parseFloat(circle.getAttribute('cy')) || 0;
+            const dist = Math.hypot(cx, cy);
+            const r = State.r || 50;
+            ring = Math.max(1, Math.ceil((dist - 0.001) / (2 * r)));
+          }
+          circle._patternRing = ring;
         }
-        const hue = (((phase - dist * waveFactor) % 360) + 360) % 360;
-        const colorStr = `hsl(${Math.round(hue)}, 95%, 65%)`;
+
+        // Preserve white highlight on user-highlighted circles
+        if (circle.classList.contains('highlighted-circle') || 
+            (circle.dataset.circleId && State.highlightedIds.has(circle.dataset.circleId))) {
+          continue;
+        }
+
+        const hue = (((phase - (ring - 1) * ringStepDeg) % 360) + 360) % 360;
+        const colorStr = `hsl(${hue.toFixed(1)}, 95%, 65%)`;
         circle.style.setProperty('transition', 'none', 'important');
         circle.style.stroke = colorStr;
         circle.setAttribute('stroke', colorStr);
@@ -9094,6 +9161,8 @@ const UI = {
     this._rainbowPhase = 0;
     this._lastRainbowTime = 0;
     document.querySelectorAll('.aura-circle').forEach(circle => {
+      delete circle._patternRing;
+      delete circle._patternDist;
       const defaultStroke = circle.getAttribute('data-default-stroke') || 
         ((circle.dataset.pattern === 'life') ? (State.colorLife || '#ef4444') : (State.colorKryst || '#10b981'));
       circle.style.stroke = '';
@@ -9248,9 +9317,14 @@ const UI = {
     });
 
     const boundarySlider = document.getElementById('boundarySlider');
-    if (boundarySlider) boundarySlider.value = State.boundaryRadius;
-    const boundaryBadge = document.getElementById('boundaryBadge');
-    if (boundaryBadge) boundaryBadge.textContent = `R_bound = ${State.boundaryRadius}px`;
+    if (boundarySlider) {
+      if (State.boundaryRadius > Number(boundarySlider.max)) {
+        boundarySlider.max = Math.ceil(State.boundaryRadius * 1.2);
+      }
+      boundarySlider.value = State.boundaryRadius;
+    }
+    const boundaryInput = document.getElementById('boundaryInput');
+    if (boundaryInput) boundaryInput.value = State.boundaryRadius;
 
     this.syncLayerControls();
     this.renderCustomPresets();
@@ -9645,6 +9719,14 @@ const UI = {
 
   bindKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
+      // Do not trigger global keyboard shortcuts when user is focused inside an input element
+      if (e.target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable)) {
+        if (e.key === 'Escape') {
+          e.target.blur();
+        }
+        return;
+      }
+
       if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         document.getElementById('sidebarToggleBtn')?.click();
@@ -9654,7 +9736,7 @@ const UI = {
         document.getElementById('zoomInBtn')?.click();
       } else if (e.key === '-') {
         document.getElementById('zoomOutBtn')?.click();
-      } else if ((e.key === 'h' || e.key === 'H') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      } else if (e.key === 'h' || e.key === 'H') {
         this.toggleSectionHighlightMode();
       } else if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
@@ -9769,6 +9851,14 @@ const App = {
   _resizeRaf: null,
 
   init() {
+    if (typeof window !== 'undefined') {
+      if (window.__sacred_studio_initialized__) {
+        console.warn('Sacred Geometry Studio already initialized by ' + window.__sacred_studio_initialized__ + '. Aborting duplicate module initialization.');
+        return;
+      }
+      window.__sacred_studio_initialized__ = (typeof __IS_STANDALONE_BUNDLE__ !== 'undefined') ? 'bundle' : 'module';
+    }
+
     // Expose globally for developer console debugging & backward compatibility
     window.App = App;
     window.State = State;

@@ -72,6 +72,12 @@ const finalBundle = `/**
 (function(window, document) {
   'use strict';
 
+  if (typeof window !== 'undefined' && window.__sacred_studio_initialized__) {
+    console.warn('Sacred Geometry Studio already initialized by ' + window.__sacred_studio_initialized__ + '. Aborting duplicate bundle execution.');
+    return;
+  }
+  var __IS_STANDALONE_BUNDLE__ = true;
+
 ${bundleBody}
 
   window.SacredGeometry = {

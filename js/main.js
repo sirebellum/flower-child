@@ -15,6 +15,14 @@ const App = {
   _resizeRaf: null,
 
   init() {
+    if (typeof window !== 'undefined') {
+      if (window.__sacred_studio_initialized__) {
+        console.warn('Sacred Geometry Studio already initialized by ' + window.__sacred_studio_initialized__ + '. Aborting duplicate module initialization.');
+        return;
+      }
+      window.__sacred_studio_initialized__ = (typeof __IS_STANDALONE_BUNDLE__ !== 'undefined') ? 'bundle' : 'module';
+    }
+
     // Expose globally for developer console debugging & backward compatibility
     window.App = App;
     window.State = State;
